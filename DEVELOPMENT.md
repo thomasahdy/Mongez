@@ -71,5 +71,49 @@ Mongez is a full-stack application composed of two main parts:
 - **API Calls**: Use the pre-configured Axios instance in `frontend/src/lib/axios.ts`.
 - **State Management**: Check `frontend/src/store/` for global state patterns (likely Zustand or similar).
 
-## Developer Notes (Prisma 7)
-We are using Prisma 7. Note that the database `url` is managed via `backend/mongez/prisma.config.ts`, not directly in the `.prisma` file.
+---
+
+## Git & GitHub Workflow
+
+To maintain a clean codebase and avoid conflicts, follow these principles:
+
+### 1. Branching Strategy
+- **Never commit directly to `main`.**
+- Always create a new branch for your feature or fix:
+  ```bash
+  git checkout -b feature/your-feature-name
+  ```
+
+### 2. Standard Workflow
+1.  **Sync**: Pull the latest changes from `main` before starting:
+    ```bash
+    git checkout main
+    git pull origin main
+    ```
+2.  **Code**: Work on your feature branch.
+3.  **Stage**: Add your changes. **Crucial**: Use `git status` to check for untracked files!
+    ```bash
+    git add .
+    ```
+4.  **Commit**: Use descriptive commit messages:
+    ```bash
+    git commit -m "feat: add user authentication module"
+    ```
+5.  **Push**: Push your branch to GitHub:
+    ```bash
+    git push origin feature/your-feature-name
+    ```
+
+### 3. Pull Requests (PRs)
+- Once pushed, go to GitHub and create a **Pull Request**.
+- Request a review from at least one teammate.
+- Once approved and tests pass, merge the PR into `main`.
+
+### 4. Avoiding "Untracked" Files
+Before every commit, run:
+```bash
+git status
+```
+If you see files under "Untracked files", they are NOT included in your commit. Always `git add <file>` or `git add .` to include them.
+
+
