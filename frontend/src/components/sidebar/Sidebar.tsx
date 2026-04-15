@@ -5,14 +5,14 @@ import { MdOutlineMenuOpen } from "react-icons/md";
 import { IoMdSettings } from "react-icons/io";
 import { CgLogOut } from "react-icons/cg";
 import Overview from './Overview';
-import Views from './Views';
 import SpacesMenu from './SpacesMenu';
+import Views from './Views';
 
 
 const Sidebar = () => {
     const [open, setOpen] = useState<boolean>(true);
   return (
-    <nav className={`shadow-md h-screen text-[#4F5F73] bg-white p-2 flex flex-col duration-500 ${open? 'w-60':'w-16'}`}>
+    <nav className={`border-r border-r-[#EBEFF5] h-screen text-[#4F5F73] bg-white p-2 flex flex-col duration-500 ${open? 'w-60':'w-16'}`}>
             {/* Header */} 
             <div className=' px-3 py-2 h-15 flex justify-between items-center'>
                 <img src={logo} alt="mongez logo" className={open? 'w-10': 'w-0'}/>

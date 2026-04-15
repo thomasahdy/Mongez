@@ -6,7 +6,7 @@ import { FaChalkboard } from "react-icons/fa";
 import { TfiStatsUp } from "react-icons/tfi";
 
 
-import MenuSection from './MenuSection'
+import MenuSection from '../sidebar/MenuSection'
 
 const viewsMenuItems=[
     {

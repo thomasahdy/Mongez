@@ -6,7 +6,7 @@ import { FaChartPie } from "react-icons/fa";
 import { IoMdSearch } from "react-icons/io";
 import { VscSearchSparkle } from "react-icons/vsc";
 import { HiSparkles } from "react-icons/hi";
-import MenuSection from './MenuSection';
+import MenuSection from '../sidebar/MenuSection';
 
 
 interface Props {
