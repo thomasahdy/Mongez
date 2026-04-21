@@ -24,10 +24,10 @@ export class BoardsService {
     );
   }
 
-  async getSpaceBoards(spaceId: string) {
+  async getDepartmentBoards(departmentId: string) {
     return this.cache.getOrSet(
-      `space:${spaceId}:boards`,
-      () => this.boardRepo.findBySpaceId(spaceId),
+      `department:${departmentId}:boards`,
+      () => this.boardRepo.findByDepartmentId(departmentId),
       this.CACHE_TTL,
     );
   }

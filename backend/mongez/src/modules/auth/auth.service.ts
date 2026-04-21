@@ -15,7 +15,7 @@ export interface AuthResult {
   user: {
     id: string;
     email: string;
-    role: string;
+    name: string;
   };
 }
 
@@ -54,11 +54,12 @@ export class AuthService {
     const hashedPassword = await this.passwordService.hash(dto.password);
 
     // Create and save user entity
-    const user = User.create(dto.email, hashedPassword);
+    const name = (dto as any).name || '';
+    const user = User.create(dto.email, hashedPassword, name);
     await this.userRepo.save(user);
 
     // Generate tokens
-    const accessToken = this.jwtService.generateAccessToken(user.id, user.email, user.role);
+    const accessToken = this.jwtService.generateAccessToken(user.id, user.email);
     const refreshToken = this.jwtService.generateRefreshToken(user.id);
 
     // Save refresh token
@@ -74,7 +75,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, role: user.role },
+      user: { id: user.id, email: user.email, name: user.name },
     };
   }
 
@@ -106,7 +107,7 @@ export class AuthService {
     }
 
     // Verify password
-    const passwordValid = await this.passwordService.compare(dto.password, user.password);
+    const passwordValid = await this.passwordService.compare(dto.password, user.passwordHash);
     if (!passwordValid) {
       await this.handleFailedLogin(user.id, ip, userAgent, user.failedAttempts);
       throw new UnauthorizedException('Invalid credentials');
@@ -116,7 +117,7 @@ export class AuthService {
     await this.userRepo.recordLogin(user.id);
 
     // Generate tokens
-    const accessToken = this.jwtService.generateAccessToken(user.id, user.email, user.role);
+    const accessToken = this.jwtService.generateAccessToken(user.id, user.email);
     const refreshToken = this.jwtService.generateRefreshToken(user.id);
 
     // Save refresh token
@@ -134,7 +135,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, role: user.role },
+      user: { id: user.id, email: user.email, name: user.name },
     };
   }
 
@@ -166,7 +167,7 @@ export class AuthService {
     await this.refreshTokenRepo.revokeToken(refreshToken);
 
     // Generate new tokens
-    const newAccessToken = this.jwtService.generateAccessToken(user.id, user.email, user.role);
+    const newAccessToken = this.jwtService.generateAccessToken(user.id, user.email);
     const newRefreshToken = this.jwtService.generateRefreshToken(user.id);
 
     // Save new refresh token
@@ -176,7 +177,7 @@ export class AuthService {
     return {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
-      user: { id: user.id, email: user.email, role: user.role },
+      user: { id: user.id, email: user.email, name: user.name },
     };
   }
 

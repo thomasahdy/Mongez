@@ -11,7 +11,7 @@ import { QueueModule } from './infrastructure/queue/queue.module';
 import { PrismaModule } from './infrastructure/database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-import { ProjectsModule } from './modules/projects/projects.module';
+import { SpacesModule } from './modules/spaces/spaces.module';
 import { BoardsModule } from './modules/boards/boards.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -36,7 +36,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     HealthModule,
     AuthModule,
     UsersModule,
-    ProjectsModule,
+    SpacesModule,
     BoardsModule,
     TasksModule,
     NotificationsModule,

@@ -10,46 +10,49 @@ datasource db {
 // ENUMS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-enum Role {
-  OWNER
-  ADMIN
-  MEMBER
-}
-
 enum UserStatus {
   ACTIVE
   INACTIVE
+  INVITED
   SUSPENDED
 }
 
 enum TaskStatus {
+  BACKLOG
   TODO
   IN_PROGRESS
   IN_REVIEW
+  BLOCKED
   DONE
   CANCELLED
 }
 
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
+enum Priority {
   URGENT
+  HIGH
+  MEDIUM
+  LOW
+  NONE
 }
 
 enum BoardType {
   KANBAN
-  SCRUM
   LIST
+  TABLE
+  TIMELINE
+  CALENDAR
+  WHITEBOARD
 }
 
 enum NotificationType {
-  MENTION
-  ASSIGNMENT
-  COMMENT
-  APPROVAL
-  DEADLINE
-  STATUS_CHANGE
+  TASK_ASSIGNED
+  TASK_DUE
+  TASK_UPDATED
+  COMMENT_MENTION
+  APPROVAL_REQUESTED
+  APPROVAL_RESOLVED
+  FILE_UPLOADED
+  AI_INSIGHT
   SYSTEM
 }
 
@@ -57,7 +60,7 @@ enum ApprovalStatus {
   PENDING
   APPROVED
   REJECTED
-  CANCELLED
+  WITHDRAWN
 }
 
 enum SubscriptionTier {
@@ -66,26 +69,28 @@ enum SubscriptionTier {
   ENTERPRISE
 }
 
-enum FileType {
-  IMAGE
-  DOCUMENT
-  SPREADSHEET
-  PDF
-  OTHER
+enum DependencyType {
+  BLOCKS
+  DUPLICATES
+  RELATES_TO
+  FOLLOWS
+  PRECEDES
+  PART_OF
+  REQUIRES
 }
 
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// USER & AUTH
+// IDENTITY & ACCESS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 model User {
-  id             String     @id @default(uuid())
+  id             String     @id @default(cuid())
   email          String     @unique
-  password       String
-  firstName      String?
-  lastName       String?
-  avatar         String?
-  role           Role       @default(MEMBER)
+  passwordHash   String
+  name           String
+  avatarUrl      String?
+  language       String     @default("en")
   status         UserStatus @default(ACTIVE)
   isVerified     Boolean    @default(false)
   failedAttempts Int        @default(0)
@@ -95,92 +100,163 @@ model User {
   updatedAt      DateTime   @updatedAt
 
   // Relations
-  refreshTokens  RefreshToken[]
-  userLogs       UserLog[]
-  spaces         SpaceMember[]
-  boards         BoardMember[]
-  assignedTasks  TaskAssignee[]
+  sessions       UserSession[]
+  memberships    Membership[]
+  assignedTasks  TaskAssignment[]
   comments       Comment[]
-  mentions       Mention[]
   notifications  Notification[]
-  sentApprovals  Approval[]      @relation("ApprovalRequester")
-  reviewedApprovals Approval[]   @relation("ApprovalReviewer")
-  uploadedFiles  File[]
+  timeLogs       TimeLog[]
+  auditLogs      AuditLog[]
+  sentApprovals  Approval[]       @relation("ApprovalRequester")
+  reviewedApprovals Approval[]    @relation("ApprovalReviewer")
+  uploadedFiles  FileVersion[]
   activities     Activity[]
   subscriptions  Subscription[]
+  watchers       Watcher[]
 
   @@index([email])
   @@index([status])
   @@map("users")
 }
 
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  isRevoked Boolean  @default(false)
-  createdAt DateTime @default(now())
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([token])
-  @@map("refresh_tokens")
+  @@index([refreshToken])
+  @@map("user_sessions")
 }
 
-model UserLog {
-  id        String   @id @default(uuid())
-  userId    String
-  action    String
-  ipAddress String?
-  userAgent String?
-  metadata  Json?
-  createdAt DateTime @default(now())
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique // "OWNER" | "ADMIN" | "HEAD" | "MEMBER" | "VIEWER"
+  description String?
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  permissions RolePermission[]
 
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("user_logs")
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  action      String           // "create" | "read" | "update" | "delete" | "approve"
+  resource    String           // "task" | "board" | "space" | "report" etc.
+  description String?
+
+  roles       RolePermission[]
+
+  @@unique([action, resource])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SPACES
+// WORKSPACE HIERARCHY
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 model Space {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  color       String?
-  icon        String?
-  isPublic    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String            @id @default(cuid())
+  name               String
+  description        String?
+  icon               String?           // emoji or fa icon class
+  color              String?           // hex color
+  isPublic           Boolean           @default(false)
+  subscriptionPlanId String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
-  // Relations
-  members     SpaceMember[]
-  boards      Board[]
+  subscriptionPlan   SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
+  departments        Department[]
+  memberships        Membership[]
 
   @@index([createdAt])
   @@map("spaces")
 }
 
-model SpaceMember {
-  id        String   @id @default(uuid())
+model Department {
+  id        String   @id @default(cuid())
+  name      String
   spaceId   String
-  userId    String
-  role      Role     @default(MEMBER)
-  joinedAt  DateTime @default(now())
+  color     String?
+  createdAt DateTime @default(now())
 
   space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boards    Board[]
+  memberships Membership[]
 
-  @@unique([spaceId, userId])
+  @@index([spaceId])
+  @@map("departments")
+}
+
+model Membership {
+  id           String    @id @default(cuid())
+  userId       String
+  spaceId      String?   // set when member of a Space
+  departmentId String?   // set when member of a Department
+  roleId       String
+  invitedAt    DateTime  @default(now())
+  acceptedAt   DateTime?
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role      @relation(fields: [roleId], references: [id])
+  space        Space?    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, spaceId])
+  @@unique([userId, departmentId])
   @@index([userId])
-  @@map("space_members")
+  @@index([spaceId])
+  @@index([departmentId])
+  @@index([roleId])
+  @@map("memberships")
+}
+
+model SubscriptionPlan {
+  id          String   @id @default(cuid())
+  name        String   @unique // "FREE" | "PRO" | "ENTERPRISE"
+  maxSpaces   Int
+  maxUsers    Int
+  maxBoards   Int
+  aiEnabled   Boolean  @default(false)
+  price       Float
+
+  spaces      Space[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id           String           @id @default(cuid())
+  userId       String
+  tier         SubscriptionTier @default(FREE)
+  startsAt     DateTime         @default(now())
+  expiresAt    DateTime?
+  isAutoRenew  Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tier])
+  @@map("subscriptions")
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -188,46 +264,31 @@ model SpaceMember {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 model Board {
-  id          String     @id @default(uuid())
-  spaceId     String
-  name        String
-  description String?
-  type        BoardType  @default(KANBAN)
-  position    Int        @default(0)
-  color       String?
-  icon        String?
-  isArchived  Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id           String      @id @default(cuid())
+  name         String
+  description  String?
+  departmentId String
+  type         BoardType   @default(KANBAN)
+  position     Int         @default(0)
+  color        String?
+  icon         String?
+  isArchived   Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
-  // Relations
-  space       Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  members     BoardMember[]
-  columns     BoardColumn[]
-  tasks       Task[]
+  department   Department  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  columns      BoardColumn[]
+  tasks        Task[]
+  views        View[]
 
-  @@index([spaceId])
+  @@index([departmentId])
   @@index([isArchived])
+  @@index([createdAt])
   @@map("boards")
 }
 
-model BoardMember {
-  id        String   @id @default(uuid())
-  boardId   String
-  userId    String
-  role      Role     @default(MEMBER)
-  joinedAt  DateTime @default(now())
-
-  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([boardId, userId])
-  @@index([userId])
-  @@map("board_members")
-}
-
 model BoardColumn {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   boardId   String
   name      String
   position  Int
@@ -241,40 +302,66 @@ model BoardColumn {
   @@map("board_columns")
 }
 
+model View {
+  id          String    @id @default(cuid())
+  boardId     String
+  name        String
+  type        BoardType
+  filters     Json?     // serialized filter config
+  groupBy     String?
+  sortBy      String?
+  sortOrder   String?   // "asc" | "desc"
+  isDefault   Boolean   @default(false)
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  board       Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId])
+  @@index([createdById])
+  @@map("views")
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TASKS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 model Task {
-  id          String       @id @default(uuid())
-  boardId     String
-  columnId    String?
-  parentId    String?
-  title       String
-  description String?
-  status      TaskStatus   @default(TODO)
-  priority    TaskPriority @default(MEDIUM)
-  position    Int          @default(0)
-  dueDate     DateTime?
-  startDate   DateTime?
-  estimatedHours Float?
-  actualHours  Float?
-  tags        String[]
-  isArchived  Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  identifier      String       @unique // "EDU-042" auto-generated
+  title           String
+  description     String?      // rich markdown
+  boardId         String
+  columnId        String?
+  status          TaskStatus   @default(TODO)
+  priority        Priority     @default(MEDIUM)
+  type            String?      // "Task" | "Bug" | "Feature" | "Milestone"
+  position        Int          @default(0)
+  estimatedHours  Float?
+  percentDone     Int          @default(0)
+  dueDate         DateTime?
+  startDate       DateTime?
+  parentId        String?      // for subtasks (self-relation)
+  tags            String[]
+  isArchived      Boolean      @default(false)
+  createdById     String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
-  // Relations
-  board       Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  column      BoardColumn? @relation(fields: [columnId], references: [id], onDelete: SetNull)
-  parent      Task?        @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: SetNull)
-  subtasks    Task[]       @relation("TaskSubtasks")
-  assignees   TaskAssignee[]
-  comments    Comment[]
-  attachments TaskAttachment[]
-  dependencies TaskDependency[]  @relation("TaskDependsOn")
-  dependents  TaskDependency[]  @relation("TaskDependedBy")
-  activities  Activity[]
+  board           Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column          BoardColumn? @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  parent          Task?        @relation("Subtasks", fields: [parentId], references: [id], onDelete: SetNull)
+  subtasks        Task[]       @relation("Subtasks")
+  assignments     TaskAssignment[]
+  dependencies    TaskDependency[] @relation("DependencyOf")
+  dependents      TaskDependency[] @relation("DependentOn")
+  comments        Comment[]
+  attachments     Attachment[]
+  approvals       Approval[]
+  timeLogs        TimeLog[]
+  watchers        Watcher[]
+  journalEntries  TaskJournal[]
+  activities      Activity[]
 
   @@index([boardId])
   @@index([columnId])
@@ -283,66 +370,83 @@ model Task {
   @@index([priority])
   @@index([dueDate])
   @@index([isArchived])
+  @@index([identifier])
+  @@index([createdById])
   @@index([createdAt])
   @@map("tasks")
 }
 
-model TaskAssignee {
-  id        String   @id @default(uuid())
-  taskId    String
-  userId    String
+model TaskAssignment {
+  taskId     String
+  userId     String
   assignedAt DateTime @default(now())
 
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([taskId, userId])
+  @@id([taskId, userId])
   @@index([userId])
-  @@map("task_assignees")
-}
-
-model TaskAttachment {
-  id        String   @id @default(uuid())
-  taskId    String
-  fileId    String
-
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
-
-  @@index([taskId])
-  @@map("task_attachments")
+  @@map("task_assignments")
 }
 
 model TaskDependency {
-  id              String   @id @default(uuid())
-  taskId          String
-  dependsOnTaskId String
+  id             String         @id @default(cuid())
+  taskId         String         // the dependent task
+  dependsOnId    String         // the prerequisite task
+  type           DependencyType @default(BLOCKS)
 
-  task            Task     @relation("TaskDependsOn", fields: [taskId], references: [id], onDelete: Cascade)
-  dependsOnTask   Task     @relation("TaskDependedBy", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+  task           Task           @relation("DependencyOf", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn      Task           @relation("DependentOn", fields: [dependsOnId], references: [id], onDelete: Cascade)
 
-  @@unique([taskId, dependsOnTaskId])
-  @@index([dependsOnTaskId])
+  @@unique([taskId, dependsOnId])
+  @@index([dependsOnId])
   @@map("task_dependencies")
 }
 
+model TimeLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  hours     Float
+  loggedAt  DateTime @default(now())
+  note      String?
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([loggedAt])
+  @@map("time_logs")
+}
+
+model Watcher {
+  taskId String
+  userId String
+
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@map("watchers")
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// COMMENTS
+// COLLABORATION
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 model Comment {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   taskId    String
   userId    String
-  content   String
-  metadata  Json?
+  content   String   // markdown with @mention support
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   mentions  Mention[]
+  reactions EmojiReaction[]
 
   @@index([taskId])
   @@index([userId])
@@ -351,97 +455,151 @@ model Comment {
 }
 
 model Mention {
-  id        String   @id @default(uuid())
-  commentId String
-  userId    String
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  commentId   String
+  mentionedId String // userId
+  isRead      Boolean  @default(false)
 
-  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment     Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@id([commentId, mentionedId])
+  @@index([mentionedId])
   @@index([isRead])
   @@map("mentions")
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// NOTIFICATIONS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+model EmojiReaction {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  emoji     String
 
-model Notification {
-  id         String           @id @default(uuid())
-  userId     String
-  type       NotificationType
-  title      String
-  message    String?
-  data       Json?
-  isRead     Boolean          @default(false)
-  readAt     DateTime?
-  createdAt  DateTime         @default(now())
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
-  // Relations
-  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isRead])
-  @@index([createdAt])
-  @@index([type])
-  @@map("notifications")
+  @@unique([commentId, userId, emoji])
+  @@index([commentId])
+  @@map("emoji_reactions")
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// APPROVALS
+// FILES & VERSIONS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+model Attachment {
+  id               String       @id @default(cuid())
+  taskId           String
+  fileName         String
+  mimeType         String
+  currentVersionId String?
+  uploadedById     String
+  createdAt        DateTime     @default(now())
+
+  task             Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  versions         FileVersion[]
+
+  @@index([taskId])
+  @@map("attachments")
+}
+
+model FileVersion {
+  id           String     @id @default(cuid())
+  attachmentId String
+  s3Key        String
+  versionNum   Int
+  sizeBytes    Int
+  uploadedById String
+  uploadedAt   DateTime   @default(now())
+
+  attachment   Attachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+  uploader     User       @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([attachmentId])
+  @@index([uploadedById])
+  @@map("file_versions")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// APPROVALS & WORKFLOWS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 model Approval {
-  id          String         @id @default(uuid())
-  requesterId String
-  reviewerId  String
-  type        String
-  title       String
-  description String?
-  data        Json?
-  status      ApprovalStatus @default(PENDING)
-  comment     String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  reviewedAt  DateTime?
+  id            String         @id @default(cuid())
+  taskId        String
+  requestedById String
+  reviewerId    String?
+  status        ApprovalStatus @default(PENDING)
+  comment       String?
+  requestedAt   DateTime       @default(now())
+  resolvedAt    DateTime?
 
-  // Relations
-  requester   User           @relation("ApprovalRequester", fields: [requesterId], references: [id])
-  reviewer    User           @relation("ApprovalReviewer", fields: [reviewerId], references: [id])
+  task          Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  requester     User           @relation("ApprovalRequester", fields: [requestedById], references: [id])
+  reviewer      User?          @relation("ApprovalReviewer", fields: [reviewerId], references: [id])
 
-  @@index([requesterId])
+  @@index([taskId])
+  @@index([requestedById])
   @@index([reviewerId])
   @@index([status])
-  @@index([createdAt])
+  @@index([requestedAt])
   @@map("approvals")
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// FILES
+// NOTIFICATIONS & AUDIT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-model File {
-  id          String   @id @default(uuid())
-  userId      String
-  name        String
-  originalName String
-  mimeType    String
-  size        Int
-  type        FileType @default(OTHER)
-  url         String
-  thumbnailUrl String?
-  createdAt   DateTime @default(now())
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  link      String?          // deep-link to resource
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
 
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  taskAttachments TaskAttachment[]
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([isRead])
+  @@index([type])
   @@index([createdAt])
-  @@map("files")
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String   // "task.created" | "task.status_changed" | "member.invited" ...
+  entityType String
+  entityId   String
+  diff       Json?    // before/after JSON
+  ipAddress  String?
+  timestamp  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+model TaskJournal {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  changes   Json     // { field: "status", from: "TODO", to: "IN_PROGRESS" }
+  note      String?
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("task_journal")
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -449,14 +607,13 @@ model File {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 model Activity {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   userId    String
   taskId    String?
   type      String
   data      Json?
   createdAt DateTime @default(now())
 
-  // Relations
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
@@ -465,25 +622,4 @@ model Activity {
   @@index([type])
   @@index([createdAt])
   @@map("activities")
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SUBSCRIPTIONS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-model Subscription {
-  id           String           @id @default(uuid())
-  userId       String
-  tier         SubscriptionTier @default(FREE)
-  startsAt     DateTime        @default(now())
-  expiresAt    DateTime?
-  isAutoRenew  Boolean         @default(false)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([tier])
-  @@map("subscriptions")
 }

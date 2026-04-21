@@ -15,7 +15,7 @@ export class UsersController {
   @Patch('me')
   async updateProfile(
     @Req() req: any,
-    @Body() body: { firstName?: string; lastName?: string; avatar?: string },
+    @Body() body: { name?: string; avatarUrl?: string },
   ) {
     return this.usersService.updateProfile(req.user.id, body);
   }

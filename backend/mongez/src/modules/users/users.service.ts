@@ -24,7 +24,7 @@ export class UsersService {
     );
   }
 
-  async updateProfile(userId: string, data: { firstName?: string; lastName?: string; avatar?: string }) {
+  async updateProfile(userId: string, data: { name?: string; avatarUrl?: string }) {
     const user = await this.userRepo.updateProfile(userId, data);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, userId);
     return user;

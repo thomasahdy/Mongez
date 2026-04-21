@@ -6,7 +6,7 @@ export class AuthResponseDto {
     user: {
       id: string;
       email: string;
-      role: string;
+      name: string;
     };
   };
   message: string;

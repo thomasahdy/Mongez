@@ -3,7 +3,7 @@ import { PrismaService } from '../../../infrastructure/database/prisma.service';
 
 export interface RefreshTokenData {
   userId: string;
-  token: string;
+  refreshToken: string;
   expiresAt: Date;
 }
 
@@ -12,20 +12,19 @@ export class RefreshTokenRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: RefreshTokenData): Promise<void> {
-    await this.prisma.refreshToken.create({
+    await this.prisma.userSession.create({
       data,
     });
   }
 
   async findByToken(token: string): Promise<any | null> {
-    return this.prisma.refreshToken.findUnique({
-      where: { token },
+    return this.prisma.userSession.findUnique({
+      where: { refreshToken: token },
       include: {
         user: {
           select: {
             id: true,
             email: true,
-            role: true,
             status: true,
           },
         },
@@ -34,10 +33,9 @@ export class RefreshTokenRepository {
   }
 
   async findByUserId(userId: string): Promise<any[]> {
-    return this.prisma.refreshToken.findMany({
+    return this.prisma.userSession.findMany({
       where: {
         userId,
-        isRevoked: false,
         expiresAt: {
           gt: new Date(),
         },
@@ -49,40 +47,27 @@ export class RefreshTokenRepository {
   }
 
   async revokeToken(token: string): Promise<void> {
-    await this.prisma.refreshToken.update({
-      where: { token },
-      data: {
-        isRevoked: true,
-      },
+    await this.prisma.userSession.delete({
+      where: { refreshToken: token },
     });
   }
 
   async revokeAllUserTokens(userId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: {
-        userId,
-        isRevoked: false,
-      },
-      data: {
-        isRevoked: true,
-      },
+    await this.prisma.userSession.deleteMany({
+      where: { userId },
     });
   }
 
   async isTokenValid(token: string): Promise<boolean> {
-    const refreshToken = await this.prisma.refreshToken.findUnique({
-      where: { token },
+    const session = await this.prisma.userSession.findUnique({
+      where: { refreshToken: token },
     });
 
-    if (!refreshToken) {
+    if (!session) {
       return false;
     }
 
-    if (refreshToken.isRevoked) {
-      return false;
-    }
-
-    if (refreshToken.expiresAt < new Date()) {
+    if (session.expiresAt < new Date()) {
       return false;
     }
 
@@ -90,7 +75,7 @@ export class RefreshTokenRepository {
   }
 
   async cleanupExpiredTokens(): Promise<number> {
-    const result = await this.prisma.refreshToken.deleteMany({
+    const result = await this.prisma.userSession.deleteMany({
       where: {
         expiresAt: {
           lt: new Date(),
@@ -101,34 +86,14 @@ export class RefreshTokenRepository {
     return result.count;
   }
 
-  async cleanupRevokedTokens(): Promise<number> {
-    const result = await this.prisma.refreshToken.deleteMany({
-      where: {
-        isRevoked: true,
-      },
-    });
-
-    return result.count;
-  }
-
   async cleanupOldTokens(daysToKeep: number = 30): Promise<number> {
     const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
 
-    const result = await this.prisma.refreshToken.deleteMany({
+    const result = await this.prisma.userSession.deleteMany({
       where: {
-        OR: [
-          {
-            expiresAt: {
-              lt: cutoffDate,
-            },
-          },
-          {
-            isRevoked: true,
-            createdAt: {
-              lt: cutoffDate,
-            },
-          },
-        ],
+        expiresAt: {
+          lt: cutoffDate,
+        },
       },
     });
 
@@ -136,10 +101,9 @@ export class RefreshTokenRepository {
   }
 
   async countActiveTokens(userId: string): Promise<number> {
-    return this.prisma.refreshToken.count({
+    return this.prisma.userSession.count({
       where: {
         userId,
-        isRevoked: false,
         expiresAt: {
           gt: new Date(),
         },
@@ -148,17 +112,16 @@ export class RefreshTokenRepository {
   }
 
   async getUserActiveTokens(userId: string): Promise<any[]> {
-    return this.prisma.refreshToken.findMany({
+    return this.prisma.userSession.findMany({
       where: {
         userId,
-        isRevoked: false,
         expiresAt: {
           gt: new Date(),
         },
       },
       select: {
         id: true,
-        token: true,
+        refreshToken: true,
         expiresAt: true,
         createdAt: true,
       },

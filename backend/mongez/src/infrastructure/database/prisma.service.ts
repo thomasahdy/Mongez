@@ -24,38 +24,49 @@ export class PrismaService implements OnModuleInit {
     await this.prisma.$disconnect();
   }
 
-  // ─── User & Auth ───────────────────────────────────────────
+  // ─── Identity & Access ─────────────────────────────────────
   get user() { return this.prisma.user; }
-  get refreshToken() { return this.prisma.refreshToken; }
-  get userLog() { return this.prisma.userLog; }
+  get userSession() { return this.prisma.userSession; }
+  get role() { return this.prisma.role; }
+  get permission() { return this.prisma.permission; }
+  get rolePermission() { return this.prisma.rolePermission; }
 
-  // ─── Spaces ────────────────────────────────────────────────
+  // ─── Workspace Hierarchy ───────────────────────────────────
   get space() { return this.prisma.space; }
-  get spaceMember() { return this.prisma.spaceMember; }
+  get department() { return this.prisma.department; }
+  get membership() { return this.prisma.membership; }
+  get subscriptionPlan() { return this.prisma.subscriptionPlan; }
+  get subscription() { return this.prisma.subscription; }
 
   // ─── Boards ────────────────────────────────────────────────
   get board() { return this.prisma.board; }
-  get boardMember() { return this.prisma.boardMember; }
   get boardColumn() { return this.prisma.boardColumn; }
+  get view() { return this.prisma.view; }
 
   // ─── Tasks ─────────────────────────────────────────────────
   get task() { return this.prisma.task; }
-  get taskAssignee() { return this.prisma.taskAssignee; }
-  get taskAttachment() { return this.prisma.taskAttachment; }
+  get taskAssignment() { return this.prisma.taskAssignment; }
   get taskDependency() { return this.prisma.taskDependency; }
+  get timeLog() { return this.prisma.timeLog; }
+  get watcher() { return this.prisma.watcher; }
 
-  // ─── Comments ──────────────────────────────────────────────
+  // ─── Collaboration ─────────────────────────────────────────
   get comment() { return this.prisma.comment; }
   get mention() { return this.prisma.mention; }
+  get emojiReaction() { return this.prisma.emojiReaction; }
 
-  // ─── Notifications ─────────────────────────────────────────
-  get notification() { return this.prisma.notification; }
+  // ─── Files ─────────────────────────────────────────────────
+  get attachment() { return this.prisma.attachment; }
+  get fileVersion() { return this.prisma.fileVersion; }
 
-  // ─── Files & Misc ──────────────────────────────────────────
-  get file() { return this.prisma.file; }
+  // ─── Approvals ─────────────────────────────────────────────
   get approval() { return this.prisma.approval; }
+
+  // ─── Notifications & Audit ─────────────────────────────────
+  get notification() { return this.prisma.notification; }
+  get auditLog() { return this.prisma.auditLog; }
+  get taskJournal() { return this.prisma.taskJournal; }
   get activity() { return this.prisma.activity; }
-  get subscription() { return this.prisma.subscription; }
 
   // ─── Health ────────────────────────────────────────────────
   async checkHealth() {

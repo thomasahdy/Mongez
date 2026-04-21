@@ -5,9 +5,7 @@ import { User } from '../domain/user.entity';
 export interface UserReadModel {
   id: string;
   email: string;
-  firstName: string | null;
-  lastName: string | null;
-  role: string;
+  name: string;
   status: string;
   isVerified: boolean;
   failedAttempts: number;
@@ -17,7 +15,7 @@ export interface UserReadModel {
 }
 
 export interface UserWithPassword extends UserReadModel {
-  password: string;
+  passwordHash: string;
   lockedUntil: Date | null;
   lastLoginAt: Date | null;
 }
@@ -34,9 +32,7 @@ export class UserRepository {
       select: {
         id: true,
         email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
+        name: true,
         status: true,
         isVerified: true,
         failedAttempts: true,
@@ -50,7 +46,6 @@ export class UserRepository {
 
     return {
       ...user,
-      role: user.role as string,
       status: user.status as string,
       isLocked: user.lockedUntil ? new Date() < user.lockedUntil : false,
     };
@@ -62,9 +57,7 @@ export class UserRepository {
       select: {
         id: true,
         email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
+        name: true,
         status: true,
         isVerified: true,
         failedAttempts: true,
@@ -78,7 +71,6 @@ export class UserRepository {
 
     return {
       ...user,
-      role: user.role as string,
       status: user.status as string,
       isLocked: user.lockedUntil ? new Date() < user.lockedUntil : false,
     };
@@ -90,10 +82,8 @@ export class UserRepository {
       select: {
         id: true,
         email: true,
-        firstName: true,
-        lastName: true,
-        password: true,
-        role: true,
+        name: true,
+        passwordHash: true,
         status: true,
         isVerified: true,
         failedAttempts: true,
@@ -108,7 +98,6 @@ export class UserRepository {
 
     return {
       ...user,
-      role: user.role as string,
       status: user.status as string,
       isLocked: user.lockedUntil ? new Date() < user.lockedUntil : false,
     };
@@ -137,10 +126,8 @@ export class UserRepository {
       where: { id: user.id },
       update: {
         email: user.email,
-        password: user.password,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
+        passwordHash: user.password,
+        name: user.name,
         status: user.status,
         isVerified: user.isVerified,
         failedAttempts: user.failedAttempts,
@@ -151,10 +138,8 @@ export class UserRepository {
       create: {
         id: user.id,
         email: user.email,
-        password: user.password,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
+        passwordHash: user.password,
+        name: user.name,
         status: user.status,
         isVerified: user.isVerified,
         failedAttempts: user.failedAttempts,
@@ -181,11 +166,11 @@ export class UserRepository {
     });
   }
 
-  async saveRefreshToken(userId: string, token: string, expiresAt: Date): Promise<void> {
-    await this.prisma.refreshToken.create({
+  async saveRefreshToken(userId: string, refreshToken: string, expiresAt: Date): Promise<void> {
+    await this.prisma.userSession.create({
       data: {
         userId,
-        token,
+        refreshToken,
         expiresAt,
       },
     });

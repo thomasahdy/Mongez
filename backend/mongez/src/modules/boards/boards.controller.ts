@@ -12,9 +12,9 @@ export class BoardsController {
     return this.boardsService.getBoardById(id);
   }
 
-  @Get('space/:spaceId')
-  async getSpaceBoards(@Param('spaceId') spaceId: string) {
-    return this.boardsService.getSpaceBoards(spaceId);
+  @Get('department/:departmentId')
+  async getDepartmentBoards(@Param('departmentId') departmentId: string) {
+    return this.boardsService.getDepartmentBoards(departmentId);
   }
 
   @Post()

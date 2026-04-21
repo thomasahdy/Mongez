@@ -1,13 +1,11 @@
-import { Role, UserStatus } from '@prisma/client';
+import { UserStatus } from '@prisma/client';
 import * as crypto from 'crypto';
 
 export class User {
   private _id!: string;
   private _email!: string;
   private _password!: string;
-  private _firstName?: string;
-  private _lastName?: string;
-  private _role!: Role;
+  private _name!: string;
   private _status!: UserStatus;
   private _isVerified!: boolean;
   private _failedAttempts!: number;
@@ -23,19 +21,15 @@ export class User {
   static create(
     email: string,
     password: string,
-    role: Role = Role.MEMBER,
-    firstName?: string,
-    lastName?: string,
+    name: string = '',
   ): User {
     const user = new User();
     user._email = email;
     user._password = password;
-    user._role = role;
+    user._name = name;
     user._status = UserStatus.ACTIVE;
     user._isVerified = false;
     user._failedAttempts = 0;
-    user._firstName = firstName;
-    user._lastName = lastName;
     user._createdAt = new Date();
     user._updatedAt = new Date();
     return user;
@@ -55,16 +49,8 @@ export class User {
     return this._password;
   }
 
-  get firstName(): string | undefined {
-    return this._firstName;
-  }
-
-  get lastName(): string | undefined {
-    return this._lastName;
-  }
-
-  get role(): Role {
-    return this._role;
+  get name(): string {
+    return this._name;
   }
 
   get status(): UserStatus {
@@ -99,13 +85,6 @@ export class User {
     return this._lockedUntil ? new Date() < this._lockedUntil : false;
   }
 
-  get fullName(): string {
-    if (this._firstName && this._lastName) {
-      return `${this._firstName} ${this._lastName}`;
-    }
-    return this._email;
-  }
-
   // ─── Mutations ───
 
   login(): void {
@@ -129,9 +108,8 @@ export class User {
     this._updatedAt = new Date();
   }
 
-  updateProfile(data: { firstName?: string; lastName?: string }): void {
-    if (data.firstName !== undefined) this._firstName = data.firstName;
-    if (data.lastName !== undefined) this._lastName = data.lastName;
+  updateName(name: string): void {
+    this._name = name;
     this._updatedAt = new Date();
   }
 
@@ -142,11 +120,6 @@ export class User {
 
   changeStatus(status: UserStatus): void {
     this._status = status;
-    this._updatedAt = new Date();
-  }
-
-  changeRole(role: Role): void {
-    this._role = role;
     this._updatedAt = new Date();
   }
 }

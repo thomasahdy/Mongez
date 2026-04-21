@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 @Injectable()
-export class ProjectRepository {
+export class SpaceRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findById(id: string) {
     return this.prisma.space.findUnique({
       where: { id },
       include: {
-        _count: { select: { boards: true, members: true } },
+        _count: { select: { departments: true, memberships: true } },
       },
     });
   }
@@ -27,7 +27,7 @@ export class ProjectRepository {
           isPublic: true,
           createdAt: true,
           updatedAt: true,
-          _count: { select: { boards: true, members: true } },
+          _count: { select: { departments: true, memberships: true } },
         },
       }),
       this.prisma.space.count(),

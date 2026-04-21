@@ -13,16 +13,16 @@ export class JwtService {
    * Generate an access token for a user
    * @param userId The user ID
    * @param email The user email
-   * @param role The user role
+   * @param role Optional user role (from membership)
    * @returns string The JWT access token
    */
-  generateAccessToken(userId: string, email: string, role: string): string {
-    const payload = {
+  generateAccessToken(userId: string, email: string, role?: string): string {
+    const payload: Record<string, any> = {
       sub: userId,
       email: email,
-      role: role,
       iat: Math.floor(Date.now() / 1000),
     };
+    if (role) payload.role = role;
 
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('auth.jwt.accessTokenSecret'),

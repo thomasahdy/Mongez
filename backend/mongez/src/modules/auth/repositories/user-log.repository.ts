@@ -13,8 +13,14 @@ export class UserLogRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: UserLogData): Promise<void> {
-    await this.prisma.userLog.create({
-      data,
+    await this.prisma.auditLog.create({
+      data: {
+        userId: data.userId,
+        action: data.action,
+        entityType: 'user',
+        entityId: data.userId,
+        ipAddress: data.ipAddress,
+      },
     });
   }
 
@@ -28,27 +34,27 @@ export class UserLogRepository {
     const { skip, take, action, startDate, endDate } = options || {};
 
     const where: any = { userId };
-    
+
     if (action) {
       where.action = action;
     }
-    
+
     if (startDate || endDate) {
-      where.createdAt = {};
+      where.timestamp = {};
       if (startDate) {
-        where.createdAt.gte = startDate;
+        where.timestamp.gte = startDate;
       }
       if (endDate) {
-        where.createdAt.lte = endDate;
+        where.timestamp.lte = endDate;
       }
     }
 
-    return this.prisma.userLog.findMany({
+    return this.prisma.auditLog.findMany({
       where,
       skip,
       take,
       orderBy: {
-        createdAt: 'desc',
+        timestamp: 'desc',
       },
     });
   }
@@ -62,23 +68,23 @@ export class UserLogRepository {
     const { skip, take, startDate, endDate } = options || {};
 
     const where: any = { action };
-    
+
     if (startDate || endDate) {
-      where.createdAt = {};
+      where.timestamp = {};
       if (startDate) {
-        where.createdAt.gte = startDate;
+        where.timestamp.gte = startDate;
       }
       if (endDate) {
-        where.createdAt.lte = endDate;
+        where.timestamp.lte = endDate;
       }
     }
 
-    return this.prisma.userLog.findMany({
+    return this.prisma.auditLog.findMany({
       where,
       skip,
       take,
       orderBy: {
-        createdAt: 'desc',
+        timestamp: 'desc',
       },
     });
   }
@@ -90,15 +96,15 @@ export class UserLogRepository {
     };
 
     if (since) {
-      where.createdAt = {
+      where.timestamp = {
         gte: since,
       };
     }
 
-    return this.prisma.userLog.findMany({
+    return this.prisma.auditLog.findMany({
       where,
       orderBy: {
-        createdAt: 'desc',
+        timestamp: 'desc',
       },
     });
   }
@@ -106,18 +112,18 @@ export class UserLogRepository {
   async findRecentLoginAttempts(userId: string, minutes: number = 30): Promise<any[]> {
     const since = new Date(Date.now() - minutes * 60 * 1000);
 
-    return this.prisma.userLog.findMany({
+    return this.prisma.auditLog.findMany({
       where: {
         userId,
         action: {
           in: ['LOGIN_SUCCESS', 'LOGIN_FAIL'],
         },
-        createdAt: {
+        timestamp: {
           gte: since,
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        timestamp: 'desc',
       },
     });
   }
@@ -125,9 +131,9 @@ export class UserLogRepository {
   async cleanupOldLogs(daysToKeep: number = 90): Promise<void> {
     const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
 
-    await this.prisma.userLog.deleteMany({
+    await this.prisma.auditLog.deleteMany({
       where: {
-        createdAt: {
+        timestamp: {
           lt: cutoffDate,
         },
       },
@@ -143,13 +149,13 @@ export class UserLogRepository {
   }> {
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    const logs = await this.prisma.userLog.findMany({
+    const logs = await this.prisma.auditLog.findMany({
       where: {
         userId,
         action: {
           in: ['LOGIN_SUCCESS', 'LOGIN_FAIL'],
         },
-        createdAt: {
+        timestamp: {
           gte: startDate,
         },
       },
@@ -158,12 +164,12 @@ export class UserLogRepository {
     const successfulLogins = logs.filter(log => log.action === 'LOGIN_SUCCESS');
     const failedLogins = logs.filter(log => log.action === 'LOGIN_FAIL');
 
-    const lastLogin = successfulLogins.length > 0 
-      ? successfulLogins[0].createdAt 
+    const lastLogin = successfulLogins.length > 0
+      ? successfulLogins[0].timestamp
       : undefined;
-    
-    const lastFailedLogin = failedLogins.length > 0 
-      ? failedLogins[0].createdAt 
+
+    const lastFailedLogin = failedLogins.length > 0
+      ? failedLogins[0].timestamp
       : undefined;
 
     return {

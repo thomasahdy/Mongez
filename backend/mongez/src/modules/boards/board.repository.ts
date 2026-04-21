@@ -15,9 +15,9 @@ export class BoardRepository {
     });
   }
 
-  async findBySpaceId(spaceId: string) {
+  async findByDepartmentId(departmentId: string) {
     return this.prisma.board.findMany({
-      where: { spaceId },
+      where: { departmentId },
       select: {
         id: true,
         name: true,

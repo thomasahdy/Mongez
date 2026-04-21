@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { Prisma } from '@prisma/client';
 
+const userSelect = { id: true, name: true, avatarUrl: true } as const;
+
 @Injectable()
 export class TaskRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -10,8 +12,8 @@ export class TaskRepository {
     return this.prisma.task.findUnique({
       where: { id },
       include: {
-        assignees: { include: { user: { select: { id: true, firstName: true, lastName: true, avatar: true } } } },
-        comments: { take: 5, orderBy: { createdAt: 'desc' }, include: { user: { select: { id: true, firstName: true, lastName: true, avatar: true } } } },
+        assignments: { include: { user: { select: userSelect } } },
+        comments: { take: 5, orderBy: { createdAt: 'desc' }, include: { user: { select: userSelect } } },
         dependencies: true,
         _count: { select: { comments: true, attachments: true, subtasks: true } },
       },
@@ -22,7 +24,7 @@ export class TaskRepository {
     const where: Prisma.TaskWhereInput = {
       boardId,
       ...(filters?.status && { status: filters.status as any }),
-      ...(filters?.assigneeId && { assignees: { some: { userId: filters.assigneeId } } }),
+      ...(filters?.assigneeId && { assignments: { some: { userId: filters.assigneeId } } }),
       ...(filters?.priority && { priority: filters.priority as any }),
     };
 
@@ -43,7 +45,7 @@ export class TaskRepository {
           position: true,
           createdAt: true,
           updatedAt: true,
-          assignees: { include: { user: { select: { id: true, firstName: true, lastName: true, avatar: true } } } },
+          assignments: { include: { user: { select: userSelect } } },
           _count: { select: { comments: true, attachments: true, subtasks: true } },
         },
       }),
