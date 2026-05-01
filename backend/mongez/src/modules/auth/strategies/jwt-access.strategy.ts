@@ -11,7 +11,10 @@ export class JwtAccessStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new Error('JWT access token secret is not configured');
     }
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (request: any) => request?.cookies?.access_token,
+      ]),
       ignoreExpiration: false,
       secretOrKey: secret,
     });

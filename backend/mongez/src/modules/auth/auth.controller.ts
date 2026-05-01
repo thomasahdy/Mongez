@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus, ValidationPipe, Req, UseGuards, UseFilters, HttpException } from '@nestjs/common';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus, ValidationPipe, Req, Res, UseGuards, UseFilters, HttpException } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -6,6 +6,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 import { SecurityHeadersGuard } from './guards/security-headers.guard';
 import { AuthExceptionFilter } from './filters/auth-exception.filter';
 
@@ -25,6 +26,7 @@ export class AuthController {
 
     // Set HTTP-only refresh token cookie
     this.setRefreshTokenCookie(req.res as Response, result.refreshToken);
+    this.setAccessTokenCookie(req.res as Response, result.accessToken);
 
     return {
       success: true,
@@ -47,6 +49,7 @@ export class AuthController {
 
     // Set HTTP-only refresh token cookie
     this.setRefreshTokenCookie(req.res as Response, result.refreshToken);
+    this.setAccessTokenCookie(req.res as Response, result.accessToken);
 
     return {
       success: true,
@@ -74,6 +77,7 @@ export class AuthController {
 
     // Set new refresh token cookie
     this.setRefreshTokenCookie(req.res as Response, result.refreshToken);
+    this.setAccessTokenCookie(req.res as Response, result.accessToken);
 
     return {
       success: true,
@@ -101,13 +105,33 @@ export class AuthController {
     const userId = (req as any).user?.userId;
     await this.authService.logout(refreshToken, userId);
 
-    // Clear the refresh token cookie
-    this.clearRefreshTokenCookie(req.res as Response);
+    // Clear the auth cookies
+    this.clearAuthCookies(req.res as Response);
 
     return {
       success: true,
       message: 'Logged out successfully',
     };
+  }
+
+  @Get('google')
+  @UseGuards(GoogleOAuthGuard)
+  async googleAuth(@Req() req: Request) {
+    // Guard redirects
+  }
+
+  @Get('google/callback')
+  @UseGuards(GoogleOAuthGuard)
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const authResult = req.user as any;
+    
+    // Set HTTP-only refresh token cookie
+    this.setRefreshTokenCookie(res, authResult.refreshToken);
+    this.setAccessTokenCookie(res, authResult.accessToken);
+
+    // Redirect directly to frontend
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    return res.redirect(frontendUrl);
   }
 
   @Get('me')
@@ -131,14 +155,29 @@ export class AuthController {
     response.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: cookieSecure,
-      sameSite: 'strict',
+      sameSite: 'lax',
       domain: cookieDomain,
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
   }
 
-  private clearRefreshTokenCookie(response: Response): void {
+  private setAccessTokenCookie(response: Response, accessToken: string): void {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieSecure = isProduction;
+    const cookieDomain = isProduction ? process.env.COOKIE_DOMAIN : undefined;
+
+    response.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: 'lax',
+      domain: cookieDomain,
+      path: '/',
+      maxAge: 15 * 60 * 1000, // 15 minutes (matches token expiration)
+    });
+  }
+
+  private clearAuthCookies(response: Response): void {
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieSecure = isProduction;
     const cookieDomain = isProduction ? process.env.COOKIE_DOMAIN : undefined;
@@ -146,7 +185,15 @@ export class AuthController {
     response.clearCookie('refresh_token', {
       httpOnly: true,
       secure: cookieSecure,
-      sameSite: 'strict',
+      sameSite: 'lax',
+      domain: cookieDomain,
+      path: '/',
+    });
+    
+    response.clearCookie('access_token', {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: 'lax',
       domain: cookieDomain,
       path: '/',
     });

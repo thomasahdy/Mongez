@@ -107,6 +107,11 @@ export class AuthService {
     }
 
     // Verify password
+    if (!user.passwordHash) {
+      await this.handleFailedLogin(user.id, ip, userAgent, user.failedAttempts);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
     const passwordValid = await this.passwordService.compare(dto.password, user.passwordHash);
     if (!passwordValid) {
       await this.handleFailedLogin(user.id, ip, userAgent, user.failedAttempts);
@@ -178,6 +183,80 @@ export class AuthService {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
       user: { id: user.id, email: user.email, name: user.name },
+    };
+  }
+
+  /**
+   * Validate and login/register an OAuth user
+   */
+  async validateOAuthUser(profile: any): Promise<AuthResult> {
+    const email = profile.emails[0].value;
+    const providerId = profile.id;
+    const providerName = profile.provider || 'google';
+    const avatarUrl = profile.photos && profile.photos.length > 0 ? profile.photos[0].value : undefined;
+
+    let userRecord = await this.userRepo.findByEmailWithPassword(email);
+    let userId: string;
+    let userEmail: string;
+    let userName: string;
+
+    if (userRecord) {
+      // SECURITY FIX: Prevent implicit linking
+      if (userRecord.providerId !== providerId) {
+        throw new ConflictException('An account with this email already exists. Please log in with your password to link your accounts.');
+      }
+
+      userId = userRecord.id;
+      userEmail = userRecord.email;
+      userName = userRecord.name;
+
+      if (userRecord.status !== 'ACTIVE') {
+        throw new UnauthorizedException('Account is not active');
+      }
+      if (userRecord.isLocked) {
+        throw new UnauthorizedException('Account is temporarily locked.');
+      }
+
+      await this.userRepo.recordLogin(userId);
+    } else {
+      const userEntity = User.createOAuthUser(
+        email,
+        profile.displayName,
+        providerName,
+        providerId,
+        avatarUrl
+      );
+      await this.userRepo.save(userEntity);
+
+      await this.userLogRepo.create({
+        userId: userEntity.id,
+        action: 'USER_REGISTERED_OAUTH',
+      });
+
+      userId = userEntity.id;
+      userEmail = userEntity.email;
+      userName = userEntity.name;
+    }
+
+    // Generate tokens
+    const accessToken = this.jwtService.generateAccessToken(userId, userEmail);
+    const refreshToken = this.jwtService.generateRefreshToken(userId);
+
+    // Hash the refresh token for security before saving it to the DB
+    const hashedRefreshToken = await this.passwordService.hash(refreshToken);
+    const refreshTokenExpiresAt = new Date(Date.now() + this.jwtService.getRefreshTokenExpiration() * 1000);
+    await this.userRepo.saveRefreshToken(userId, hashedRefreshToken, refreshTokenExpiresAt);
+
+    await this.userLogRepo.create({
+      userId,
+      action: 'LOGIN_SUCCESS',
+      ipAddress: 'OAuth',
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: { id: userId, email: userEmail, name: userName },
     };
   }
 

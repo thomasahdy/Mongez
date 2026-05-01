@@ -87,7 +87,9 @@ enum DependencyType {
 model User {
   id             String     @id @default(cuid())
   email          String     @unique
-  passwordHash   String
+  passwordHash   String?
+  provider       String?
+  providerId     String?    @unique
   name           String
   avatarUrl      String?
   language       String     @default("en")

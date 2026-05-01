@@ -10,12 +10,15 @@ export interface UserReadModel {
   isVerified: boolean;
   failedAttempts: number;
   isLocked: boolean;
+  provider: string | null;
+  providerId: string | null;
+  avatarUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface UserWithPassword extends UserReadModel {
-  passwordHash: string;
+  passwordHash: string | null;
   lockedUntil: Date | null;
   lastLoginAt: Date | null;
 }
@@ -37,6 +40,9 @@ export class UserRepository {
         isVerified: true,
         failedAttempts: true,
         lockedUntil: true,
+        provider: true,
+        providerId: true,
+        avatarUrl: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -62,6 +68,9 @@ export class UserRepository {
         isVerified: true,
         failedAttempts: true,
         lockedUntil: true,
+        provider: true,
+        providerId: true,
+        avatarUrl: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -88,6 +97,9 @@ export class UserRepository {
         isVerified: true,
         failedAttempts: true,
         lockedUntil: true,
+        provider: true,
+        providerId: true,
+        avatarUrl: true,
         lastLoginAt: true,
         createdAt: true,
         updatedAt: true,
@@ -126,8 +138,11 @@ export class UserRepository {
       where: { id: user.id },
       update: {
         email: user.email,
-        passwordHash: user.password,
+        passwordHash: user.password ?? null,
+        provider: user.provider ?? null,
+        providerId: user.providerId ?? null,
         name: user.name,
+        avatarUrl: user.avatarUrl ?? null,
         status: user.status,
         isVerified: user.isVerified,
         failedAttempts: user.failedAttempts,
@@ -138,8 +153,11 @@ export class UserRepository {
       create: {
         id: user.id,
         email: user.email,
-        passwordHash: user.password,
+        passwordHash: user.password ?? null,
+        provider: user.provider ?? null,
+        providerId: user.providerId ?? null,
         name: user.name,
+        avatarUrl: user.avatarUrl ?? null,
         status: user.status,
         isVerified: user.isVerified,
         failedAttempts: user.failedAttempts,

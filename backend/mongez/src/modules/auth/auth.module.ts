@@ -11,6 +11,7 @@ import { PasswordService } from './services/password.service';
 import { JwtService } from './services/jwt.service';
 import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 
@@ -59,6 +60,7 @@ import { AuthController } from './auth.controller';
     JwtService,
     JwtAccessStrategy,
     JwtRefreshStrategy,
+    GoogleStrategy,
   ],
   exports: [AuthService, JwtService, PasswordService],
 })

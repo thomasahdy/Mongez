@@ -4,7 +4,9 @@ import * as crypto from 'crypto';
 export class User {
   private _id!: string;
   private _email!: string;
-  private _password!: string;
+  private _password?: string;
+  private _provider?: string;
+  private _providerId?: string;
   private _name!: string;
   private _status!: UserStatus;
   private _isVerified!: boolean;
@@ -35,6 +37,38 @@ export class User {
     return user;
   }
 
+  static createOAuthUser(
+    email: string,
+    name: string,
+    provider: string,
+    providerId: string,
+    avatarUrl?: string
+  ): User {
+    const user = new User();
+    user._email = email;
+    user._name = name;
+    user._provider = provider;
+    user._providerId = providerId;
+    if (avatarUrl) user.updateAvatar(avatarUrl);
+    user._status = UserStatus.ACTIVE;
+    user._isVerified = true; // OAuth emails are trusted
+    user._failedAttempts = 0;
+    user._createdAt = new Date();
+    user._updatedAt = new Date();
+    return user;
+  }
+
+  private _avatarUrl?: string;
+
+  get avatarUrl(): string | undefined {
+    return this._avatarUrl;
+  }
+
+  updateAvatar(url: string): void {
+    this._avatarUrl = url;
+    this._updatedAt = new Date();
+  }
+
   // ─── Getters ───
 
   get id(): string {
@@ -45,8 +79,16 @@ export class User {
     return this._email;
   }
 
-  get password(): string {
+  get password(): string | undefined {
     return this._password;
+  }
+
+  get provider(): string | undefined {
+    return this._provider;
+  }
+
+  get providerId(): string | undefined {
+    return this._providerId;
   }
 
   get name(): string {

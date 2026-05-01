@@ -10,6 +10,11 @@ export default registerAs('auth', () => ({
   bcrypt: {
     saltOrRounds: parseInt(process.env.BCRYPT_SALT_OR_ROUNDS || '12'),
   },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    callbackUrl: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback',
+  },
   security: {
     maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5'),
     lockoutDuration: parseInt(process.env.LOCKOUT_DURATION_MINUTES || '15') * 60 * 1000,
