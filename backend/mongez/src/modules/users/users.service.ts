@@ -15,8 +15,8 @@ export class UsersService {
   async getProfile(userId: string) {
     return this.cache.getOrSet(
       `${this.CACHE_PREFIX}:${userId}`,
-      () => {
-        const user = this.userRepo.findById(userId);
+      async () => {
+        const user = await this.userRepo.findById(userId);
         if (!user) throw new NotFoundException('User not found');
         return user;
       },
