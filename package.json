@@ -1,0 +1,14 @@
+{
+  "name": "mongez-workspace",
+  "private": true,
+  "workspaces": [
+    "mongez"
+  ],
+  "scripts": {
+    "install:app": "npm install --workspace mongez",
+    "dev": "npm run dev --workspace mongez",
+    "build": "npm run build --workspace mongez",
+    "preview": "npm run preview --workspace mongez",
+    "lint": "npm run lint --workspace mongez"
+  }
+}
