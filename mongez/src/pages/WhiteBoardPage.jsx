@@ -6,9 +6,7 @@ const WHITEBOARD_STORAGE_KEY = 'mongez-whiteboard-scene'
 
 function getSafeAppState(appState) {
   const safeAppState = appState && typeof appState === 'object' ? { ...appState } : {}
-
-  // Excalidraw expects collaborators to be a Map-like structure.
-  // Old persisted data can turn it into a plain object after JSON parse.
+  
   safeAppState.collaborators = new Map()
 
   return safeAppState
