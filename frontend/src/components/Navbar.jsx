@@ -1,19 +1,15 @@
 import React, { useState } from 'react'
+import NavBreadcrumb from './NavBreadcrumb';
 
-const Navbar = ({onToggleAI}) => {
+
+const Navbar = ({onToggleAI, path}) => {
   
     const [focused, setFocused] = useState(false);
 
   return (
     <header className="h-14 px-5 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4 shrink-0">
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] text-slate-400 shrink-0">
-        <span>Al-Noor Foundation</span>
-        <i className="fa-solid fa-chevron-right text-[9px] text-slate-300" />
-        <span className="text-red-500">Education</span>
-        <i className="fa-solid fa-chevron-right text-[9px] text-slate-300" />
-        <span className="text-slate-800 dark:text-slate-100 font-semibold">Upper Egypt Education</span>
-      </nav>
+      <NavBreadcrumb path={path}/>
 
       {/* Unified search */}
       <div className="flex-1 max-w-[480px]">
