@@ -3,12 +3,14 @@ import { BrowserRouter, Route, Routes } from 'react-router';
 import Sidebar from './components/layout/Sidebar';
 import Home from './pages/home/Home';
 import KanbanBoard from './pages/kanbanboard/KanbanBoard';
-import SpacesPagee from './pages/spaces/SpacesPage';
+import SpacesPage from './pages/spaces/SpacesPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import LandingPage from './pages/landing/LandingPage'
+import OnboardingPage from './pages/onboarding/OnboardingPage';
+import WhiteBoardPage from './pages/whiteboard/WhiteBoardPage';
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [path, setPath] = useState([]);
 
   return (
@@ -25,7 +27,11 @@ function App() {
             <Route path='/' element={<KanbanBoard setPath={setPath}/>}/>
             <Route
                 path='/spaces'
-                element={<SpacesPagee setPath={setPath}/>}
+                element={<SpacesPage setPath={setPath}/>}
+            />
+            <Route
+                path='/whiteboard'
+                element={<WhiteBoardPage/>}
             />
           </Route>
             <Route
@@ -42,7 +48,7 @@ function App() {
       <div>
         <Routes>
           <Route path='/' element={<LandingPage />}/>
-            
+          <Route path='/onboarding' element={<OnboardingPage />}/>
           <Route path='login' element={<LoginPage />}/>
           <Route path='register' element={<RegisterPage />} />
         </Routes>
