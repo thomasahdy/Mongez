@@ -1,19 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
-import Sidebar from "../../components/Sidebar";
-import Navbar from "../../components/Navbar";
-import Avatar from "../../components/Avatar";
-import AISidebar from "../../components/AISidebar";
-import AINudge from "../../components/AINudge";
-import FAB from "../../components/FAB";
-import KanbanBoard from "../kanbanboard/KanbanBoard";
-import Toolbar from "./toolbar/Toolbar";
-import ViewTabs from "./viewtabs/ViewTabs";
+import { useState,  useCallback } from "react";
+import Navbar from "../../components/layout/Navbar";
+import AISidebar from "../../components/ai/AISidebar";
+import AINudge from "../../components/ai/AINudge";
+import FAB from "../../components/ui/FAB";
 import { Outlet } from "react-router";
 
-
-// ─────────────────────────────────────────────
-// DESIGN TOKENS (mirrors CSS custom-props)
-// ─────────────────────────────────────────────
 const STATUS_COLORS = {
   todo:     { dot: "#94a3b8", bg: "#f1f5f9", text: "#475569", label: "To Do" },
   waiting:  { dot: "#ea580c", bg: "#fff7ed", text: "#ea580c", label: "Waiting" },

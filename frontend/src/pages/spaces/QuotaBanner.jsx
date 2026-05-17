@@ -1,5 +1,5 @@
 import React from 'react'
-import Button from '../../components/Button';
+import Button from '../../components/ui/Button';
 
 const QuotaBanner = ({ used, total, onUpgrade }) => {
   const pct = Math.round((used / total) * 100);

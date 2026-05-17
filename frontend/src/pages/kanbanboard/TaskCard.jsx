@@ -1,8 +1,8 @@
 import React from 'react'
-import MicroProgress from '../../components/MicroProgress';
-import Tag from '../../components/Tag';
-import AvatarGroup from '../../components/AvatarGroup';
-import MetaItem from '../../components/MetaItem';
+import MicroProgress from '../../components/ui/MicroProgress';
+import Tag from '../../components/ui/Tag';
+import AvatarGroup from '../../components/ui/AvatarGroup';
+import MetaItem from '../../components/ui/MetaItem';
 import BlockerBox from './BlockerBox';
 
 const TaskCard = ({ card }) => {

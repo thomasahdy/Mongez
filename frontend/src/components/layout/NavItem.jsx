@@ -1,5 +1,5 @@
 import React from 'react'
-import Badge from './Badge'
+import Badge from './../ui/Badge'
 
 const NavItem = ({ href, icon, iconColor, label, badge, kbd, aiBadge, active }) => {
   return (

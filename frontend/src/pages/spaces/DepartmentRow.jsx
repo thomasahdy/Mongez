@@ -1,6 +1,6 @@
 import React from 'react'
-import Button from '../../components/Button';
-import StatItem from '../../components/StatItem';
+import Button from '../../components/ui/Button';
+import StatItem from '../../components/ui/StatItem';
 import BoardChips from './BoardChips';
 
 const DepartmentRow = ({ dept, onAddBoard }) => {

@@ -1,7 +1,7 @@
 import React from 'react'
-import OwnerBadge from '../../components/OwnerBadge'
-import StatItem from '../../components/StatItem'
-import Button from '../../components/Button'
+import OwnerBadge from '../../components/ui/OwnerBadge'
+import StatItem from '../../components/ui/StatItem'
+import Button from '../../components/ui/Button'
 
 const SpaceCardHeader = ({ space, expanded, onToggle, onInvite, onSettings, onMore }) => {
   return (

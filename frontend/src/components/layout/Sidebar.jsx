@@ -1,5 +1,5 @@
 import React from 'react'
-import Badge from './Badge';
+import Badge from '../ui/Badge';
 import NavItem from './NavItem';
 import NavSection from './NavSection';
 import TreeLink from './TreeLink';
