@@ -1,6 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { CacheService } from '../../infrastructure/cache/cache.service';
-import { SpaceRepository } from './space.repository';
+import {
+  SpaceRepository,
+  DepartmentRepository,
+  MembershipRepository,
+  InvitationRepository,
+} from './repositories/spaces.repositories';
+import { CreateSpaceDto } from './dto/create-space.dto';
+import { UpdateSpaceDto } from './dto/update-space.dto';
+import { CreateDepartmentDto, UpdateDepartmentDto } from './dto/department.dto';
+import { InviteMemberDto, UpdateMemberRoleDto } from './dto/membership.dto';
+import { paginate } from '../../shared/dto/pagination.dto';
 
 @Injectable()
 export class SpacesService {
@@ -9,29 +25,58 @@ export class SpacesService {
 
   constructor(
     private readonly spaceRepo: SpaceRepository,
+    private readonly deptRepo: DepartmentRepository,
+    private readonly memberRepo: MembershipRepository,
+    private readonly invitationRepo: InvitationRepository,
+    private readonly prisma: PrismaService,
     private readonly cache: CacheService,
   ) {}
 
+  // ─── Spaces ────────────────────────────────────────────────
+
   async getById(id: string) {
-    return this.cache.getOrSet(`${this.CACHE_PREFIX}:${id}`, async () => {
-      const space = await this.spaceRepo.findById(id);
-      if (!space) throw new NotFoundException('Space not found');
-      return space;
-    }, this.CACHE_TTL);
+    return this.cache.getOrSet(
+      `${this.CACHE_PREFIX}:${id}`,
+      async () => {
+        const space = await this.spaceRepo.findById(id);
+        if (!space) throw new NotFoundException('Space not found');
+        return space;
+      },
+      this.CACHE_TTL,
+    );
   }
 
-  async getAll(page?: number, limit?: number) {
-    return this.spaceRepo.findAll(page, limit);
+  async getAll(userId: string, page: number, limit: number) {
+    const { data, total } = await this.spaceRepo.findAllForUser(userId, page, limit);
+    return paginate(data, total, page, limit);
   }
 
-  async create(data: any) {
-    const space = await this.spaceRepo.create(data);
+  async create(dto: CreateSpaceDto, userId: string) {
+    // Enforce subscription limit
+    const subscription = await this.prisma.subscription.findFirst({ where: { userId } });
+    if (subscription) {
+      const plan = await this.prisma.subscriptionPlan.findFirst({
+        where: { name: subscription.tier },
+      });
+      if (plan) {
+        const ownedCount = await this.prisma.membership.count({
+          where: { userId, role: { name: 'OWNER' } },
+        });
+        if (ownedCount >= plan.maxSpaces) {
+          throw new ForbiddenException(
+            `Your plan allows a maximum of ${plan.maxSpaces} spaces. Please upgrade.`,
+          );
+        }
+      }
+    }
+
+    const space = await this.spaceRepo.create(dto, userId);
     await this.cache.invalidateEntityType(this.CACHE_PREFIX);
     return space;
   }
 
-  async update(id: string, data: any) {
-    const space = await this.spaceRepo.update(id, data);
+  async update(id: string, dto: UpdateSpaceDto) {
+    const space = await this.spaceRepo.update(id, dto);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, id);
     return space;
   }
@@ -39,5 +84,121 @@ export class SpacesService {
   async delete(id: string) {
     await this.spaceRepo.delete(id);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, id);
+  }
+
+  async getStats(spaceId: string) {
+    return this.spaceRepo.getStats(spaceId);
+  }
+
+  // ─── Departments ───────────────────────────────────────────
+
+  async getDepartments(spaceId: string) {
+    return this.deptRepo.findBySpace(spaceId);
+  }
+
+  async createDepartment(spaceId: string, dto: CreateDepartmentDto) {
+    return this.deptRepo.create(spaceId, dto);
+  }
+
+  async updateDepartment(id: string, dto: UpdateDepartmentDto) {
+    return this.deptRepo.update(id, dto);
+  }
+
+  async deleteDepartment(id: string) {
+    return this.deptRepo.delete(id); // throws if boards exist
+  }
+
+  // ─── Members ───────────────────────────────────────────────
+
+  async getMembers(spaceId: string) {
+    return this.memberRepo.findBySpace(spaceId);
+  }
+
+  async changeRole(spaceId: string, targetUserId: string, dto: UpdateMemberRoleDto, requesterId: string) {
+    if (targetUserId === requesterId && dto.role !== 'OWNER') {
+      // Prevent owner from demoting themselves (should transfer ownership first)
+    }
+    return this.memberRepo.changeRole(targetUserId, spaceId, dto.role);
+  }
+
+  async removeMember(spaceId: string, targetUserId: string, requesterId: string) {
+    if (targetUserId === requesterId) {
+      throw new ForbiddenException('Use the leave endpoint to leave a space');
+    }
+    return this.memberRepo.remove(targetUserId, spaceId);
+  }
+
+  async leaveSpace(spaceId: string, userId: string) {
+    return this.memberRepo.remove(userId, spaceId);
+  }
+
+  // ─── Invitations ───────────────────────────────────────────
+
+  async getPendingInvitations(spaceId: string) {
+    return this.invitationRepo.findPendingBySpace(spaceId);
+  }
+
+  async inviteMember(spaceId: string, dto: InviteMemberDto) {
+    // Check if user is already a member
+    const existingMember = await this.prisma.user.findFirst({
+      where: {
+        email: dto.email,
+        memberships: { some: { spaceId } },
+      },
+    });
+    if (existingMember) {
+      throw new ConflictException('This user is already a member of the space');
+    }
+
+    // Check if there's already a pending invite
+    const pending = await this.prisma.invitation.findFirst({
+      where: { email: dto.email, spaceId, accepted: false, expiresAt: { gt: new Date() } },
+    });
+    if (pending) {
+      throw new ConflictException('A pending invitation already exists for this email');
+    }
+
+    const invitation = await this.invitationRepo.create(spaceId, dto.email, dto.role ?? 'MEMBER');
+    // TODO Phase 5: queue SEND_EMAIL job with invitation link
+    // await this.queue.add(JOB_NAMES.SEND_EMAIL, {
+    //   type: 'invitation',
+    //   payload: { to: dto.email, token: invitation.token, spaceId }
+    // });
+    return invitation;
+  }
+
+  async cancelInvitation(inviteId: string) {
+    return this.invitationRepo.delete(inviteId);
+  }
+
+  async acceptInvitation(token: string, userId: string) {
+    const invitation = await this.invitationRepo.findByToken(token);
+
+    if (!invitation) throw new NotFoundException('Invitation not found');
+    if (invitation.accepted) throw new ConflictException('Invitation already accepted');
+    if (invitation.expiresAt < new Date()) {
+      throw new ConflictException('Invitation has expired');
+    }
+
+    // Verify user email matches invitation
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (user?.email !== invitation.email) {
+      throw new ForbiddenException('This invitation was sent to a different email address');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const role = await tx.role.upsert({
+        where: { name: invitation.role },
+        update: {},
+        create: { name: invitation.role, description: `${invitation.role} role` }
+      });
+
+      await tx.membership.create({
+        data: { userId, spaceId: invitation.spaceId, roleId: role.id },
+      });
+
+      await tx.invitation.update({ where: { token }, data: { accepted: true } });
+      return { message: 'Successfully joined the space', spaceId: invitation.spaceId };
+    });
   }
 }

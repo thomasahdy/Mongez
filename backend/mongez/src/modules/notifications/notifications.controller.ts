@@ -1,33 +1,46 @@
-import { Controller, Get, Patch, Param, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Query, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotificationsService } from './notifications.service';
+import { NotificationFilterDto } from './dto/notification-filter.dto';
 
-@Controller('notifications')
+@ApiTags('Notifications')
+@ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
+@Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get()
-  async getNotifications(
-    @Req() req: any,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
-  ) {
-    return this.notificationsService.getUserNotifications(req.user.id, parseInt(page), parseInt(limit));
+  @ApiOperation({ summary: 'List user notifications' })
+  async getMyNotifications(@Req() req: any, @Query() filters: NotificationFilterDto) {
+    return this.notificationsService.getForUser(req.user.userId, filters.spaceId || '', filters);
   }
 
   @Get('unread-count')
-  async getUnreadCount(@Req() req: any) {
-    return this.notificationsService.getUnreadCount(req.user.id);
-  }
-
-  @Patch(':id/read')
-  async markAsRead(@Param('id') id: string) {
-    return this.notificationsService.markAsRead(id);
+  @ApiOperation({ summary: 'Get unread notifications count' })
+  async getUnreadCount(@Req() req: any, @Query('spaceId') spaceId: string) {
+    const count = await this.notificationsService.getUnreadCount(req.user.userId, spaceId || '');
+    return { unread: count };
   }
 
   @Patch('read-all')
-  async markAllAsRead(@Req() req: any) {
-    return this.notificationsService.markAllAsRead(req.user.id);
+  @ApiOperation({ summary: 'Mark all notifications as read' })
+  async markAllAsRead(@Req() req: any, @Query('spaceId') spaceId: string) {
+    await this.notificationsService.markAllAsRead(req.user.userId, spaceId || '');
+    return { success: true };
+  }
+
+  @Patch(':id/read')
+  @ApiOperation({ summary: 'Mark single notification as read' })
+  async markAsRead(@Req() req: any, @Param('id') id: string, @Query('spaceId') spaceId: string) {
+    return this.notificationsService.markAsRead(id, req.user.userId, spaceId || '');
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a notification' })
+  async delete(@Req() req: any, @Param('id') id: string, @Query('spaceId') spaceId: string) {
+    await this.notificationsService.delete(id, req.user.userId, spaceId || '');
   }
 }

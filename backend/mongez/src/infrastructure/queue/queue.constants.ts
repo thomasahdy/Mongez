@@ -19,6 +19,9 @@ export const JOB_NAMES = {
   ANALYZE_TASK: 'analyze-task',
   DETECT_DELAYS: 'detect-delays',
   SUGGEST_ACTIONS: 'suggest-actions',
+  AI_EVAL_SHADOW: 'ai-eval-shadow',         // Async quality evaluation (10% sample)
+  AI_INDEX_DOCUMENT: 'ai-index-document',   // RAG incremental indexing
+  AI_RISK_SCAN: 'ai-risk-scan',             // Scheduled risk scan
 
   // Reports
   GENERATE_REPORT: 'generate-report',
