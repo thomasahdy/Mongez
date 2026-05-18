@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDispatch } from "react-redux";
 import AuthLogo from "../shared/AuthLogo";
 import AuthFooterLink from "../shared/AuthFooterLink";
 import RegisterCard from "./RegisterCard";
@@ -7,6 +8,8 @@ import AccountStep from "./steps/AccountStep";
 import InviteStep from "./steps/InviteStep";
 import OrganizationStep from "./steps/OrganizationStep";
 import TemplateStep from "./steps/TemplateStep";
+import { registerUser } from "../../../store/reducers/authSlice";
+
 
 const initialValues = {
   account: {
@@ -29,7 +32,9 @@ const initialValues = {
 };
 
 const RegisterContainer = () => {
+  const dispatch = useDispatch();
   const [step, setStep] = useState(1);
+
   const [values, setValues] = useState(initialValues);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -37,10 +42,7 @@ const RegisterContainer = () => {
   const updateSection = (section, field, value) => {
     setValues((current) => ({
       ...current,
-      [section]: {
-        ...current[section],
-        [field]: value,
-      },
+      [section]: { ...current[section], [field]: value },
     }));
   };
 
@@ -56,39 +58,40 @@ const RegisterContainer = () => {
     setLoading(true);
     setSubmitError("");
 
+    localStorage.setItem(
+      "pendingOnboarding",
+      JSON.stringify({
+        organization: values.organization,
+        template: values.template,
+        invites: skipInvites
+          ? []
+          : values.invites.filter((invite) => invite.email.trim()),
+      })
+    );
+
+    // Auth endpoint contract: POST /api/v1/auth/register { name, email, password }
     const payload = {
-      ...values,
-      invites: skipInvites
-        ? []
-        : values.invites.filter((invite) => invite.email.trim()),
+      name: `${values.account.firstName} ${values.account.lastName}`.trim(),
+      email: values.account.email,
+      password: values.account.password,
     };
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error("Registration failed");
-      }
-
-      window.location.href = "/onboarding";
+      await dispatch(registerUser(payload)).unwrap();
+      window.location.href = "#onboarding";
     } catch (error) {
       console.error("Registration failed", error);
-      setSubmitError(error.message || "Something went wrong");
+      setSubmitError(error?.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
+
   };
 
   return (
-    <div className="w-full max-w-[520px] animate-fadeIn">
+    <div className="w-full max-w-[500px] animate-fadeIn">
       <div className="flex justify-center">
-        <AuthLogo />
+        <AuthLogo className="mb-5" />
       </div>
 
       <RegisterStepper step={step} />
@@ -136,7 +139,7 @@ const RegisterContainer = () => {
         text="Already have an account?"
         linkText="Log in"
         href="/login"
-        className="mt-6"
+        className="mt-4"
       />
     </div>
   );

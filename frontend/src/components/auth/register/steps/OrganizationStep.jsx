@@ -32,11 +32,11 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
         Set up your organization
       </h1>
 
-      <p className="text-[13px] text-text-secondary mb-7">
+      <p className="text-[13px] text-text-secondary mb-5">
         Tell us about your organization so we can customize your experience.
       </p>
 
-      <div className="space-y-[18px]">
+      <div className="space-y-3.5">
         <AuthInput
           label="Organization name"
           value={values.name}
@@ -72,7 +72,7 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
                 key={option.value}
                 type="button"
                 onClick={() => onChange("size", option.value)}
-                className={`px-2.5 py-3.5 border-[1.5px] rounded text-center transition text-xs font-medium ${
+                className={`px-2.5 py-3 border-[1.5px] rounded text-center transition text-xs font-medium ${
                   values.size === option.value
                     ? "border-primary bg-primary-light text-primary"
                     : "border-border hover:border-primary hover:bg-primary-light"
@@ -102,7 +102,7 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
           </select>
         </div>
 
-        <div className="flex gap-3 pt-1.5">
+        <div className="flex gap-3 pt-1">
           <AuthButton variant="outline" onClick={onBack}>
             <FaArrowLeft className="text-xs" /> Back
           </AuthButton>

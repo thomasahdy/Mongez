@@ -2,7 +2,10 @@ import { useState } from "react";
 import AuthErrorMessage from "../shared/AuthErrorMessage";
 import SocialAuthButtons from "../shared/SocialAuthButtons";
 
+const BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
+
 const SocialLogin = () => {
+
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState(null);
 
@@ -11,34 +14,29 @@ const SocialLogin = () => {
     setError(null);
 
     try {
-      const response = await fetch(`/api/auth/social-login/${provider}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`${provider} login failed`);
+      // OAuth must be a browser redirect
+      if (provider === "google") {
+        window.location.href = `${BASE_URL}/auth/google`;
+        return;
       }
 
-      const data = await response.json();
-
-      // Redirect to OAuth provider URL if provided
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-      }
+      throw new Error(`Unsupported social provider: ${provider}`);
     } catch (err) {
-      setError(err.message || `Failed to login with ${provider}`);
+      setError(err?.message || `Failed to login with ${provider}`);
     } finally {
       setLoading(null);
     }
+
   };
 
   return (
     <div className="space-y-3">
       <AuthErrorMessage>{error}</AuthErrorMessage>
-      <SocialAuthButtons loadingProvider={loading} onProviderClick={handleSocialLogin} />
+      <SocialAuthButtons
+        providers={["google"]}
+        loadingProvider={loading}
+        onProviderClick={handleSocialLogin}
+      />
     </div>
   );
 };
