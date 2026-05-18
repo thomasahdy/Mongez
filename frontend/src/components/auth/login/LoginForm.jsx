@@ -1,76 +1,71 @@
 import { useState } from "react";
+import { useDispatch } from "react-redux";
 import { FaEnvelope, FaSignInAlt } from "react-icons/fa";
 import AuthButton from "../shared/AuthButton";
 import AuthErrorMessage from "../shared/AuthErrorMessage";
 import AuthInput from "../shared/AuthInput";
 import PasswordInput from "../shared/PasswordInput";
+import { loginUser } from "../../../store/reducers/authSlice";
+
 
 const LoginForm = () => {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [rememberMe, setRememberMe] = useState(true);
-    const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState({});
-    const [touched, setTouched] = useState({});
-    
-    const validate = (nextValues = { email, password }) => {
-        const newErrors = {};
-        
-        if (!nextValues.email.trim()) {
-            newErrors.email = "Email is required";
-        } else if (!/\S+@\S+\.\S+/.test(nextValues.email)) {
-            newErrors.email = "Email is invalid";
-        }
-        
-        if (!nextValues.password) {
-            newErrors.password = "Password is required";
-        } else if (nextValues.password.length < 6) {
-            newErrors.password = "Password must be at least 6 characters";
-        }
-        
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-    
-    const handleBlur = (field) => {
-        setTouched((prev) => ({
-            ...prev,
-            [field]: true,
-        }));
-        
-        validate();
-    };
+  const dispatch = useDispatch();
+  const [email, setEmail] = useState("");
+
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const validate = (nextValues = { email, password }) => {
+    const newErrors = {};
+
+    if (!nextValues.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(nextValues.email)) {
+      newErrors.email = "Email is invalid";
+    }
+
+    if (!nextValues.password) {
+      newErrors.password = "Password is required";
+    } else if (nextValues.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    validate();
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setTouched({ email: true, password: true });
 
-    if (!validate()) {
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password, rememberMe }),
-      });
+      const result = await dispatch(
+        loginUser({ email, password })
+      ).unwrap();
 
-      if (!response.ok) {
-        throw new Error("Login failed");
-      }
-
-      window.location.href = "/dashboard";
+      // backend authSlice stores token; now redirect
+      window.location.href = result?.redirectTo || "#dashboard";
     } catch (error) {
-      console.error("Login failed", error);
-      setErrors((prev) => ({ ...prev, submit: error.message || "Something went wrong" }));
+      setErrors((prev) => ({
+        ...prev,
+        submit: error?.message || "Something went wrong",
+      }));
     } finally {
       setLoading(false);
     }
+
   };
 
   return (
@@ -79,7 +74,7 @@ const LoginForm = () => {
         label="Email address"
         type="email"
         value={email}
-        onChange={(event) => setEmail(event.target.value)}
+        onChange={(e) => setEmail(e.target.value)}
         onBlur={() => handleBlur("email")}
         icon={FaEnvelope}
         error={touched.email ? errors.email : ""}
@@ -89,7 +84,7 @@ const LoginForm = () => {
 
       <PasswordInput
         value={password}
-        onChange={(event) => setPassword(event.target.value)}
+        onChange={(e) => setPassword(e.target.value)}
         onBlur={() => handleBlur("password")}
         error={touched.password ? errors.password : ""}
         success={touched.password && !errors.password && Boolean(password)}
@@ -102,12 +97,12 @@ const LoginForm = () => {
             type="checkbox"
             className="w-4 h-4 accent-primary cursor-pointer"
             checked={rememberMe}
-            onChange={(event) => setRememberMe(event.target.checked)}
+            onChange={(e) => setRememberMe(e.target.checked)}
           />
           Remember me for 30 days
         </label>
         <a
-          href="/forgot-password"
+          href="#forgot-password"
           className="text-primary font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded px-1"
         >
           Forgot password?

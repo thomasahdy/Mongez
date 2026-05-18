@@ -1,6 +1,6 @@
-const AuthLogo = () => {
+const AuthLogo = ({ className = "mb-10" }) => {
   return (
-    <a href="/" className="inline-flex items-center gap-2.5 mb-10 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary rounded px-2 py-1"
+    <a href="#landing" className={`inline-flex items-center gap-2.5 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary rounded px-2 py-1 ${className}`}
     >
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
             <rect width="32" height="32" rx="8" fill="#00a8e8" />

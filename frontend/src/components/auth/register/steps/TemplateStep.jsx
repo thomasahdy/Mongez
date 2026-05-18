@@ -47,7 +47,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
         Choose a starting template
       </h1>
 
-      <p className="text-[13px] text-text-secondary mb-7">
+      <p className="text-[13px] text-text-secondary mb-5">
         Pick a template to set up your first workspace. You can change it later.
       </p>
 
@@ -61,7 +61,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
               key={template.id}
               type="button"
               onClick={() => onSelectTemplate(template.id)}
-              className={`p-4 border-[1.5px] rounded text-left cursor-pointer transition ${
+              className={`p-3.5 border-[1.5px] rounded text-left cursor-pointer transition ${
                 selected
                   ? "border-primary bg-primary-light"
                   : "border-border hover:border-primary hover:bg-primary-light"
@@ -81,7 +81,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
         })}
       </div>
 
-      <div className="flex gap-3 mt-6">
+      <div className="flex gap-3 mt-5">
         <AuthButton variant="outline" onClick={onBack}>
           <FaArrowLeft className="text-xs" /> Back
         </AuthButton>

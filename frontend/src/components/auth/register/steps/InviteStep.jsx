@@ -24,11 +24,11 @@ const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError 
         Invite your team
       </h1>
 
-      <p className="text-[13px] text-text-secondary mb-7">
+      <p className="text-[13px] text-text-secondary mb-5">
         Invite colleagues now or skip and do it later.
       </p>
 
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {invites.map((invite, index) => (
           <div key={index} className="flex items-end gap-2.5">
             <div className="flex-1">
@@ -78,9 +78,9 @@ const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError 
         <FaPlus className="text-xs" /> Add another
       </button>
 
-      <AuthErrorMessage className="mt-2">{submitError}</AuthErrorMessage>
+      <AuthErrorMessage className="mt-1.5">{submitError}</AuthErrorMessage>
 
-      <div className="flex gap-3 mt-6">
+      <div className="flex gap-3 mt-5">
         <AuthButton variant="outline" onClick={onBack}>
           <FaArrowLeft className="text-xs" /> Back
         </AuthButton>

@@ -7,6 +7,9 @@ import SocialAuthButtons from "../../shared/SocialAuthButtons";
 import { FaArrowRight, FaEnvelope } from "react-icons/fa";
 import { useState } from "react";
 
+const BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
+
+
 const AccountStep = ({ values, onChange, onNext }) => {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -16,13 +19,8 @@ const AccountStep = ({ values, onChange, onNext }) => {
   const validate = () => {
     const nextErrors = {};
 
-    if (!values.firstName.trim()) {
-      nextErrors.firstName = "First name is required";
-    }
-
-    if (!values.lastName.trim()) {
-      nextErrors.lastName = "Last name is required";
-    }
+    if (!values.firstName.trim()) nextErrors.firstName = "First name is required";
+    if (!values.lastName.trim()) nextErrors.lastName = "Last name is required";
 
     if (!values.email.trim()) {
       nextErrors.email = "Work email is required";
@@ -34,6 +32,8 @@ const AccountStep = ({ values, onChange, onNext }) => {
       nextErrors.password = "Password is required";
     } else if (values.password.length < 8) {
       nextErrors.password = "Use at least 8 characters";
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(values.password)) {
+      nextErrors.password = "Use uppercase, lowercase, and a number";
     }
 
     setErrors(nextErrors);
@@ -47,10 +47,7 @@ const AccountStep = ({ values, onChange, onNext }) => {
 
   const handleContinue = () => {
     setTouched({ firstName: true, lastName: true, email: true, password: true });
-
-    if (validate()) {
-      onNext();
-    }
+    if (validate()) onNext();
   };
 
   const handleSocialSignup = async (provider) => {
@@ -58,28 +55,34 @@ const AccountStep = ({ values, onChange, onNext }) => {
     setSocialError("");
 
     try {
-      const response = await fetch(`/api/auth/social-register/${provider}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`${provider} signup failed`);
+      if (provider === "google") {
+        window.location.href = `${BASE_URL}/auth/google`;
+        return;
       }
 
-      const data = await response.json();
-
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-      }
+      throw new Error(`Unsupported social provider: ${provider}`);
     } catch (error) {
-      setSocialError(error.message || `Failed to sign up with ${provider}`);
+      setSocialError(error?.message || `Failed to sign up with ${provider}`);
     } finally {
       setSocialLoading(null);
     }
   };
+
+
+  // Simple password strength (0–4)
+  const strengthScore = (() => {
+    const p = values.password;
+    if (!p) return 0;
+    let s = 0;
+    if (p.length >= 8) s++;
+    if (/[A-Z]/.test(p)) s++;
+    if (/[0-9]/.test(p)) s++;
+    if (/[^A-Za-z0-9]/.test(p)) s++;
+    return s;
+  })();
+
+  const strengthColor = ["bg-border", "bg-red-400", "bg-amber-400", "bg-lime-400", "bg-green-500"][strengthScore];
+  const strengthWidth = ["w-0", "w-1/4", "w-2/4", "w-3/4", "w-full"][strengthScore];
 
   return (
     <div>
@@ -87,12 +90,12 @@ const AccountStep = ({ values, onChange, onNext }) => {
         Create your account
       </h1>
 
-      <p className="text-[13px] text-text-secondary mb-7">
+      <p className="text-[13px] text-text-secondary mb-5">
         Start your 14-day free trial. No credit card required.
       </p>
 
       <SocialAuthButtons
-        providers={["google", "microsoft"]}
+        providers={["google"]}
         layout="row"
         loadingProvider={socialLoading}
         onProviderClick={handleSocialSignup}
@@ -100,14 +103,14 @@ const AccountStep = ({ values, onChange, onNext }) => {
 
       <AuthErrorMessage className="mt-3">{socialError}</AuthErrorMessage>
 
-      <AuthDivider className="my-5">or sign up with email</AuthDivider>
+      <AuthDivider className="my-4">or sign up with email</AuthDivider>
 
-      <div className="space-y-[18px]">
+      <div className="space-y-3.5">
         <div className="grid grid-cols-1 min-[580px]:grid-cols-2 gap-3">
           <AuthInput
             label="First name"
             value={values.firstName}
-            onChange={(event) => onChange("firstName", event.target.value)}
+            onChange={(e) => onChange("firstName", e.target.value)}
             onBlur={() => handleBlur("firstName")}
             error={touched.firstName ? errors.firstName : ""}
             placeholder="Thomas"
@@ -115,7 +118,7 @@ const AccountStep = ({ values, onChange, onNext }) => {
           <AuthInput
             label="Last name"
             value={values.lastName}
-            onChange={(event) => onChange("lastName", event.target.value)}
+            onChange={(e) => onChange("lastName", e.target.value)}
             onBlur={() => handleBlur("lastName")}
             error={touched.lastName ? errors.lastName : ""}
             placeholder="Ahmed"
@@ -126,7 +129,7 @@ const AccountStep = ({ values, onChange, onNext }) => {
           label="Work email"
           type="email"
           value={values.email}
-          onChange={(event) => onChange("email", event.target.value)}
+          onChange={(e) => onChange("email", e.target.value)}
           onBlur={() => handleBlur("email")}
           icon={FaEnvelope}
           error={touched.email ? errors.email : ""}
@@ -137,30 +140,25 @@ const AccountStep = ({ values, onChange, onNext }) => {
         <div>
           <PasswordInput
             value={values.password}
-            onChange={(event) => onChange("password", event.target.value)}
+            onChange={(e) => onChange("password", e.target.value)}
             onBlur={() => handleBlur("password")}
             error={touched.password ? errors.password : ""}
             success={touched.password && !errors.password && Boolean(values.password)}
             placeholder="Create a strong password"
           />
           <div className="h-[3px] bg-border rounded-sm mt-2 overflow-hidden">
-            <div className="h-full w-3/5 bg-[#f59e0b] rounded-sm transition-all" />
+            <div className={`h-full ${strengthWidth} ${strengthColor} rounded-sm transition-all duration-300`} />
           </div>
-          <div className="text-[11px] text-text-tertiary mt-1">
-            Use 8+ characters with a mix of letters, numbers & symbols
+          <div className="text-[11px] text-text-tertiary mt-0.5">
+            Use 8+ characters with uppercase, lowercase, and a number
           </div>
         </div>
 
         <p className="text-xs text-text-secondary leading-[1.6]">
           By signing up, you agree to our{" "}
-          <a className="text-primary hover:underline" href="#">
-            Terms of Service
-          </a>{" "}
+          <a className="text-primary hover:underline" href="#">Terms of Service</a>{" "}
           and{" "}
-          <a className="text-primary hover:underline" href="#">
-            Privacy Policy
-          </a>
-          .
+          <a className="text-primary hover:underline" href="#">Privacy Policy</a>.
         </p>
 
         <AuthButton onClick={handleContinue}>
