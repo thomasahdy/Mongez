@@ -5,7 +5,7 @@ import AuthButton from "../shared/AuthButton";
 import AuthErrorMessage from "../shared/AuthErrorMessage";
 import AuthInput from "../shared/AuthInput";
 import PasswordInput from "../shared/PasswordInput";
-import { loginUser } from "../../../store/reducers/authSlice";
+import { loginUser } from "../../../store/auth/authThunks";
 
 
 const LoginForm = () => {
