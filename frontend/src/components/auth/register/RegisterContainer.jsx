@@ -8,7 +8,7 @@ import AccountStep from "./steps/AccountStep";
 import InviteStep from "./steps/InviteStep";
 import OrganizationStep from "./steps/OrganizationStep";
 import TemplateStep from "./steps/TemplateStep";
-import { registerUser } from "../../../store/reducers/authSlice";
+import { registerUser } from "../../../store/auth/authThunks";
 
 
 const initialValues = {
