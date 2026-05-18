@@ -18,7 +18,7 @@ const AuthButton = ({
   ...props
 }) => {
   const classes = [
-    "w-full flex items-center justify-center gap-2 p-3 border-[1.5px] rounded text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed",
+    "w-full flex items-center bg-[#00a8e8] hover:bg-[#0077b6] justify-center gap-2 p-3 border-[1.5px] rounded text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed",
     variantClasses[variant],
     className,
   ]

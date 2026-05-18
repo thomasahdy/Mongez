@@ -10,7 +10,7 @@ import LandingPage from './pages/landing/LandingPage'
 import OnboardingPage from './pages/onboarding/OnboardingPage';
 import WhiteBoardPage from './pages/whiteboard/WhiteBoardPage';
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [path, setPath] = useState([]);
 
   return (
