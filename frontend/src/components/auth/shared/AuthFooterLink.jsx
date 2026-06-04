@@ -1,15 +1,15 @@
-import {Link} from "react-router-dom";
+import { NavLink } from "react-router";
 
 const AuthFooterLink = ({ text, linkText, href, className = "" }) => {
   return (
-    <div className={`text-center text-sm text-text-secondary ${className}`}>
+    <div className={`text-center text-[13px] text-text-secondary ${className}`}>
       {text}{" "}
-      <Link
+      <NavLink
         to={href}
-        className="font-semibold text-primary hover:underline transition focus:outline-none focus:ring-2 focus:ring-primary rounded px-1"
+        className="font-semibold text-primary hover:underline transition focus:outline-none focus:ring-2 focus:ring-primary rounded-lg px-2 py-1"
       >
         {linkText}
-      </Link>
+      </NavLink>
     </div>
   );
 };

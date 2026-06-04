@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router'
 import mongezWordmark from '../../assets/Mongez.svg'
 import mongezMark from '../../assets/MongezMLogo.svg'
 
@@ -29,15 +30,28 @@ function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-4 lg:flex">
-          <a href="#footer" className="text-sm font-semibold text-slate-600 transition hover:text-slate-900">
-            Log In
-          </a>
-          <a
-            href="#final-cta"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_rgba(14,165,233,0.35)] transition hover:-translate-y-0.5"
-          >
-            Get Started
-          </a>
+          
+          <NavLink 
+            to='/login'
+            >
+              <span className="text-sm font-semibold text-slate-600 transition hover:text-slate-900">
+                Log In
+              </span>
+            
+
+          </NavLink>
+          <NavLink 
+            to='/register'
+            >
+              <span
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_rgba(14,165,233,0.35)] transition hover:-translate-y-0.5"
+              >
+                Get Started
+              </span>
+            
+
+          </NavLink>
+          
         </div>
       </div>
     </header>

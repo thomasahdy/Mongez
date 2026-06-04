@@ -1,4 +1,4 @@
-import { BrandIcon } from '../Icons'
+import { BrandIcon } from '../ui/Icons'
 import mongezMark from '../../assets/MongezMLogo.svg'
 import mongezWordmark from '../../assets/Mongez.svg'
 

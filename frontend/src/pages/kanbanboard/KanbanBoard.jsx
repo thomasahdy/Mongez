@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import BoardColumn from './BoardColumn';
-import ViewTabs from '../dashboard/viewtabs/ViewTabs';
-import Toolbar from '../dashboard/toolbar/Toolbar';
+import ViewTabs from '../home/viewtabs/ViewTabs';
+import Toolbar from '../home/toolbar/Toolbar';
 import Board from './Board';
 
 
@@ -226,9 +226,21 @@ let path=[
 ]
 const KanbanBoard = ({setPath}) => {
   const [activeTab, setActiveTab] = useState("board");
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     setPath(path);
-  }, [setPath]);
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full" aria-label="Loading" />
+      </div>
+    );
+  }
   return (
     <div className='flex flex-col overflow-hidden'>
       <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} />

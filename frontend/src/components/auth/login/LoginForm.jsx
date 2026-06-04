@@ -6,40 +6,40 @@ import AuthInput from "../shared/AuthInput";
 import PasswordInput from "../shared/PasswordInput";
 
 const LoginForm = () => {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [rememberMe, setRememberMe] = useState(true);
-    const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState({});
-    const [touched, setTouched] = useState({});
-    
-    const validate = (nextValues = { email, password }) => {
-        const newErrors = {};
-        
-        if (!nextValues.email.trim()) {
-            newErrors.email = "Email is required";
-        } else if (!/\S+@\S+\.\S+/.test(nextValues.email)) {
-            newErrors.email = "Email is invalid";
-        }
-        
-        if (!nextValues.password) {
-            newErrors.password = "Password is required";
-        } else if (nextValues.password.length < 6) {
-            newErrors.password = "Password must be at least 6 characters";
-        }
-        
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-    
-    const handleBlur = (field) => {
-        setTouched((prev) => ({
-            ...prev,
-            [field]: true,
-        }));
-        
-        validate();
-    };
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const emailInputId = "email-input";
+  const passwordInputId = "password-input";
+
+  const validate = (nextValues = { email, password }) => {
+    const newErrors = {};
+
+    if (!nextValues.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(nextValues.email)) {
+      newErrors.email = "Email is invalid";
+    }
+
+    if (!nextValues.password) {
+      newErrors.password = "Password is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({
+      ...prev,
+      [field]: true,
+    }));
+
+    validate();
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -50,18 +50,29 @@ const LoginForm = () => {
     }
 
     setLoading(true);
+    setErrors((prev) => ({ ...prev, submit: "" }));
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch("/api/v1/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password, rememberMe }),
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Login failed");
+        const errorMessage = data.message || data.error || "Login failed";
+        if (response.status === 401) {
+          throw new Error("Invalid email or password");
+        } else if (response.status === 429) {
+          throw new Error("Too many attempts. Please try again later.");
+        } else {
+          throw new Error(errorMessage);
+        }
       }
 
       window.location.href = "/dashboard";
@@ -74,10 +85,11 @@ const LoginForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5 animate-fadeIn">
       <AuthInput
         label="Email address"
         type="email"
+        id={emailInputId}
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         onBlur={() => handleBlur("email")}
@@ -88,6 +100,7 @@ const LoginForm = () => {
       />
 
       <PasswordInput
+        id={passwordInputId}
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         onBlur={() => handleBlur("password")}
@@ -108,7 +121,7 @@ const LoginForm = () => {
         </label>
         <a
           href="/forgot-password"
-          className="text-primary font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded px-1"
+          className="text-primary font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-lg px-2 py-1 transition"
         >
           Forgot password?
         </a>
@@ -117,7 +130,7 @@ const LoginForm = () => {
       <AuthErrorMessage>{errors.submit}</AuthErrorMessage>
 
       <AuthButton type="submit" loading={loading} loadingLabel="Logging in...">
-        <FaSignInAlt className="text-sm" />
+        <FaSignInAlt className="text-[10px]" />
         Log In
       </AuthButton>
     </form>

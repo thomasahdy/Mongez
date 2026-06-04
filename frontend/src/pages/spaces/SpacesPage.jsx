@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect} from "react";
 import SpaceCard from "./SpaceCard";
 import SpacesHeader from "./SpacesHeader";
 import CreateSpaceCard from "./CreateSpaceCard";
 import QuotaBanner from "./QuotaBanner";
-
+ 
 const SPACES_DATA = [
   {
     id: "upper-egypt-edu",
@@ -91,50 +91,70 @@ const SPACES_DATA = [
     ],
   },
 ];
-
+ 
 const QUOTA = { used: 2, total: 5 };
 
-const breadcrumbPath = [
-  { name: "Al-Noor Foundation", color: "text-slate-400", ref: "" },
-  { name: "Spaces & Structure", color: "text-slate-800", ref: "" },
-];
-
-export default function SpacesPage({ setPath }) {
+ let path=[
+  {
+    name:"Al-Noor Foundation",
+    color:"text-slate-400",
+    ref:""
+  },
+  {
+    name:"Spaces & Structure",
+    color:"text-slate-800",
+    ref:""
+  },
+  
+]
+ 
+export default function SpacesPagee({setPath}) {
   const remaining = QUOTA.total - QUOTA.used;
-
-  useEffect(() => {
-    setPath(breadcrumbPath);
-  }, [setPath]);
-
+  useEffect(()=>{
+      setPath(path)
+    }, [path]);
+ 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Scrollable content area */}
-      <main className="flex-1 overflow-y-auto px-8 py-8" aria-label="Spaces and structure">
-        <div className="max-w-[1100px] mx-auto">
-          <SpacesHeader onNewSpace={() => console.info("New space")} />
-
-          <QuotaBanner
-            used={QUOTA.used}
-            total={QUOTA.total}
-            onUpgrade={() => console.info("Upgrade")}
-          />
-
-          {/* Space cards */}
-          <div className="flex flex-col gap-6" role="list" aria-label="Spaces">
-            {SPACES_DATA.map((space) => (
-              <div key={space.id} role="listitem">
-                <SpaceCard space={space} />
+    <>
+      {/* Font Awesome — load via <link> in index.html in production */}
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      />
+ 
+ 
+        {/* Main */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+ 
+          {/* Scrollable content area */}
+          <main className="flex-1 overflow-y-auto px-8 py-8" aria-label="Spaces and structure">
+            <div className="max-w-[1100px] mx-auto">
+ 
+              <SpacesHeader onNewSpace={() => console.info("New space")} />
+ 
+              <QuotaBanner
+                used={QUOTA.used}
+                total={QUOTA.total}
+                onUpgrade={() => console.info("Upgrade")}
+              />
+ 
+              {/* Space cards */}
+              <div className="flex flex-col gap-6" role="list" aria-label="Spaces">
+                {SPACES_DATA.map((space) => (
+                  <div key={space.id} role="listitem">
+                    <SpaceCard space={space} />
+                  </div>
+                ))}
+ 
+                {/* Create new */}
+                <CreateSpaceCard
+                  remaining={remaining}
+                  onClick={() => console.info("Create space")}
+                />
               </div>
-            ))}
-
-            {/* Create new */}
-            <CreateSpaceCard
-              remaining={remaining}
-              onClick={() => console.info("Create space")}
-            />
-          </div>
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

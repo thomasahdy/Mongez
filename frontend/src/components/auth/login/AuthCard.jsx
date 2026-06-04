@@ -8,15 +8,15 @@ const AuthCard = () => {
   return (
     <div className="w-full max-w-[400px]">
       <AuthLogo />
-      <h1 className="text-[26px] max-[480px]:text-[22px] leading-tight font-extrabold text-text-primary mb-1.5 tracking-[-0.5px]">
+      <h1 className="text-[26px] max-[480px]:text-[22px] leading-tight font-extrabold text-text-primary mb-1.5 tracking-[-0.5px] text-center">
         Welcome back
       </h1>
 
-      <p className="text-sm text-text-secondary mb-8">Log in to your Mongez workspace</p>
+      <p className="text-[13px] text-text-secondary mb-8 text-center">Log in to your Mongez workspace</p>
 
       <LoginForm />
 
-      <AuthDivider />
+      <AuthDivider className="my-7" />
 
       <SocialLogin />
 
