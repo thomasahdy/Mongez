@@ -27,6 +27,8 @@ export class PrismaService implements OnModuleInit {
   // ─── Identity & Access ─────────────────────────────────────
   get user() { return this.prisma.user; }
   get userSession() { return this.prisma.userSession; }
+  get passwordReset() { return this.prisma.passwordReset; }
+  get emailVerification() { return this.prisma.emailVerification; }
   get role() { return this.prisma.role; }
   get permission() { return this.prisma.permission; }
   get rolePermission() { return this.prisma.rolePermission; }
@@ -35,6 +37,8 @@ export class PrismaService implements OnModuleInit {
   get space() { return this.prisma.space; }
   get department() { return this.prisma.department; }
   get membership() { return this.prisma.membership; }
+  get invitation() { return this.prisma.invitation; }
+  get spaceCounter() { return this.prisma.spaceCounter; }
   get subscriptionPlan() { return this.prisma.subscriptionPlan; }
   get subscription() { return this.prisma.subscription; }
 
@@ -62,11 +66,24 @@ export class PrismaService implements OnModuleInit {
   // ─── Approvals ─────────────────────────────────────────────
   get approval() { return this.prisma.approval; }
 
+  // ─── AI System ─────────────────────────────────────────────
+  get aiRequest() { return this.prisma.aIRequest; }
+  get aiProposedAction() { return this.prisma.aIProposedAction; }
+  get aiEvalResult() { return this.prisma.aIEvalResult; }
+
   // ─── Notifications & Audit ─────────────────────────────────
   get notification() { return this.prisma.notification; }
+  get outboxEvent() { return this.prisma.outboxEvent; }
+  get deviceSession() { return this.prisma.deviceSession; }
+  get notificationPreference() { return this.prisma.notificationPreference; }
   get auditLog() { return this.prisma.auditLog; }
   get taskJournal() { return this.prisma.taskJournal; }
   get activity() { return this.prisma.activity; }
+  get userLog() { return this.prisma.userLog; }
+
+  // ─── Raw query access ───────────────────────────────────────
+  get $queryRaw() { return this.prisma.$queryRaw.bind(this.prisma); }
+  get $transaction() { return this.prisma.$transaction.bind(this.prisma); }
 
   // ─── Health ────────────────────────────────────────────────
   async checkHealth() {

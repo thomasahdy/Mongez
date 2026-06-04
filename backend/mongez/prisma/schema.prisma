@@ -63,6 +63,30 @@ enum ApprovalStatus {
   WITHDRAWN
 }
 
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum NotificationStatus {
+  PENDING
+  QUEUED
+  AGGREGATED
+  DELIVERED
+  READ
+  FAILED
+  DISMISSED
+  EXPIRED
+}
+
+enum NotificationChannelType {
+  IN_APP
+  PUSH
+  EMAIL
+}
+
 enum SubscriptionTier {
   FREE
   PRO
@@ -98,33 +122,61 @@ model User {
   failedAttempts Int        @default(0)
   lockedUntil    DateTime?
   lastLoginAt    DateTime?
+  emailVerificationToken String?   @unique
+  emailVerifiedAt        DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
   // Relations
   sessions       UserSession[]
+  passwordResets PasswordReset[]
+  emailVerifications EmailVerification[]
   memberships    Membership[]
   assignedTasks  TaskAssignment[]
-  comments       Comment[]
+  comments       Comment[]        @relation("CommentAuthor")
   notifications  Notification[]
+  notificationPreference NotificationPreference?
+  deviceSessions DeviceSession[]
   timeLogs       TimeLog[]
   auditLogs      AuditLog[]
+  logs           UserLog[]
   sentApprovals  Approval[]       @relation("ApprovalRequester")
   reviewedApprovals Approval[]    @relation("ApprovalReviewer")
   uploadedFiles  FileVersion[]
   activities     Activity[]
   subscriptions  Subscription[]
   watchers       Watcher[]
+  aiRequests        AIRequest[]
+  reviewedAIActions AIProposedAction[] @relation("AIActionReviewer")
 
   @@index([email])
   @@index([status])
   @@map("users")
 }
 
+model UserLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("user_logs")
+}
+
 model UserSession {
   id           String   @id @default(cuid())
   userId       String
   refreshToken String   @unique
+  ip           String?
+  userAgent    String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())
 
@@ -132,7 +184,41 @@ model UserSession {
 
   @@index([userId])
   @@index([refreshToken])
+  @@index([expiresAt])
   @@map("user_sessions")
+}
+
+model PasswordReset {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("password_resets")
+}
+
+model EmailVerification {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("email_verifications")
 }
 
 model Role {
@@ -179,6 +265,7 @@ model Space {
   description        String?
   icon               String?           // emoji or fa icon class
   color              String?           // hex color
+  prefix             String            @default("PRJ") // used in task identifiers e.g. PRJ-001
   isPublic           Boolean           @default(false)
   subscriptionPlanId String?
   createdAt          DateTime          @default(now())
@@ -187,17 +274,20 @@ model Space {
   subscriptionPlan   SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
   departments        Department[]
   memberships        Membership[]
+  invitations        Invitation[]
+  counter            SpaceCounter?
 
   @@index([createdAt])
   @@map("spaces")
 }
 
 model Department {
-  id        String   @id @default(cuid())
-  name      String
-  spaceId   String
-  color     String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  spaceId     String
+  color       String?
+  createdAt   DateTime @default(now())
 
   space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   boards    Board[]
@@ -242,6 +332,32 @@ model SubscriptionPlan {
   spaces      Space[]
 
   @@map("subscription_plans")
+}
+
+model SpaceCounter {
+  spaceId String @id
+  seq     Int    @default(0)
+
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@map("space_counters")
+}
+
+model Invitation {
+  id        String   @id @default(cuid())
+  email     String
+  spaceId   String
+  role      String   @default("MEMBER")
+  token     String   @unique @default(cuid())
+  expiresAt DateTime
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@index([email, spaceId])
+  @@index([token])
+  @@map("invitations")
 }
 
 model Subscription {
@@ -345,6 +461,7 @@ model Task {
   startDate       DateTime?
   parentId        String?      // for subtasks (self-relation)
   tags            String[]
+  searchVector    Unsupported("tsvector")?
   isArchived      Boolean      @default(false)
   createdById     String
   createdAt       DateTime     @default(now())
@@ -372,6 +489,7 @@ model Task {
   @@index([priority])
   @@index([dueDate])
   @@index([isArchived])
+  @@index([searchVector], type: Gin)
   @@index([identifier])
   @@index([createdById])
   @@index([createdAt])
@@ -438,20 +556,22 @@ model Watcher {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 model Comment {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   taskId    String
-  userId    String
-  content   String   // markdown with @mention support
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  authorId  String
+  content   String    // markdown with @mention support
+  isEdited  Boolean   @default(false)
+  deletedAt DateTime?              // soft delete
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User      @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   mentions  Mention[]
   reactions EmojiReaction[]
 
   @@index([taskId])
-  @@index([userId])
+  @@index([authorId])
   @@index([createdAt])
   @@map("comments")
 }
@@ -549,24 +669,68 @@ model Approval {
 // NOTIFICATIONS & AUDIT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+model OutboxEvent {
+  id            String   @id @default(cuid())
+  aggregateType String   
+  aggregateId   String
+  eventType     String   
+  payload       Json     
+  processedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([processedAt, createdAt])
+  @@map("outbox_events")
+}
+
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  type      NotificationType
-  title     String
-  body      String
-  link      String?          // deep-link to resource
-  isRead    Boolean          @default(false)
-  readAt    DateTime?
-  createdAt DateTime         @default(now())
+  id                String    @id @default(cuid())
+  userId            String
+  spaceId           String    
+  type              String    
+  priority          NotificationPriority  @default(NORMAL)
+  channel           NotificationChannelType
+  title             String
+  body              String
+  entityType        String?   
+  entityId          String?
+  status            NotificationStatus @default(PENDING)
+  aggregatedGroupId String?   
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  failedAt          DateTime?
+  metadata          Json?     
+  templateVersion   Int       @default(1)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([isRead])
-  @@index([type])
-  @@index([createdAt])
+  @@index([userId, spaceId, status])
+  @@index([aggregatedGroupId])
   @@map("notifications")
+}
+
+model NotificationPreference {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  preferences  Json     
+  quietHours   Json?    
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+model DeviceSession {
+  id           String   @id @default(cuid())
+  userId       String
+  deviceType   String   
+  pushToken    String?  
+  lastSeen     DateTime @default(now())
+  revokedAt    DateTime?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("device_sessions")
 }
 
 model AuditLog {
@@ -625,3 +789,78 @@ model Activity {
   @@index([createdAt])
   @@map("activities")
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AI SYSTEM
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+model AIRequest {
+  id              String   @id @default(cuid())
+  traceId         String   @unique
+  userId          String
+  spaceId         String
+  intent          String                  // 'risk' | 'chat' | 'report' | 'action'
+  rawInput        String
+  rewrittenQuery  String?
+  finalResponse   String?
+  modelUsed       String?                 // 'llama-3.3-70b' | 'gemma2-9b' etc. (via Groq)
+  tokensIn        Int?
+  tokensOut       Int?
+  latencyMs       Int?
+  ttftMs          Int?
+  qualityScore    Float?
+  userFeedback    Int?                    // 1 = thumbs up, -1 = thumbs down
+  feedbackNote    String?
+  status          String   @default("pending") // pending | completed | failed
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id])
+  proposedActions AIProposedAction[]
+
+  @@index([userId])
+  @@index([spaceId])
+  @@index([intent])
+  @@index([traceId])
+  @@index([createdAt])
+  @@map("ai_requests")
+}
+
+model AIProposedAction {
+  id              String         @id @default(cuid())
+  traceId         String
+  spaceId         String
+  commandType     String         // 'AssignTask' | 'CreateTask' | 'EscalateTask' | 'UpdateTask' | 'CreateReminder'
+  payload         Json
+  reason          String
+  status          ApprovalStatus @default(PENDING)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime       @default(now())
+
+  aiRequest       AIRequest      @relation(fields: [traceId], references: [traceId])
+  reviewer        User?          @relation("AIActionReviewer", fields: [reviewedById], references: [id])
+
+  @@index([traceId])
+  @@index([spaceId])
+  @@index([status])
+  @@map("ai_proposed_actions")
+}
+
+model AIEvalResult {
+  id              String   @id @default(cuid())
+  traceId         String?
+  evalType        String   // 'shadow' | 'ci' | 'manual'
+  feature         String   // 'risk_detection' | 'chat' | 'report'
+  metricName      String   // 'f1' | 'rubric_score' | 'faithfulness'
+  metricValue     Float
+  details         Json?
+  promptVersion   String?
+  modelUsed       String?
+  createdAt       DateTime @default(now())
+
+  @@index([feature])
+  @@index([metricName])
+  @@index([createdAt])
+  @@map("ai_eval_results")
+}

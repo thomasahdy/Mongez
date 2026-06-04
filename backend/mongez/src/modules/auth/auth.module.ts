@@ -9,11 +9,17 @@ import { UserLogRepository } from './repositories/user-log.repository';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { PasswordService } from './services/password.service';
 import { JwtService } from './services/jwt.service';
+import { CsrfService } from './services/csrf.service';
+import { SessionService } from './services/session.service';
+import { PasswordResetService } from './services/password-reset.service';
+import { EmailVerificationService } from './services/email-verification.service';
 import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { RoleSeedService } from './seed/role-seed.service';
+import { CsrfGuard } from './guards/csrf.guard';
 
 @Module({
   imports: [
@@ -58,10 +64,16 @@ import { AuthController } from './auth.controller';
     RefreshTokenRepository,
     PasswordService,
     JwtService,
+    CsrfService,
+    SessionService,
+    PasswordResetService,
+    EmailVerificationService,
     JwtAccessStrategy,
     JwtRefreshStrategy,
     GoogleStrategy,
+    RoleSeedService,
+    CsrfGuard,
   ],
-  exports: [AuthService, JwtService, PasswordService],
+  exports: [AuthService, JwtService, PasswordService, CsrfService],
 })
 export class AuthModule {}

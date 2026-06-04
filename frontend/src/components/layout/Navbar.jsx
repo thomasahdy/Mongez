@@ -1,10 +1,15 @@
 import React, { useState } from 'react'
 import NavBreadcrumb from './NavBreadcrumb';
+import { authService } from '../../services/auth.service';
 
+const Navbar = ({ onToggleAI, path }) => {
+  const [focused, setFocused] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
-const Navbar = ({onToggleAI, path}) => {
-  
-    const [focused, setFocused] = useState(false);
+  const handleLogout = async () => {
+    await authService.logout();
+    window.location.href = '/';
+  };
 
   return (
     <header className="h-14 px-5 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4 shrink-0">
@@ -64,10 +69,36 @@ const Navbar = ({onToggleAI, path}) => {
           <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800" />
         </button>
 
-        {/* User avatar */}
-        <a href="settings.html" className="w-7 h-7 rounded-full bg-sky-500 flex items-center justify-center text-white text-[11px] font-bold" aria-label="Profile settings">
-          TA
-        </a>
+        {/* User avatar with menu */}
+        <div className="relative">
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="w-7 h-7 rounded-full bg-sky-500 flex items-center justify-center text-white text-[11px] font-bold hover:ring-2 hover:ring-indigo-400 transition-all"
+            aria-label="User menu"
+          >
+            TA
+          </button>
+
+          {/* User dropdown menu */}
+          {showUserMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1">
+              <a
+                href="/settings"
+                className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                onClick={() => setShowUserMenu(false)}
+              >
+                Settings
+              </a>
+              <hr className="my-1 border-slate-200 dark:border-slate-700" />
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-slate-50 dark:hover:bg-slate-700"
+              >
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* AI toggle */}
         <button

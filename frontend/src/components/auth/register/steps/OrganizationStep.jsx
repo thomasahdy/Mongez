@@ -23,16 +23,20 @@ const sizeOptions = [
 ];
 
 const selectClasses =
-  "w-full py-[11px] px-3.5 text-[13px] border-[1.5px] border-border rounded bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all";
+  "w-full py-[11px] px-3.5 text-[13px] border-[1.5px] border-border rounded-lg bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer";
 
 const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
   return (
-    <div>
-      <h1 className="text-[22px] font-extrabold tracking-[-0.5px] text-text-primary mb-1">
+    <div className="animate-fadeIn">
+      <h1 className="text-[22px] font-extrabold tracking-[-0.5px] text-text-primary mb-1 text-center">
         Set up your organization
       </h1>
 
+<<<<<<< HEAD
       <p className="text-[13px] text-text-secondary mb-5">
+=======
+      <p className="text-[13px] text-text-secondary mb-7 text-center">
+>>>>>>> feature/backen_latest
         Tell us about your organization so we can customize your experience.
       </p>
 
@@ -67,6 +71,7 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
             Organization size
           </label>
           <div className="grid grid-cols-1 min-[580px]:grid-cols-3 gap-2.5">
+<<<<<<< HEAD
             {sizeOptions.map((option) => (
               <button
                 key={option.value}
@@ -82,6 +87,26 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
                 {option.label}
               </button>
             ))}
+=======
+            {sizeOptions.map((option) => {
+              const isSelected = values.size === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onChange("size", option.value)}
+                  className={`px-2.5 py-3.5 border-[1.5px] rounded-lg text-center transition-all duration-200 text-xs font-medium ${
+                    isSelected
+                      ? "border-primary bg-primary-light text-primary shadow-sm"
+                      : "border-border hover:border-primary hover:bg-primary-light text-text-primary"
+                  }`}
+                >
+                  <span className="block text-lg font-extrabold mb-0.5">{option.value}</span>
+                  {option.label}
+                </button>
+              );
+            })}
+>>>>>>> feature/backen_latest
           </div>
         </div>
 
@@ -104,10 +129,10 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
 
         <div className="flex gap-3 pt-1">
           <AuthButton variant="outline" onClick={onBack}>
-            <FaArrowLeft className="text-xs" /> Back
+            <FaArrowLeft className="text-[10px]" /> Back
           </AuthButton>
           <AuthButton onClick={onNext}>
-            Continue <FaArrowRight className="text-xs" />
+            Continue <FaArrowRight className="text-[10px]" />
           </AuthButton>
         </div>
       </div>

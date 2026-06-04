@@ -1,22 +1,88 @@
-import { Controller, Get, Patch, Body, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Body,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { UsersService } from './users.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
+import { PaginationDto } from '../../shared/dto/pagination.dto';
 
-@Controller('users')
+@ApiTags('Users')
+@ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
+@Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
-  async getProfile(@Req() req: any) {
-    return this.usersService.getProfile(req.user.id);
+  @ApiOperation({ summary: 'Get own profile' })
+  async getMe(@Req() req: any) {
+    return this.usersService.getById(req.user.userId);
   }
 
   @Patch('me')
-  async updateProfile(
+  @ApiOperation({ summary: 'Update own profile (name, avatar, language)' })
+  async updateMe(@Req() req: any, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.userId, dto);
+  }
+
+  @Patch('me/password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Change password (requires current password, revokes all sessions)' })
+  async changePassword(@Req() req: any, @Body() dto: ChangePasswordDto): Promise<void> {
+    return this.usersService.changePassword(req.user.userId, dto);
+  }
+
+  @Get('me/send-verification')
+  @ApiOperation({ summary: 'Send email verification link to current user' })
+  async sendVerification(@Req() req: any): Promise<{ message: string }> {
+    await this.usersService.sendVerificationEmail(req.user.userId);
+    return { message: 'Verification email queued' };
+  }
+
+  @Get('verify-email')
+  @ApiOperation({ summary: 'Verify email address using token from link' })
+  async verifyEmail(@Query('token') token: string) {
+    return this.usersService.verifyEmail(token);
+  }
+
+  @Get()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN' as any, 'OWNER' as any)
+  @ApiOperation({ summary: 'List all users — admin only' })
+  async getAll(@Query() pagination: PaginationDto) {
+    return this.usersService.getAll(pagination.page, pagination.limit);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get user by ID (used for @mention resolution)' })
+  @ApiResponse({ status: 200, description: 'User profile (safe fields only)' })
+  async getById(@Param('id') id: string) {
+    return this.usersService.getById(id);
+  }
+
+  @Patch(':id/status')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN' as any, 'OWNER' as any)
+  @ApiOperation({ summary: 'Update user account status — admin only' })
+  async updateStatus(
     @Req() req: any,
-    @Body() body: { name?: string; avatarUrl?: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateStatusDto,
   ) {
-    return this.usersService.updateProfile(req.user.id, body);
+    return this.usersService.updateStatus(id, req.user.userId, dto);
   }
 }

@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { BoardsController } from './boards.controller';
+import { BoardsController, DepartmentBoardsController } from './boards.controller';
 import { BoardsService } from './boards.service';
-import { BoardRepository } from './board.repository';
+import { BoardRepository, ColumnRepository } from './repositories/boards.repositories';
+import { BoardAccessGuard } from './guards/board-access.guard';
 
 @Module({
-  controllers: [BoardsController],
-  providers: [BoardsService, BoardRepository],
-  exports: [BoardsService],
+  controllers: [BoardsController, DepartmentBoardsController],
+  providers: [BoardsService, BoardRepository, ColumnRepository, BoardAccessGuard],
+  exports: [BoardsService, BoardAccessGuard],
 })
 export class BoardsModule {}

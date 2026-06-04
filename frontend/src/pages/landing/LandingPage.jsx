@@ -6,7 +6,7 @@ import ProblemSection from './sections/ProblemSection'
 import ResultsSection from './sections/ResultsSection'
 import TestimonialsSection from './sections/TestimonialsSection'
 import FooterSection from '../../components/landing/FooterSection'
-import OuterNavbar from '../../components/layout/OuterNavbar'
+import OuterNavbar from '../../components/landing/OuterNavbar'
 
 function LandingPage() {
   return (

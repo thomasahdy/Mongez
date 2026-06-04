@@ -1,18 +1,19 @@
-const MiniButton = ({ variant = 'default', children, ...props }) => {
-  const variants = {
-    default: 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600',
-    primary: 'bg-sky-500 border-sky-500 text-white hover:bg-sky-600',
-    danger: 'bg-red-500 border-red-500 text-white hover:bg-red-600',
-  }
+import React from 'react'
 
+const MiniButton = ({ children, variant = "default", onClick }) => {
+  const variants = {
+    default:  "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-600",
+    primary:  "border-sky-200 bg-white text-sky-600 hover:bg-sky-50 dark:bg-slate-800 dark:border-sky-800",
+    danger:   "border-red-200 bg-red-50/60 text-red-500 hover:bg-red-500 hover:text-white font-semibold dark:bg-red-900/20 dark:border-red-800",
+  };
   return (
     <button
-      className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border transition-colors ${variants[variant] || variants.default}`}
-      {...props}
+      onClick={onClick}
+      className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded border font-medium transition-all duration-150 ${variants[variant]}`}
     >
       {children}
     </button>
-  )
+  );
 }
 
 export default MiniButton

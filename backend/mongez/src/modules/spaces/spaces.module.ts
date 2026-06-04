@@ -1,11 +1,24 @@
 import { Module } from '@nestjs/common';
-import { SpacesController } from './spaces.controller';
+import { SpacesController, InvitationsController } from './spaces.controller';
 import { SpacesService } from './spaces.service';
-import { SpaceRepository } from './space.repository';
+import {
+  SpaceRepository,
+  DepartmentRepository,
+  MembershipRepository,
+  InvitationRepository,
+} from './repositories/spaces.repositories';
+import { SpaceMemberGuard } from './guards/space-member.guard';
 
 @Module({
-  controllers: [SpacesController],
-  providers: [SpacesService, SpaceRepository],
-  exports: [SpacesService],
+  controllers: [SpacesController, InvitationsController],
+  providers: [
+    SpacesService,
+    SpaceRepository,
+    DepartmentRepository,
+    MembershipRepository,
+    InvitationRepository,
+    SpaceMemberGuard,
+  ],
+  exports: [SpacesService, SpaceMemberGuard, SpaceRepository],
 })
 export class SpacesModule {}

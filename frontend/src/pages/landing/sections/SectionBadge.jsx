@@ -1,4 +1,4 @@
-import { Icon } from '../../../components/Icons'
+import { Icon } from '../../../components/ui/Icons'
 
 function SectionBadge({ icon, children, dark = false }) {
   return (
