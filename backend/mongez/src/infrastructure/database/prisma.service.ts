@@ -27,6 +27,8 @@ export class PrismaService implements OnModuleInit {
   // ─── Identity & Access ─────────────────────────────────────
   get user() { return this.prisma.user; }
   get userSession() { return this.prisma.userSession; }
+  get passwordReset() { return this.prisma.passwordReset; }
+  get emailVerification() { return this.prisma.emailVerification; }
   get role() { return this.prisma.role; }
   get permission() { return this.prisma.permission; }
   get rolePermission() { return this.prisma.rolePermission; }
@@ -77,6 +79,7 @@ export class PrismaService implements OnModuleInit {
   get auditLog() { return this.prisma.auditLog; }
   get taskJournal() { return this.prisma.taskJournal; }
   get activity() { return this.prisma.activity; }
+  get userLog() { return this.prisma.userLog; }
 
   // ─── Raw query access ───────────────────────────────────────
   get $queryRaw() { return this.prisma.$queryRaw.bind(this.prisma); }

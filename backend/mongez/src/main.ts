@@ -35,6 +35,11 @@ async function bootstrap() {
   // ── Global response envelope ───────────────────────────────
   app.useGlobalInterceptors(new ResponseInterceptor());
 
+  app.useGlobalPipes(new (require('@nestjs/common').ValidationPipe)({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
   // ── Swagger (dev only) ─────────────────────────────────────
   const isWorker = process.env.APP_MODE === 'worker';
   if (!isWorker) {

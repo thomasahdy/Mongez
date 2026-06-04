@@ -129,6 +129,8 @@ model User {
 
   // Relations
   sessions       UserSession[]
+  passwordResets PasswordReset[]
+  emailVerifications EmailVerification[]
   memberships    Membership[]
   assignedTasks  TaskAssignment[]
   comments       Comment[]        @relation("CommentAuthor")
@@ -137,6 +139,7 @@ model User {
   deviceSessions DeviceSession[]
   timeLogs       TimeLog[]
   auditLogs      AuditLog[]
+  logs           UserLog[]
   sentApprovals  Approval[]       @relation("ApprovalRequester")
   reviewedApprovals Approval[]    @relation("ApprovalReviewer")
   uploadedFiles  FileVersion[]
@@ -151,10 +154,29 @@ model User {
   @@map("users")
 }
 
+model UserLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("user_logs")
+}
+
 model UserSession {
   id           String   @id @default(cuid())
   userId       String
   refreshToken String   @unique
+  ip           String?
+  userAgent    String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())
 
@@ -162,7 +184,41 @@ model UserSession {
 
   @@index([userId])
   @@index([refreshToken])
+  @@index([expiresAt])
   @@map("user_sessions")
+}
+
+model PasswordReset {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("password_resets")
+}
+
+model EmailVerification {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("email_verifications")
 }
 
 model Role {
