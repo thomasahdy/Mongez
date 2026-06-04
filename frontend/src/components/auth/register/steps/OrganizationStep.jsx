@@ -32,11 +32,7 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
         Set up your organization
       </h1>
 
-<<<<<<< HEAD
-      <p className="text-[13px] text-text-secondary mb-5">
-=======
       <p className="text-[13px] text-text-secondary mb-7 text-center">
->>>>>>> feature/backen_latest
         Tell us about your organization so we can customize your experience.
       </p>
 
@@ -71,23 +67,6 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
             Organization size
           </label>
           <div className="grid grid-cols-1 min-[580px]:grid-cols-3 gap-2.5">
-<<<<<<< HEAD
-            {sizeOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onChange("size", option.value)}
-                className={`px-2.5 py-3 border-[1.5px] rounded text-center transition text-xs font-medium ${
-                  values.size === option.value
-                    ? "border-primary bg-primary-light text-primary"
-                    : "border-border hover:border-primary hover:bg-primary-light"
-                }`}
-              >
-                <span className="block text-lg font-extrabold mb-0.5">{option.value}</span>
-                {option.label}
-              </button>
-            ))}
-=======
             {sizeOptions.map((option) => {
               const isSelected = values.size === option.value;
               return (
@@ -106,7 +85,6 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
                 </button>
               );
             })}
->>>>>>> feature/backen_latest
           </div>
         </div>
 

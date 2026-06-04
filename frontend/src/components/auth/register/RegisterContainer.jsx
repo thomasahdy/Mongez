@@ -1,9 +1,5 @@
 import { useState } from "react";
-<<<<<<< HEAD
 import { useDispatch } from "react-redux";
-import AuthLogo from "../shared/AuthLogo";
-=======
->>>>>>> feature/backen_latest
 import AuthFooterLink from "../shared/AuthFooterLink";
 import RegisterCard from "./RegisterCard";
 import RegisterStepper from "./RegisterStepper";
@@ -11,7 +7,6 @@ import AccountStep from "./steps/AccountStep";
 import InviteStep from "./steps/InviteStep";
 import OrganizationStep from "./steps/OrganizationStep";
 import TemplateStep from "./steps/TemplateStep";
-import { registerUser } from "../../../store/auth/authThunks";
 
 
 const initialValues = {
@@ -80,19 +75,6 @@ const RegisterContainer = () => {
 
     // Auth endpoint contract: POST /api/v1/auth/register { name, email, password }
     const payload = {
-<<<<<<< HEAD
-      name: `${values.account.firstName} ${values.account.lastName}`.trim(),
-      email: values.account.email,
-      password: values.account.password,
-    };
-
-    try {
-      await dispatch(registerUser(payload)).unwrap();
-      window.location.href = "#onboarding";
-    } catch (error) {
-      console.error("Registration failed", error);
-      setSubmitError(error?.message || "Something went wrong");
-=======
       organization: values.organization,
       template: values.template,
       invites: skipInvites
@@ -122,7 +104,6 @@ const RegisterContainer = () => {
     } catch (error) {
       const errorMessage = error?.message || error?.toString?.() || "Something went wrong";
       setSubmitError(errorMessage);
->>>>>>> feature/backen_latest
     } finally {
       setLoading(false);
     }
@@ -132,11 +113,6 @@ const RegisterContainer = () => {
   const stepAnimation = direction === "forward" ? "animate-slideLeft" : "animate-slideRight";
 
   return (
-<<<<<<< HEAD
-    <div className="w-full max-w-[500px] animate-fadeIn">
-      <div className="flex justify-center">
-        <AuthLogo className="mb-5" />
-=======
     <div className="w-full max-w-[520px]">
       <div className="flex justify-center mb-8">
         <a href="/" className="inline-flex items-center gap-2.5 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary rounded px-2 py-1">
@@ -147,7 +123,6 @@ const RegisterContainer = () => {
           </svg>
           <span className="text-[22px] leading-none font-extrabold tracking-[-0.5px] text-text-primary">Mongez</span>
         </a>
->>>>>>> feature/backen_latest
       </div>
 
       <RegisterStepper step={step} />

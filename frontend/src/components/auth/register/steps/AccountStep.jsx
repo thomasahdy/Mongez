@@ -33,10 +33,6 @@ const AccountStep = ({ values, onChange, onNext }) => {
   const validate = () => {
     const nextErrors = {};
 
-<<<<<<< HEAD
-    if (!values.firstName.trim()) nextErrors.firstName = "First name is required";
-    if (!values.lastName.trim()) nextErrors.lastName = "Last name is required";
-=======
     if (!values.firstName.trim()) {
       nextErrors.firstName = "First name is required";
     } else if (values.firstName.trim().length < 2) {
@@ -48,7 +44,6 @@ const AccountStep = ({ values, onChange, onNext }) => {
     } else if (values.lastName.trim().length < 2) {
       nextErrors.lastName = "Last name must be at least 2 characters";
     }
->>>>>>> feature/backen_latest
 
     if (!values.email.trim()) {
       nextErrors.email = "Work email is required";
@@ -58,18 +53,11 @@ const AccountStep = ({ values, onChange, onNext }) => {
 
     if (!values.password) {
       nextErrors.password = "Password is required";
-<<<<<<< HEAD
-    } else if (values.password.length < 8) {
-      nextErrors.password = "Use at least 8 characters";
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(values.password)) {
-      nextErrors.password = "Use uppercase, lowercase, and a number";
-=======
     } else {
       const failed = passwordRequirements.filter((r) => !r.test(values.password));
       if (failed.length > 0) {
         nextErrors.password = `Password missing: ${failed.map((f) => f.label).join(", ")}`;
       }
->>>>>>> feature/backen_latest
     }
 
     setErrors(nextErrors);
@@ -83,30 +71,15 @@ const AccountStep = ({ values, onChange, onNext }) => {
 
   const handleContinue = async () => {
     setTouched({ firstName: true, lastName: true, email: true, password: true });
-<<<<<<< HEAD
-    if (validate()) onNext();
-  };
-=======
     setErrors((prev) => ({ ...prev, submit: '' }));
 
     if (!validate()) {
       return;
     }
->>>>>>> feature/backen_latest
 
     setIsLoading(true);
 
     try {
-<<<<<<< HEAD
-      if (provider === "google") {
-        window.location.href = `${BASE_URL}/auth/google`;
-        return;
-      }
-
-      throw new Error(`Unsupported social provider: ${provider}`);
-    } catch (error) {
-      setSocialError(error?.message || `Failed to sign up with ${provider}`);
-=======
       const payload = {
         email: values.email,
         password: values.password,
@@ -131,31 +104,12 @@ const AccountStep = ({ values, onChange, onNext }) => {
       onNext();
     } catch (error) {
       setErrors((prev) => ({ ...prev, submit: error.message || "Something went wrong during registration" }));
->>>>>>> feature/backen_latest
     } finally {
       setIsLoading(false);
     }
   };
 
-<<<<<<< HEAD
-
-  // Simple password strength (0–4)
-  const strengthScore = (() => {
-    const p = values.password;
-    if (!p) return 0;
-    let s = 0;
-    if (p.length >= 8) s++;
-    if (/[A-Z]/.test(p)) s++;
-    if (/[0-9]/.test(p)) s++;
-    if (/[^A-Za-z0-9]/.test(p)) s++;
-    return s;
-  })();
-
-  const strengthColor = ["bg-border", "bg-red-400", "bg-amber-400", "bg-lime-400", "bg-green-500"][strengthScore];
-  const strengthWidth = ["w-0", "w-1/4", "w-2/4", "w-3/4", "w-full"][strengthScore];
-=======
   const strength = getPasswordStrength();
->>>>>>> feature/backen_latest
 
   return (
     <div className="animate-fadeIn">
@@ -163,22 +117,6 @@ const AccountStep = ({ values, onChange, onNext }) => {
         Create your account
       </h1>
 
-<<<<<<< HEAD
-      <p className="text-[13px] text-text-secondary mb-5">
-        Start your 14-day free trial. No credit card required.
-      </p>
-
-      <SocialAuthButtons
-        providers={["google"]}
-        layout="row"
-        loadingProvider={socialLoading}
-        onProviderClick={handleSocialSignup}
-      />
-
-      <AuthErrorMessage className="mt-3">{socialError}</AuthErrorMessage>
-
-      <AuthDivider className="my-4">or sign up with email</AuthDivider>
-=======
       <p className="text-[13px] text-text-secondary mb-7 text-center">
         Start your 14-day free trial. No credit card required.
       </p>
@@ -190,7 +128,6 @@ const AccountStep = ({ values, onChange, onNext }) => {
         <span className="text-[12px] text-text-tertiary font-medium">or sign up with email</span>
         <div className="flex-1 h-px bg-border" />
       </div>
->>>>>>> feature/backen_latest
 
       <div className="space-y-3.5">
         <div className="grid grid-cols-1 min-[580px]:grid-cols-2 gap-3">
@@ -235,13 +172,6 @@ const AccountStep = ({ values, onChange, onNext }) => {
             success={touched.password && !errors.password && Boolean(values.password)}
             placeholder="Create a strong password"
           />
-<<<<<<< HEAD
-          <div className="h-[3px] bg-border rounded-sm mt-2 overflow-hidden">
-            <div className={`h-full ${strengthWidth} ${strengthColor} rounded-sm transition-all duration-300`} />
-          </div>
-          <div className="text-[11px] text-text-tertiary mt-0.5">
-            Use 8+ characters with uppercase, lowercase, and a number
-=======
           <div className="h-[3px] bg-border rounded-[2px] mt-2 overflow-hidden">
             <div className={`h-full ${strength.color} rounded-[2px] transition-all duration-300`} style={{ width: strength.width }} />
           </div>
@@ -255,7 +185,6 @@ const AccountStep = ({ values, onChange, onNext }) => {
                 </div>
               );
             })}
->>>>>>> feature/backen_latest
           </div>
         </div>
 

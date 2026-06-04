@@ -15,11 +15,7 @@ const RegisterStepper = ({ step }) => {
           <Fragment key={label}>
             <div className="flex flex-col items-center text-center">
               <div
-<<<<<<< HEAD
-                className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold border-2 transition ${
-=======
                 className={`w-9 h-9 flex items-center justify-center rounded-full text-[13px] font-bold border-2 transition-all duration-300 ${
->>>>>>> feature/backen_latest
                   done
                     ? "bg-success border-success text-white shadow-sm"
                     : active
@@ -31,11 +27,7 @@ const RegisterStepper = ({ step }) => {
               </div>
 
               <div
-<<<<<<< HEAD
-                className={`mt-1 text-[10px] font-medium ${
-=======
                 className={`mt-1.5 text-[10px] font-medium transition-all duration-300 ${
->>>>>>> feature/backen_latest
                   active ? "text-primary font-semibold" : "text-text-tertiary"
                 }`}
               >
@@ -44,11 +36,7 @@ const RegisterStepper = ({ step }) => {
             </div>
 
             {index < steps.length - 1 && (
-<<<<<<< HEAD
-              <div className={`w-10 h-0.5 mx-1.5 ${step > number ? "bg-success" : "bg-border"}`} />
-=======
               <div className={`w-12 h-0.5 mx-2 transition-all duration-300 ${step > number ? "bg-success" : "bg-border"}`} />
->>>>>>> feature/backen_latest
             )}
           </Fragment>
         );

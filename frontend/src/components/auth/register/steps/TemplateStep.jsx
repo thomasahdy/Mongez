@@ -47,11 +47,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
         Choose a starting template
       </h1>
 
-<<<<<<< HEAD
-      <p className="text-[13px] text-text-secondary mb-5">
-=======
       <p className="text-[13px] text-text-secondary mb-7 text-center">
->>>>>>> feature/backen_latest
         Pick a template to set up your first workspace. You can change it later.
       </p>
 
@@ -65,11 +61,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
               key={template.id}
               type="button"
               onClick={() => onSelectTemplate(template.id)}
-<<<<<<< HEAD
-              className={`p-3.5 border-[1.5px] rounded text-left cursor-pointer transition ${
-=======
               className={`relative p-4 border-[1.5px] rounded-lg text-left cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
->>>>>>> feature/backen_latest
                 selected
                   ? "border-primary bg-primary-light shadow-sm ring-1 ring-primary/20"
                   : "border-border hover:border-primary hover:bg-primary-light"
@@ -100,11 +92,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
         })}
       </div>
 
-<<<<<<< HEAD
-      <div className="flex gap-3 mt-5">
-=======
       <div className="flex gap-3">
->>>>>>> feature/backen_latest
         <AuthButton variant="outline" onClick={onBack}>
           <FaArrowLeft className="text-[10px]" /> Back
         </AuthButton>

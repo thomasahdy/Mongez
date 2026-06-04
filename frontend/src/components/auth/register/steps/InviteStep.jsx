@@ -26,19 +26,11 @@ const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError 
         Invite your team
       </h1>
 
-<<<<<<< HEAD
-      <p className="text-[13px] text-text-secondary mb-5">
-        Invite colleagues now or skip and do it later.
-      </p>
-
-      <div className="space-y-2">
-=======
       <p className="text-[13px] text-text-secondary mb-7 text-center">
         Invite colleagues now or skip and do it later.
       </p>
 
       <div className="space-y-2.5 mb-4">
->>>>>>> feature/backen_latest
         {invites.map((invite, index) => (
           <div key={index} className="flex items-end gap-2.5 animate-slideIn">
             <div className="flex-1 min-w-0">
@@ -90,15 +82,9 @@ const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError 
         <FaPlus className="text-[10px]" /> Add another
       </button>
 
-<<<<<<< HEAD
-      <AuthErrorMessage className="mt-1.5">{submitError}</AuthErrorMessage>
-
-      <div className="flex gap-3 mt-5">
-=======
       <AuthErrorMessage className="mt-3 mb-4">{submitError}</AuthErrorMessage>
 
       <div className="flex gap-3 mb-3">
->>>>>>> feature/backen_latest
         <AuthButton variant="outline" onClick={onBack}>
           <FaArrowLeft className="text-[10px]" /> Back
         </AuthButton>

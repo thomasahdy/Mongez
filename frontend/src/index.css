@@ -1,25 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
-<<<<<<< HEAD
-
-@theme {
-  --color-primary: #00a8e8;
-  --color-primary-dark: #0077b6;
-  --color-primary-light: #e6f7ff;
-  --color-accent: #6366f1;
-  --color-accent-light: #eef2ff;
-  --color-text-primary: #1a1a2e;
-  --color-text-secondary: #64748b;
-  --color-text-tertiary: #94a3b8;
-  --color-bg-body: #f8fafc;
-  --color-border: #e2e8f0;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
-  --font-sans: "Inter", sans-serif;
-  --animate-fadeIn: fadeIn 0.5s ease;
-}
-=======
->>>>>>> feature/backen_latest
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -32,18 +12,10 @@
   }
 }
 
-<<<<<<< HEAD
-body {
-  margin: 0;
-  min-width: 320px;
-  background: #f8fafc;
-  font-family: "Inter", sans-serif;
-=======
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
   }
->>>>>>> feature/backen_latest
 }
 
 @theme {
@@ -95,19 +67,6 @@ body {
   }
 }
 
-<<<<<<< HEAD
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-=======
 @keyframes slideLeft {
   from {
     opacity: 0;
@@ -164,4 +123,3 @@ body {
 .animate-cardFadeIn {
   animation: cardFadeIn 0.4s ease-out;
 }
->>>>>>> feature/backen_latest
