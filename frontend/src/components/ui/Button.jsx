@@ -1,5 +1,6 @@
 import React from 'react'
 
+
 const Button = ({ children, variant = "outline", size = "md", onClick, className = "", ...rest }) => {
   const base = "inline-flex items-center justify-center gap-1.5 font-semibold rounded-lg transition-all duration-150 cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2";
   const variants = {
@@ -23,4 +24,4 @@ const Button = ({ children, variant = "outline", size = "md", onClick, className
   );
 }
 
-export default Button
+export default Button;

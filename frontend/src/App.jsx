@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import Sidebar from './components/layout/Sidebar';
 import Home from './pages/home/Home';
@@ -9,9 +9,22 @@ import RegisterPage from './pages/auth/RegisterPage';
 import LandingPage from './pages/landing/LandingPage'
 import OnboardingPage from './pages/onboarding/OnboardingPage';
 import WhiteBoardPage from './pages/whiteboard/WhiteBoardPage';
+import ReportsPage from './pages/reports/ReportsPage';
+import { useTranslation } from "react-i18next";
+import SettingsPage from './pages/settings/settingsPage';
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [path, setPath] = useState([]);
+  const [language, setLanguage] = useState("en");
+
+const { i18n } = useTranslation();
+
+  useEffect(() => {
+  document.documentElement.dir =
+    language === "ar" ? "rtl" : "ltr";
+    i18n.changeLanguage(language);
+}, [language]);
 
   return (
     
@@ -32,6 +45,14 @@ function App() {
             <Route
                 path='/whiteboard'
                 element={<WhiteBoardPage/>}
+            />
+            <Route
+                path='/reports'
+                element={<ReportsPage setPath={setPath}/>}
+            />
+            <Route
+                path='/settings'
+                element={<SettingsPage setPath={setPath}/>}
             />
           </Route>
             <Route

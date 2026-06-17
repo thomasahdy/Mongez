@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaEnvelope, FaSignInAlt } from "react-icons/fa";
 import AuthButton from "../shared/AuthButton";
 import AuthErrorMessage from "../shared/AuthErrorMessage";
 import AuthInput from "../shared/AuthInput";
 import PasswordInput from "../shared/PasswordInput";
+import { useTranslation } from "react-i18next";
 
 const LoginForm = () => {
+    const { t } = useTranslation();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(true);
@@ -73,6 +75,10 @@ const LoginForm = () => {
     }
   };
 
+  useEffect(()=>{
+    console.log(t("login"))
+  }, [])
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <AuthInput
@@ -118,7 +124,7 @@ const LoginForm = () => {
 
       <AuthButton type="submit" loading={loading} loadingLabel="Logging in...">
         <FaSignInAlt className="text-sm" />
-        Log In
+        {t("login")}
       </AuthButton>
     </form>
   );
