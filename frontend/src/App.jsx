@@ -12,6 +12,7 @@ import WhiteBoardPage from './pages/whiteboard/WhiteBoardPage';
 import ReportsPage from './pages/reports/ReportsPage';
 import { useTranslation } from "react-i18next";
 import SettingsPage from './pages/settings/settingsPage';
+import InboxPage from './pages/Inbox/InboxPage';
 function App() {
   
   const [isLoggedIn, setIsLoggedIn] = useState(true);
@@ -53,6 +54,10 @@ const { i18n } = useTranslation();
             <Route
                 path='/settings'
                 element={<SettingsPage setPath={setPath}/>}
+            />
+            <Route
+                path='/inbox'
+                element={<InboxPage setPath={setPath}/>}
             />
           </Route>
             <Route
