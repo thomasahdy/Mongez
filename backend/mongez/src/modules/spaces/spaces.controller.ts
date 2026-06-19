@@ -9,6 +9,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -16,15 +17,20 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SpacesService } from './spaces.service';
 import { SpaceMemberGuard, SpaceRoles } from './guards/space-member.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CreateSpaceDto } from './dto/create-space.dto';
 import { UpdateSpaceDto } from './dto/update-space.dto';
 import { CreateDepartmentDto, UpdateDepartmentDto } from './dto/department.dto';
 import { InviteMemberDto, UpdateMemberRoleDto } from './dto/membership.dto';
 import { PaginationDto } from '../../shared/dto/pagination.dto';
+import { AuditLogInterceptor } from '../../common/interceptors/audit-log.interceptor';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Spaces')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
+@UseInterceptors(AuditLogInterceptor)
 @Controller('spaces')
 export class SpacesController {
   constructor(private readonly spacesService: SpacesService) {}
@@ -32,6 +38,7 @@ export class SpacesController {
   // ─── Spaces ────────────────────────────────────────────────
 
   @Post()
+  @AuditLog({ action: 'space.created', entityType: 'Space' })
   @ApiOperation({ summary: 'Create a new space' })
   async create(@Req() req: any, @Body() dto: CreateSpaceDto) {
     return this.spacesService.create(dto, req.user.userId);
@@ -51,16 +58,20 @@ export class SpacesController {
   }
 
   @Patch(':id')
-  @UseGuards(SpaceMemberGuard)
+  @AuditLog({ action: 'space.updated', entityType: 'Space', entityIdParam: 'id' })
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER', 'ADMIN')
+  @RequirePermissions(['manage', 'space'])
   @ApiOperation({ summary: 'Update space metadata' })
   async update(@Param('id') id: string, @Body() dto: UpdateSpaceDto) {
     return this.spacesService.update(id, dto);
   }
 
   @Delete(':id')
-  @UseGuards(SpaceMemberGuard)
+  @AuditLog({ action: 'space.deleted', entityType: 'Space', entityIdParam: 'id' })
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER')
+  @RequirePermissions(['delete', 'space'])
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete space (cascade all data) — owner only' })
   async delete(@Param('id') id: string): Promise<void> {
@@ -74,6 +85,13 @@ export class SpacesController {
     return this.spacesService.getStats(id);
   }
 
+  @Post(':id/export')
+  @UseGuards(SpaceMemberGuard)
+  @ApiOperation({ summary: 'Request workspace JSON export (runs in background)' })
+  async requestExport(@Req() req: any, @Param('id') id: string) {
+    return this.spacesService.requestExport(id, req.user.userId);
+  }
+
   // ─── Departments ───────────────────────────────────────────
 
   @Get(':id/departments')
@@ -84,24 +102,30 @@ export class SpacesController {
   }
 
   @Post(':id/departments')
-  @UseGuards(SpaceMemberGuard)
+  @AuditLog({ action: 'department.created', entityType: 'Department', entityIdParam: 'id' })
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER', 'ADMIN')
+  @RequirePermissions(['manage', 'board'])
   @ApiOperation({ summary: 'Create a department' })
   async createDepartment(@Param('id') spaceId: string, @Body() dto: CreateDepartmentDto) {
     return this.spacesService.createDepartment(spaceId, dto);
   }
 
   @Patch(':spaceId/departments/:deptId')
-  @UseGuards(SpaceMemberGuard)
+  @AuditLog({ action: 'department.updated', entityType: 'Department', entityIdParam: 'deptId' })
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER', 'ADMIN')
+  @RequirePermissions(['manage', 'board'])
   @ApiOperation({ summary: 'Update a department' })
   async updateDepartment(@Param('deptId') deptId: string, @Body() dto: UpdateDepartmentDto) {
     return this.spacesService.updateDepartment(deptId, dto);
   }
 
   @Delete(':spaceId/departments/:deptId')
-  @UseGuards(SpaceMemberGuard)
+  @AuditLog({ action: 'department.deleted', entityType: 'Department', entityIdParam: 'deptId' })
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER', 'ADMIN')
+  @RequirePermissions(['delete', 'board'])
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a department (fails if it has boards)' })
   async deleteDepartment(@Param('deptId') deptId: string): Promise<void> {
@@ -118,9 +142,11 @@ export class SpacesController {
   }
 
   @Patch(':id/members/:userId/role')
-  @UseGuards(SpaceMemberGuard)
+  @AuditLog({ action: 'membership.role_changed', entityType: 'Membership', entityIdParam: 'id' })
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER', 'ADMIN')
-  @ApiOperation({ summary: 'Change a member\'s role' })
+  @RequirePermissions(['manage', 'member'])
+  @ApiOperation({ summary: "Change a member's role" })
   async changeRole(
     @Req() req: any,
     @Param('id') spaceId: string,
@@ -131,8 +157,10 @@ export class SpacesController {
   }
 
   @Delete(':id/members/:userId')
-  @UseGuards(SpaceMemberGuard)
+  @AuditLog({ action: 'membership.member_removed', entityType: 'Membership', entityIdParam: 'id' })
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER', 'ADMIN')
+  @RequirePermissions(['manage', 'member'])
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a member from space' })
   async removeMember(
@@ -144,6 +172,7 @@ export class SpacesController {
   }
 
   @Delete(':id/members/me')
+  @AuditLog({ action: 'membership.leave', entityType: 'Membership', entityIdParam: 'id' })
   @UseGuards(SpaceMemberGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Leave space' })
@@ -154,24 +183,29 @@ export class SpacesController {
   // ─── Invitations ───────────────────────────────────────────
 
   @Post(':id/invitations')
-  @UseGuards(SpaceMemberGuard)
+  @AuditLog({ action: 'invitation.created', entityType: 'Invitation', entityIdParam: 'id' })
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER', 'ADMIN')
+  @RequirePermissions(['manage', 'member'])
   @ApiOperation({ summary: 'Invite a user by email' })
   async inviteMember(@Param('id') spaceId: string, @Body() dto: InviteMemberDto) {
     return this.spacesService.inviteMember(spaceId, dto);
   }
 
   @Get(':id/invitations')
-  @UseGuards(SpaceMemberGuard)
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER', 'ADMIN')
+  @RequirePermissions(['read', 'member'])
   @ApiOperation({ summary: 'List pending invitations' })
   async getPendingInvitations(@Param('id') spaceId: string) {
     return this.spacesService.getPendingInvitations(spaceId);
   }
 
   @Delete(':id/invitations/:inviteId')
-  @UseGuards(SpaceMemberGuard)
+  @AuditLog({ action: 'invitation.cancelled', entityType: 'Invitation', entityIdParam: 'inviteId' })
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @SpaceRoles('OWNER', 'ADMIN')
+  @RequirePermissions(['manage', 'member'])
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Cancel a pending invitation' })
   async cancelInvitation(@Param('inviteId') inviteId: string): Promise<void> {
@@ -184,11 +218,13 @@ export class SpacesController {
 @ApiTags('Invitations')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
+@UseInterceptors(AuditLogInterceptor)
 @Controller('invitations')
 export class InvitationsController {
   constructor(private readonly spacesService: SpacesService) {}
 
   @Get('accept')
+  @AuditLog({ action: 'invitation.accepted', entityType: 'Invitation', entityIdParam: 'token' })
   @ApiOperation({ summary: 'Accept an invitation using the token from email link' })
   async acceptInvitation(@Req() req: any, @Query('token') token: string) {
     return this.spacesService.acceptInvitation(token, req.user.userId);

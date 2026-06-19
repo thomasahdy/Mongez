@@ -9,17 +9,26 @@ export interface StandardResponse<T> {
 }
 
 @Injectable()
-export class ResponseInterceptor<T> implements NestInterceptor<T, StandardResponse<T>> {
+export class ResponseInterceptor<T> implements NestInterceptor<T, StandardResponse<T> | T> {
   intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Observable<StandardResponse<T>> {
+  ): Observable<StandardResponse<T> | T> {
     return next.handle().pipe(
-      map((data) => ({
-        success: true,
-        data,
-        timestamp: new Date().toISOString(),
-      })),
+      map((data) => {
+        // If the controller already produced a standard response envelope
+        // (i.e. it has a `success` boolean property), pass it through as-is
+        // to avoid double-wrapping. Controllers like AuthController build
+        // their own { success, data, message } objects explicitly.
+        if (data !== null && typeof data === 'object' && 'success' in data) {
+          return data;
+        }
+        return {
+          success: true,
+          data,
+          timestamp: new Date().toISOString(),
+        };
+      }),
     );
   }
 }

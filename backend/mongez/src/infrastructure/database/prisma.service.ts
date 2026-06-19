@@ -32,6 +32,8 @@ export class PrismaService implements OnModuleInit {
   get role() { return this.prisma.role; }
   get permission() { return this.prisma.permission; }
   get rolePermission() { return this.prisma.rolePermission; }
+  get userPreference() { return this.prisma.userPreference; }
+  get integration() { return this.prisma.integration; }
 
   // ─── Workspace Hierarchy ───────────────────────────────────
   get space() { return this.prisma.space; }
@@ -62,6 +64,7 @@ export class PrismaService implements OnModuleInit {
   // ─── Files ─────────────────────────────────────────────────
   get attachment() { return this.prisma.attachment; }
   get fileVersion() { return this.prisma.fileVersion; }
+  get driveAttachment() { return this.prisma.driveAttachment; }
 
   // ─── Approvals ─────────────────────────────────────────────
   get approval() { return this.prisma.approval; }
@@ -70,6 +73,8 @@ export class PrismaService implements OnModuleInit {
   get aiRequest() { return this.prisma.aIRequest; }
   get aiProposedAction() { return this.prisma.aIProposedAction; }
   get aiEvalResult() { return this.prisma.aIEvalResult; }
+  get aiConversationTurn() { return this.prisma.aIConversationTurn; }
+  get aiMemoryProfile() { return this.prisma.aIMemoryProfile; }
 
   // ─── Notifications & Audit ─────────────────────────────────
   get notification() { return this.prisma.notification; }
@@ -80,9 +85,30 @@ export class PrismaService implements OnModuleInit {
   get taskJournal() { return this.prisma.taskJournal; }
   get activity() { return this.prisma.activity; }
   get userLog() { return this.prisma.userLog; }
+  get featureFlag() { return this.prisma.featureFlag; }
+
+  // ─── Workflow Engine ───────────────────────────────────────
+  get workflowDefinition() { return this.prisma.workflowDefinition; }
+  get workflowStep() { return this.prisma.workflowStep; }
+  get workflowInstance() { return this.prisma.workflowInstance; }
+  get workflowAction() { return this.prisma.workflowAction; }
+
+  // ─── Metering ──────────────────────────────────────────────
+  get usageRecord() { return this.prisma.usageRecord; }
+
+  // ─── Messaging Channels (WhatsApp / Telegram) ──────────────
+  get whatsAppAccount() { return this.prisma.whatsAppAccount; }
+  get whatsAppContact() { return this.prisma.whatsAppContact; }
+  get whatsAppMessage() { return this.prisma.whatsAppMessage; }
+  get telegramAccount() { return this.prisma.telegramAccount; }
+  get telegramContact() { return this.prisma.telegramContact; }
+  get telegramMessage() { return this.prisma.telegramMessage; }
 
   // ─── Raw query access ───────────────────────────────────────
   get $queryRaw() { return this.prisma.$queryRaw.bind(this.prisma); }
+  get $queryRawUnsafe() { return this.prisma.$queryRawUnsafe.bind(this.prisma); }
+  get $executeRaw() { return this.prisma.$executeRaw.bind(this.prisma); }
+  get $executeRawUnsafe() { return this.prisma.$executeRawUnsafe.bind(this.prisma); }
   get $transaction() { return this.prisma.$transaction.bind(this.prisma); }
 
   // ─── Health ────────────────────────────────────────────────

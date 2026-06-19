@@ -10,14 +10,18 @@ import { OutboxRepository } from './outbox/outbox.repository';
 import { OutboxRelayService } from './outbox/outbox-relay.service';
 import { EmailChannel } from './channels/email.channel';
 import { WebSocketChannel } from './channels/websocket.channel';
+import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { TelegramModule } from '../telegram/telegram.module';
 import { PresenceService } from './presence/presence.service';
 
 import { CacheModule } from '../../infrastructure/cache/cache.module';
-
+import { forwardRef } from '@nestjs/common';
 @Module({
   imports: [
     BullModule.registerQueue({ name: QUEUE_NAMES.NOTIFICATIONS }),
     RealtimeModule,
+    forwardRef(() => WhatsAppModule),
+    forwardRef(() => TelegramModule),
     CacheModule,
   ],
   controllers: [NotificationsController],
@@ -33,4 +37,4 @@ import { CacheModule } from '../../infrastructure/cache/cache.module';
   ],
   exports: [NotificationsService, OutboxRepository, PresenceService],
 })
-export class NotificationsModule {}
+export class NotificationsModule { }

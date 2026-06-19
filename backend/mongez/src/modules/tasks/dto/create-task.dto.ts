@@ -5,6 +5,8 @@ export class CreateTaskDto {
   @IsString() @Length(1, 500) title: string;
   @IsString() boardId: string;
   @IsString() columnId: string;
+  @IsString() spaceId: string;
+  @IsString() spacePrefix: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsEnum(TaskStatus) status?: TaskStatus = TaskStatus.TODO;
   @IsOptional() @IsEnum(Priority) priority?: Priority = Priority.MEDIUM;

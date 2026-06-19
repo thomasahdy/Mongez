@@ -5,5 +5,15 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/../src/$1"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!uuid)"
+  ],
+  "setupFiles": ["<rootDir>/helpers/test-env-setup.ts"],
+  "globalSetup": "<rootDir>/helpers/global-setup.ts",
+  "testTimeout": 30000,
+  "forceExit": true
 }

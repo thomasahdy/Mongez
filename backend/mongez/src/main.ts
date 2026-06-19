@@ -1,4 +1,5 @@
-import { NestFactory } from '@nestjs/core';
+import './infrastructure/observability/otel.setup';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
@@ -6,9 +7,19 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { setupSwagger } from './common/swagger/swagger.setup';
 import { RedisIoAdapter } from './infrastructure/redis/redis-io.adapter';
+import { SanitizePipe } from './common/pipes/sanitize.pipe';
+import { ValidationPipe } from '@nestjs/common';
+import { JsonLoggerService } from './infrastructure/logging/json-logger.service';
+import { TraceContextService } from './infrastructure/logging/trace-context.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const traceContext = new TraceContextService();
+  const app = await NestFactory.create(AppModule, {
+    logger: new JsonLoggerService(traceContext),
+    // Store the raw request body so webhook signature verification
+    // (Meta `X-Hub-Signature-256`) can HMAC the exact bytes received.
+    rawBody: true,
+  });
 
   // ── API versioning ─────────────────────────────────────────
   app.setGlobalPrefix('api/v1');
@@ -19,7 +30,7 @@ async function bootstrap() {
   app.useWebSocketAdapter(redisIoAdapter);
 
   // ── Middleware ─────────────────────────────────────────────
-  // (TraceMiddleware is registered per-module in AppModule)
+  // (TraceMiddleware + TenantMiddleware registered in AppModule.configure())
   app.use(cookieParser());
 
   // ── CORS ───────────────────────────────────────────────────
@@ -35,11 +46,18 @@ async function bootstrap() {
   // ── Global response envelope ───────────────────────────────
   app.useGlobalInterceptors(new ResponseInterceptor());
 
-  app.useGlobalPipes(new (require('@nestjs/common').ValidationPipe)({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+  // ── Global pipes ───────────────────────────────────────────
+  // 1. ValidationPipe — strips unknown fields, transforms types
+  // 2. SanitizePipe   — removes XSS/null bytes from string values
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+    new SanitizePipe(),
+  );
+
   // ── Swagger (dev only) ─────────────────────────────────────
   const isWorker = process.env.APP_MODE === 'worker';
   if (!isWorker) {

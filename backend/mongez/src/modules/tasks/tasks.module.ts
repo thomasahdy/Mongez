@@ -10,6 +10,9 @@ import { BoardsModule } from '../boards/boards.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { TrashModule } from '../trash/trash.module';
+
+import { CqrsModule } from '@nestjs/cqrs';
 
 @Module({
   imports: [
@@ -18,6 +21,8 @@ import { RealtimeModule } from '../realtime/realtime.module';
     SpacesModule,
     NotificationsModule,
     RealtimeModule,
+    CqrsModule,
+    TrashModule,
   ],
   controllers: [TasksController],
   providers: [

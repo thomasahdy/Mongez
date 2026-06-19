@@ -1,0 +1,35 @@
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job } from 'bullmq';
+import { Logger } from '@nestjs/common';
+import { QUEUE_NAMES, JOB_NAMES } from '../../../infrastructure/queue/queue.constants';
+import { AuditService } from '../audit.service';
+import { AuditLogInput } from '../dto/audit-log-input.dto';
+import { TraceContextService } from '../../../infrastructure/logging/trace-context.service';
+import { randomUUID } from 'crypto';
+
+@Processor(QUEUE_NAMES.ACTIVITY_LOG)
+export class AuditProcessor extends WorkerHost {
+  private readonly logger = new Logger(AuditProcessor.name);
+
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly traceContext: TraceContextService,
+  ) {
+    super();
+  }
+
+  async process(job: Job<any>): Promise<any> {
+    if (job.name !== JOB_NAMES.LOG_ACTIVITY) return;
+
+    const correlationId = job.data?.correlationId || randomUUID();
+
+    return this.traceContext.run(correlationId, async () => {
+      try {
+        await this.auditService.record(job.data as AuditLogInput);
+      } catch (err: any) {
+        this.logger.error(`Audit log job ${job.id} failed: ${err.message}`);
+        throw err;
+      }
+    });
+  }
+}

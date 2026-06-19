@@ -20,7 +20,7 @@ export class AuthExceptionFilter implements ExceptionFilter {
     }
 
     // In development, provide more detailed error information
-    const isDevelopment = process.env.NODE_ENV === 'development';
+    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
     
     const errorResponse = {
       success: false,

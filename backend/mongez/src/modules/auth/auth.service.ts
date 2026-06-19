@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UserRepository, UserReadModel } from './repositories/user.repository';
 import { UserLogRepository } from './repositories/user-log.repository';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
@@ -108,7 +108,7 @@ export class AuthService {
         ipAddress: ip,
         userAgent,
       });
-      throw new UnauthorizedException('Account is temporarily locked. Please try again later.');
+      throw new ForbiddenException('Account is temporarily locked. Please try again later.');
     }
 
     // Verify password
@@ -219,7 +219,7 @@ export class AuthService {
         throw new UnauthorizedException('Account is not active');
       }
       if (userRecord.isLocked) {
-        throw new UnauthorizedException('Account is temporarily locked.');
+        throw new ForbiddenException('Account is temporarily locked.');
       }
 
       await this.userRepo.recordLogin(userId);

@@ -22,6 +22,8 @@ describe('UsersService', () => {
       setVerificationToken: jest.fn(),
       verifyEmail: jest.fn(),
       revokeAllSessions: jest.fn(),
+      getPreferences: jest.fn(),
+      updatePreferences: jest.fn(),
     } as any;
 
     cache = {
@@ -67,6 +69,37 @@ describe('UsersService', () => {
 
       expect(result).toEqual(updatedUser);
       expect(userRepo.updateProfile).toHaveBeenCalledWith('user-1', updateData);
+      expect(cache.invalidateEntity).toHaveBeenCalledWith('user', 'user-1');
+    });
+  });
+
+  describe('getPreferences()', () => {
+    it('should return user preferences if they exist', async () => {
+      const mockPref = { id: 'p-1', userId: 'user-1', language: 'fr', timezone: 'EST', theme: 'dark', dateFormat: 'YYYY-MM-DD', weekStart: 'SUN' };
+      userRepo.getPreferences.mockResolvedValue(mockPref as any);
+
+      const result = await service.getPreferences('user-1');
+      expect(result).toEqual(mockPref);
+    });
+
+    it('should return default preferences if none exist in DB', async () => {
+      userRepo.getPreferences.mockResolvedValue(null);
+
+      const result = await service.getPreferences('user-1');
+      expect(result.userId).toBe('user-1');
+      expect(result.language).toBe('en');
+      expect(result.theme).toBe('system');
+    });
+  });
+
+  describe('updatePreferences()', () => {
+    it('should update preferences and invalidate cache', async () => {
+      const dto = { language: 'ar', theme: 'light' };
+      const mockUpdatedPref = { id: 'p-1', userId: 'user-1', ...dto };
+      userRepo.updatePreferences.mockResolvedValue(mockUpdatedPref as any);
+
+      const result = await service.updatePreferences('user-1', dto as any);
+      expect(result).toEqual(mockUpdatedPref);
       expect(cache.invalidateEntity).toHaveBeenCalledWith('user', 'user-1');
     });
   });

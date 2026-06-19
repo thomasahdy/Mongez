@@ -1,6 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CacheService } from '../../infrastructure/cache/cache.service';
 import { BoardRepository, ColumnRepository } from './repositories/boards.repositories';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { TrashService } from '../trash/trash.service';
 import {
   CreateBoardDto,
   UpdateBoardDto,
@@ -19,6 +22,9 @@ export class BoardsService {
     private readonly boardRepo: BoardRepository,
     private readonly columnRepo: ColumnRepository,
     private readonly cache: CacheService,
+    private readonly prisma: PrismaService,
+    private readonly subscriptions: SubscriptionsService,
+    private readonly trashService: TrashService,
   ) {}
 
   // ─── Boards ────────────────────────────────────────────────
@@ -41,6 +47,25 @@ export class BoardsService {
   }
 
   async create(dto: CreateBoardDto) {
+    const dept = await this.prisma.department.findUnique({
+      where: { id: dto.departmentId },
+      select: { spaceId: true },
+    });
+    if (!dept) {
+      throw new NotFoundException('Department not found');
+    }
+
+    const { limits } = await this.subscriptions.getPlan(dept.spaceId);
+    const boardCount = await this.prisma.board.count({
+      where: { department: { spaceId: dept.spaceId }, isArchived: false },
+    });
+
+    if (boardCount >= limits.maxBoards) {
+      throw new ForbiddenException(
+        `Your plan allows a maximum of ${limits.maxBoards} boards. Please upgrade.`,
+      );
+    }
+
     const board = await this.boardRepo.create(dto);
     await this.cache.invalidateEntityType(this.CACHE_PREFIX);
     return board;
@@ -52,8 +77,8 @@ export class BoardsService {
     return board;
   }
 
-  async archive(id: string): Promise<void> {
-    await this.boardRepo.archive(id);
+  async archive(id: string, userId: string): Promise<void> {
+    await this.trashService.softDeleteBoard(id, userId);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, id);
   }
 
@@ -71,8 +96,8 @@ export class BoardsService {
     return col;
   }
 
-  async deleteColumn(boardId: string, colId: string): Promise<void> {
-    await this.columnRepo.delete(colId); // throws BadRequestException if tasks exist
+  async deleteColumn(boardId: string, colId: string, userId: string): Promise<void> {
+    await this.trashService.softDeleteColumn(colId, userId);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, boardId);
   }
 
