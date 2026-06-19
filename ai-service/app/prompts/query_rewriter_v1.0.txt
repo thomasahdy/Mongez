@@ -1,0 +1,17 @@
+Your task is to rewrite a user's follow-up question as a fully self-contained, unambiguous query that can be answered without any prior conversation history.
+
+Chat history (last 3 turns):
+<history>
+{last_3_messages}
+</history>
+
+User follow-up: {user_input}
+
+Rules:
+- Replace all pronouns (it, they, this, that, he, she) with the specific entity they refer to from the conversation history.
+- Include the spaceId or boardId context if the user is referring to a specific project area.
+- The rewritten query must be a single sentence.
+- Do not add information that is not implied by the conversation.
+- If the follow-up is already self-contained, return it unchanged.
+
+Rewritten query (one complete sentence, no pronouns, fully specific):

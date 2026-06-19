@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { TaskRepository, CommentRepository, TimeLogRepository } from './repositories/tasks.repositories';
+import { TrashService } from '../trash/trash.service';
 import { CacheService } from '../../infrastructure/cache/cache.service';
-import { RealtimeService } from '../realtime/realtime.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { IdentifierService } from '../../shared/services/identifier.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -14,19 +14,43 @@ import { AssignTaskDto } from './dto/assign-task.dto';
 import { CreateCommentDto, UpdateCommentDto } from './dto/comment.dto';
 import { LogTimeDto } from './dto/log-time.dto';
 import { QUEUE_NAMES, JOB_NAMES } from '../../infrastructure/queue/queue.constants';
+import { EventBus } from '@nestjs/cqrs';
+import {
+  TaskCreatedEvent,
+  TaskUpdatedEvent,
+  TaskMovedEvent,
+  TaskArchivedEvent,
+  CommentAddedEvent,
+} from './events/task-events';
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
+
   constructor(
     private readonly taskRepo: TaskRepository,
     private readonly commentRepo: CommentRepository,
     private readonly timeLogRepo: TimeLogRepository,
     private readonly cache: CacheService,
-    private readonly realtimeService: RealtimeService,
     private readonly notificationsService: NotificationsService,
     private readonly identifierService: IdentifierService,
+    private readonly eventBus: EventBus,
+    private readonly trashService: TrashService,
     @InjectQueue(QUEUE_NAMES.AI_PROCESSING) private readonly aiQueue: Queue,
   ) {}
+
+  /**
+   * Invalidate all AI caches for a space when task data changes.
+   * Fire-and-forget to avoid adding latency to task operations.
+   */
+  private invalidateAiCache(spaceId: string): void {
+    Promise.all([
+      this.cache.delPattern(`ai:chat:${spaceId}:*`),
+      this.cache.delPattern(`ai:risk:${spaceId}:*`),
+    ]).catch((err) =>
+      this.logger.error(`Failed to invalidate AI cache for space ${spaceId}: ${err.message}`),
+    );
+  }
 
   async getTaskById(id: string) {
     const task = await this.taskRepo.findById(id);
@@ -41,40 +65,61 @@ export class TasksService {
   async createTask(dto: CreateTaskDto, userId: string, spaceId: string, spacePrefix: string) {
     const task = await this.taskRepo.create(dto, spaceId, spacePrefix, this.identifierService, userId);
 
-    // Notifications are now handled securely by the Transactional Outbox inside taskRepo.create()
-
     await this.aiQueue.add(JOB_NAMES.AI_INDEX_DOCUMENT, { spaceId, taskId: task.id });
-    this.realtimeService.emitToBoard(dto.boardId, 'task:created', task);
+    
+    // Publish Domain Event
+    this.eventBus.publish(new TaskCreatedEvent(task));
+    
+    this.invalidateAiCache(spaceId);
     return task;
   }
 
-  async updateTask(id: string, dto: UpdateTaskDto, userId: string) {
+  async updateTask(id: string, dto: UpdateTaskDto, userId: string, spaceId?: string) {
     const task = await this.taskRepo.update(id, dto, userId);
 
     if (dto.status === 'BLOCKED') {
       await this.aiQueue.add(JOB_NAMES.AI_RISK_SCAN, { taskId: task.id });
     }
 
-    this.realtimeService.emitToBoard(task.boardId, 'task:updated', { id, changes: dto });
+    // Publish Domain Event
+    this.eventBus.publish(new TaskUpdatedEvent(id, dto, task.boardId, userId));
+
+    if (spaceId) {
+      this.invalidateAiCache(spaceId);
+    }
     return task;
   }
 
-  async moveTask(id: string, dto: MoveTaskDto) {
+  async moveTask(id: string, dto: MoveTaskDto, userId: string, spaceId?: string) {
     const task = await this.taskRepo.move(id, dto);
-    this.realtimeService.emitToBoard(task.boardId, 'task:moved', { id, columnId: dto.columnId, position: dto.position });
+
+    // Publish Domain Event
+    this.eventBus.publish(new TaskMovedEvent(id, dto.columnId, dto.position, task.boardId, userId));
+
+    if (spaceId) {
+      this.invalidateAiCache(spaceId);
+    }
     return task;
   }
 
-  async archiveTask(id: string) {
-    const task = await this.taskRepo.archive(id);
-    this.realtimeService.emitToBoard(task.boardId, 'task:archived', { id });
+  async softDeleteTask(id: string, userId: string, spaceId?: string) {
+    const task = await this.taskRepo.findById(id);
+    if (!task) throw new NotFoundException('Task not found');
+
+    await this.trashService.softDeleteTask(id, userId);
+
+    // Publish Domain Event
+    this.eventBus.publish(new TaskArchivedEvent(id, task.boardId, userId));
+
+    if (spaceId) {
+      this.invalidateAiCache(spaceId);
+    }
   }
 
   async addComment(taskId: string, dto: CreateCommentDto, authorId: string, spaceId: string) {
     const { comment, mentionedUserIds } = await this.commentRepo.create(taskId, authorId, dto.content);
 
     if (mentionedUserIds.length) {
-      // should ideally queue a BULK_NOTIFY
       for (const userId of mentionedUserIds) {
         await this.notificationsService.queueNotification({
           userId,
@@ -89,7 +134,9 @@ export class TasksService {
       }
     }
 
-    this.realtimeService.emitToSpace(spaceId, 'comment:added', comment);
+    // Publish Domain Event
+    this.eventBus.publish(new CommentAddedEvent(comment, spaceId));
+
     return comment;
   }
 

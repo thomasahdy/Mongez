@@ -7,6 +7,9 @@ export const QUEUE_NAMES = {
   AI_PROCESSING: 'ai-processing',
   REPORTS: 'reports',
   ACTIVITY_LOG: 'activity-log',
+  WORKSPACE_EXPORT: 'workspace-export',
+  WHATSAPP: 'whatsapp',
+  TELEGRAM: 'telegram',
 } as const;
 
 export const JOB_NAMES = {
@@ -28,4 +31,8 @@ export const JOB_NAMES = {
 
   // Activity
   LOG_ACTIVITY: 'log-activity',
+
+  // Messaging channels
+  SEND_WHATSAPP: 'send-whatsapp',
+  SEND_TELEGRAM: 'send-telegram',
 } as const;

@@ -6,6 +6,7 @@ import { RefreshTokenRepository } from './repositories/refresh-token.repository'
 import { JwtService } from './services/jwt.service';
 import { PasswordService } from './services/password.service';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { SessionService } from './services/session.service';
 import { User } from './domain/user.entity';
 
 describe('AuthService', () => {
@@ -16,6 +17,7 @@ describe('AuthService', () => {
   let jwtService: jest.Mocked<JwtService>;
   let passwordService: jest.Mocked<PasswordService>;
   let prisma: jest.Mocked<PrismaService>;
+  let sessionService: jest.Mocked<SessionService>;
 
   beforeEach(() => {
     userRepo = {
@@ -56,6 +58,12 @@ describe('AuthService', () => {
       },
     } as any;
 
+    sessionService = {
+      createSession: jest.fn().mockResolvedValue(undefined),
+      getUserSessions: jest.fn(),
+      revokeAllSessions: jest.fn(),
+    } as any;
+
     service = new AuthService(
       userRepo,
       userLogRepo,
@@ -63,6 +71,7 @@ describe('AuthService', () => {
       jwtService,
       passwordService,
       prisma,
+      sessionService,
     );
   });
 
@@ -88,7 +97,7 @@ describe('AuthService', () => {
       expect(userRepo.save).toHaveBeenCalledWith(expect.any(User));
       expect(jwtService.generateAccessToken).toHaveBeenCalled();
       expect(jwtService.generateRefreshToken).toHaveBeenCalled();
-      expect(userRepo.saveRefreshToken).toHaveBeenCalled();
+      expect(sessionService.createSession).toHaveBeenCalled();
       expect(userLogRepo.create).toHaveBeenCalledWith({
         userId: expect.any(String),
         action: 'USER_REGISTERED',

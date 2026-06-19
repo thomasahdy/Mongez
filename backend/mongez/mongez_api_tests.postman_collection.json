@@ -1,0 +1,958 @@
+{
+  "info": {
+    "_postman_id": "8b51d8b6-ea50-482a-a92c-5674c93d9f1c",
+    "name": "Mongez API Test Collection",
+    "description": "Collection to test Mongez backend features including Auth, Spaces, Tasks, WhatsApp, Telegram, Approvals, and AI.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@mongez.app\",\n  \"password\": \"SecurePass123!\",\n  \"name\": \"Test User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Postman automatically handles cookies, but if using headers we can set the token variable:",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.accessToken) {",
+                  "    pm.environment.set(\"accessToken\", jsonData.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@mongez.app\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Spaces",
+      "item": [
+        {
+          "name": "Create Space",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.id) {",
+                  "    pm.environment.set(\"spaceId\", jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme NGO\",\n  \"prefix\": \"ACM\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/spaces",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List User's Spaces",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spaces",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Specific Space Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invite Member by Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"collaborator@mongez.app\",\n  \"role\": \"MEMBER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/invites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "invites"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Boards & Tasks",
+      "item": [
+        {
+          "name": "List Boards in Space",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/boards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "boards"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Board",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.id) {",
+                  "    pm.environment.set(\"boardId\", jsonData.id);",
+                  "    if (jsonData.columns && jsonData.columns.length > 0) {",
+                  "        pm.environment.set(\"columnId\", jsonData.columns[0].id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Main Project Sprint\",\n  \"description\": \"Main pipeline\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/boards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "boards"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.id) {",
+                  "    pm.environment.set(\"taskId\", jsonData.id);",
+                  "    pm.environment.set(\"taskIdentifier\", jsonData.identifier);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Implement Search Engine\",\n  \"description\": \"Write elastic search bindings\",\n  \"boardId\": \"{{boardId}}\",\n  \"columnId\": \"{{columnId}}\",\n  \"priority\": \"HIGH\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "tasks"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List/Filter Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "tasks"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "WhatsApp Integration",
+      "item": [
+        {
+          "name": "Configure WABA Account (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumberId\": \"1234567890\",\n  \"wabaId\": \"waba-id-123\",\n  \"accessToken\": \"temp-or-permanent-meta-token\",\n  \"displayName\": \"Mongez Space Bot\",\n  \"webhookSecret\": \"my-app-secret-signature-key\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/spaces/{{spaceId}}/setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "whatsapp",
+                "spaces",
+                "{{spaceId}}",
+                "setup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Integration Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/spaces/{{spaceId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "whatsapp",
+                "spaces",
+                "{{spaceId}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register User Contact Number",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+966555555555\",\n  \"waId\": \"966555555555\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/spaces/{{spaceId}}/contact",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "whatsapp",
+                "spaces",
+                "{{spaceId}}",
+                "contact"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Opt Out of Notifications",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/spaces/{{spaceId}}/contact/opt-out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "whatsapp",
+                "spaces",
+                "{{spaceId}}",
+                "contact",
+                "opt-out"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Webhook Public Address Info",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/spaces/{{spaceId}}/webhook/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "whatsapp",
+                "spaces",
+                "{{spaceId}}",
+                "webhook",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Inbound Verification (GET hub.challenge)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=mongez-whatsapp-verify&hub.challenge=test-challenge-12345",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "whatsapp",
+                "webhook"
+              ],
+              "query": [
+                {
+                  "key": "hub.mode",
+                  "value": "subscribe"
+                },
+                {
+                  "key": "hub.verify_token",
+                  "value": "mongez-whatsapp-verify"
+                },
+                {
+                  "key": "hub.challenge",
+                  "value": "test-challenge-12345"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mock Inbound Text Message (Webhook POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-hub-signature-256",
+                "value": "sha256=MOCK_HMAC_SIGNATURE_IF_VERIFY_ACTIVE",
+                "description": "Signature verification can be skipped in dev by leaving WHATSAPP_APP_SECRET unconfigured in .env"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [\n    {\n      \"id\": \"waba-id-123\",\n      \"changes\": [\n        {\n          \"value\": {\n            \"messaging_product\": \"whatsapp\",\n            \"metadata\": {\n              \"display_phone_number\": \"+15550000000\",\n              \"phone_number_id\": \"1234567890\"\n            },\n            \"contacts\": [\n              {\n                \"profile\": {\n                  \"name\": \"Test User\"\n                },\n                \"wa_id\": \"966555555555\"\n              }\n            ],\n            \"messages\": [\n              {\n                \"from\": \"966555555555\",\n                \"id\": \"wamid.HBgLOTY2NTU1NTU1NTUVAgARGBI0OEUyNkZFMzE4MkUzQQA=\",\n                \"timestamp\": \"1600000000\",\n                \"text\": {\n                  \"body\": \"/tasks\"\n                },\n                \"type\": \"text\"\n              }\n            ]\n          },\n          \"field\": \"messages\"\n        }\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "whatsapp",
+                "webhook"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mock Inbound Button Click (Webhook POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [\n    {\n      \"id\": \"waba-id-123\",\n      \"changes\": [\n        {\n          \"value\": {\n            \"messaging_product\": \"whatsapp\",\n            \"metadata\": {\n              \"display_phone_number\": \"+15550000000\",\n              \"phone_number_id\": \"1234567890\"\n            },\n            \"messages\": [\n              {\n                \"from\": \"966555555555\",\n                \"id\": \"wamid.button_click_123\",\n                \"timestamp\": \"1600000000\",\n                \"type\": \"interactive\",\n                \"interactive\": {\n                  \"type\": \"button_reply\",\n                  \"button_reply\": {\n                    \"id\": \"approve:wf-instance-uuid-001\",\n                    \"title\": \"Approve\"\n                  }\n                }\n              }\n            ]\n          },\n          \"field\": \"messages\"\n        }\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "whatsapp",
+                "webhook"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Telegram Integration",
+      "item": [
+        {
+          "name": "Configure Telegram Bot (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"botToken\": \"123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ\",\n  \"botUsername\": \"MongezPlatformBot\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/telegram/spaces/{{spaceId}}/setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "telegram",
+                "spaces",
+                "{{spaceId}}",
+                "setup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Telegram Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/telegram/spaces/{{spaceId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "telegram",
+                "spaces",
+                "{{spaceId}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register User Chat ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chatId\": \"987654321\",\n  \"username\": \"@telegram_user\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/telegram/spaces/{{spaceId}}/contact",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "telegram",
+                "spaces",
+                "{{spaceId}}",
+                "contact"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Opt Out of Telegram Notifications",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/telegram/spaces/{{spaceId}}/contact/opt-out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "telegram",
+                "spaces",
+                "{{spaceId}}",
+                "contact",
+                "opt-out"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Webhook with Telegram API",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/telegram/spaces/{{spaceId}}/webhook/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "telegram",
+                "spaces",
+                "{{spaceId}}",
+                "webhook",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mock Inbound Text Message (Webhook POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-telegram-bot-api-secret-token",
+                "value": "my-telegram-secret-token-if-configured",
+                "description": "Optional Telegram webhook secret token"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"update_id\": 123456,\n  \"message\": {\n    \"message_id\": 456,\n    \"from\": {\n      \"id\": 987654321,\n      \"is_bot\": false,\n      \"first_name\": \"Thomas\",\n      \"username\": \"telegram_user\"\n    },\n    \"chat\": {\n      \"id\": 987654321,\n      \"first_name\": \"Thomas\",\n      \"username\": \"telegram_user\",\n      \"type\": \"private\"\n    },\n    \"date\": 1600000000,\n    \"text\": \"مهامي\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/telegram/webhook/123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "telegram",
+                "webhook",
+                "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mock Inbound Button Callback (Webhook POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"update_id\": 123457,\n  \"callback_query\": {\n    \"id\": \"cq-id-123\",\n    \"from\": {\n      \"id\": 987654321,\n      \"is_bot\": false,\n      \"username\": \"telegram_user\"\n    },\n    \"message\": {\n      \"message_id\": 457,\n      \"chat\": {\n        \"id\": 987654321,\n        \"type\": \"private\"\n      },\n      \"text\": \"🔔 Approval Needed\\nWorkflow step: Deploy Production\"\n    },\n    \"data\": \"approve:wf-instance-uuid-001\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/telegram/webhook/123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "telegram",
+                "webhook",
+                "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Approvals & Workflows",
+      "item": [
+        {
+          "name": "List User's Pending Approvals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/approvals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "approvals"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Approval Decision",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVED\",\n  \"comment\": \"Looks good to me\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/approvals/{{approvalId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "approvals",
+                "{{approvalId}}",
+                "decision"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AI & Analytics",
+      "item": [
+        {
+          "name": "AI One-Shot Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What tasks are blocked right now?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "chat"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Analytics Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/analytics/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "analytics",
+                "overview"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Liveness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Prometheus Scraping Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          ""
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          ""
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "spaceId",
+      "value": "space-uuid-here",
+      "type": "string"
+    },
+    {
+      "key": "boardId",
+      "value": "board-uuid-here",
+      "type": "string"
+    },
+    {
+      "key": "columnId",
+      "value": "column-uuid-here",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "task-uuid-here",
+      "type": "string"
+    },
+    {
+      "key": "approvalId",
+      "value": "approval-uuid-here",
+      "type": "string"
+    }
+  ]
+}

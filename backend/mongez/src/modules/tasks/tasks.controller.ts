@@ -4,6 +4,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TaskAccessGuard } from './guards/task-access.guard';
 import { BoardAccessGuard } from '../boards/guards/board-access.guard';
 import { SpaceMemberGuard } from '../spaces/guards/space-member.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -21,9 +23,10 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Post('tasks')
-  @UseGuards(SpaceMemberGuard) // Requires body.spaceId or body.prefix lookup, but we'll assume valid space member
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
+  @RequirePermissions(['create', 'task'])
   @ApiOperation({ summary: 'Create a task' })
-  async create(@Req() req: any, @Body() dto: CreateTaskDto & { spaceId: string; spacePrefix: string }) {
+  async create(@Req() req: any, @Body() dto: CreateTaskDto) {
     return this.tasksService.createTask(dto, req.user.userId, dto.spaceId, dto.spacePrefix);
   }
 
@@ -45,7 +48,8 @@ export class TasksController {
   }
 
   @Get('tasks/:id')
-  @UseGuards(TaskAccessGuard)
+  @UseGuards(TaskAccessGuard, PermissionsGuard)
+  @RequirePermissions(['read', 'task'])
   @ApiOperation({ summary: 'Get full task' })
   async getById(@Param('id') id: string) {
     return this.tasksService.getTaskById(id);
@@ -55,22 +59,22 @@ export class TasksController {
   @UseGuards(TaskAccessGuard)
   @ApiOperation({ summary: 'Update task' })
   async update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateTaskDto) {
-    return this.tasksService.updateTask(id, dto, req.user.userId);
+    return this.tasksService.updateTask(id, dto, req.user.userId, req.taskSpaceId);
   }
 
   @Patch('tasks/:id/move')
   @UseGuards(TaskAccessGuard)
   @ApiOperation({ summary: 'Move to different column/position' })
-  async move(@Param('id') id: string, @Body() dto: MoveTaskDto) {
-    return this.tasksService.moveTask(id, dto);
+  async move(@Req() req: any, @Param('id') id: string, @Body() dto: MoveTaskDto) {
+    return this.tasksService.moveTask(id, dto, req.user.userId, req.taskSpaceId);
   }
 
   @Delete('tasks/:id')
   @UseGuards(TaskAccessGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Archive task' })
-  async archive(@Param('id') id: string): Promise<void> {
-    await this.tasksService.archiveTask(id);
+  @ApiOperation({ summary: 'Soft delete task' })
+  async archive(@Req() req: any, @Param('id') id: string): Promise<void> {
+    await this.tasksService.softDeleteTask(id, req.user.userId, req.taskSpaceId);
   }
 
   @Post('tasks/:id/comments')

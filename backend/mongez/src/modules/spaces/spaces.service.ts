@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { CacheService } from '../../infrastructure/cache/cache.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { QUEUE_NAMES } from '../../infrastructure/queue/queue.constants';
+import { TraceContextService } from '../../infrastructure/logging/trace-context.service';
 import {
   SpaceRepository,
   DepartmentRepository,
@@ -30,6 +34,8 @@ export class SpacesService {
     private readonly invitationRepo: InvitationRepository,
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
+    @InjectQueue(QUEUE_NAMES.WORKSPACE_EXPORT) private readonly workspaceExportQueue: Queue,
+    private readonly traceContext: TraceContextService,
   ) {}
 
   // ─── Spaces ────────────────────────────────────────────────
@@ -200,5 +206,17 @@ export class SpacesService {
       await tx.invitation.update({ where: { token }, data: { accepted: true } });
       return { message: 'Successfully joined the space', spaceId: invitation.spaceId };
     });
+  }
+
+  async requestExport(spaceId: string, userId: string) {
+    const space = await this.prisma.space.findUnique({ where: { id: spaceId } });
+    if (!space) throw new NotFoundException('Space not found');
+
+    await this.workspaceExportQueue.add('workspace-export', {
+      spaceId,
+      userId,
+      correlationId: this.traceContext.correlationId,
+    });
+    return { message: 'Workspace export started in the background. You will receive a notification when it is complete.' };
   }
 }

@@ -10,6 +10,21 @@ datasource db {
 // ENUMS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+enum AttachmentProvider {
+  LOCAL
+  S3
+  GOOGLE_DRIVE
+  ONEDRIVE
+  DROPBOX
+}
+
+enum EmbeddingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -85,6 +100,8 @@ enum NotificationChannelType {
   IN_APP
   PUSH
   EMAIL
+  WHATSAPP
+  TELEGRAM
 }
 
 enum SubscriptionTier {
@@ -148,6 +165,12 @@ model User {
   watchers       Watcher[]
   aiRequests        AIRequest[]
   reviewedAIActions AIProposedAction[] @relation("AIActionReviewer")
+  workflowInstances WorkflowInstance[] @relation("WorkflowRequester")
+  aiConversationTurns AIConversationTurn[]
+  executedAIActions AIProposedAction[] @relation("AIActionExecutor")
+  preference     UserPreference?
+  integrations   Integration[]
+  aiMemoryProfile AIMemoryProfile?
 
   @@index([email])
   @@index([status])
@@ -276,6 +299,7 @@ model Space {
   memberships        Membership[]
   invitations        Invitation[]
   counter            SpaceCounter?
+  attachments        Attachment[]
 
   @@index([createdAt])
   @@map("spaces")
@@ -377,6 +401,18 @@ model Subscription {
   @@map("subscriptions")
 }
 
+// Usage metering — feeds billing dashboard & quota enforcement
+model UsageRecord {
+  id          String   @id @default(cuid())
+  spaceId     String
+  metric      String   // 'AI_REQUESTS' | 'AI_TOKENS' | 'STORAGE_MB' | 'MEMBERS'
+  value       Int
+  recordedAt  DateTime @default(now())
+
+  @@index([spaceId, metric, recordedAt])
+  @@map("usage_records")
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // BOARDS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -391,6 +427,9 @@ model Board {
   color        String?
   icon         String?
   isArchived   Boolean     @default(false)
+  deletedAt    DateTime?
+  deletedById  String?
+  restoreToken String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -412,6 +451,9 @@ model BoardColumn {
   position  Int
   color     String?
   wipLimit  Int?
+  deletedAt    DateTime?
+  deletedById  String?
+  restoreToken String?
 
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   tasks     Task[]
@@ -463,6 +505,9 @@ model Task {
   tags            String[]
   searchVector    Unsupported("tsvector")?
   isArchived      Boolean      @default(false)
+  deletedAt    DateTime?
+  deletedById  String?
+  restoreToken String?
   createdById     String
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -481,6 +526,7 @@ model Task {
   watchers        Watcher[]
   journalEntries  TaskJournal[]
   activities      Activity[]
+  driveAttachments DriveAttachment[]
 
   @@index([boardId])
   @@index([columnId])
@@ -609,6 +655,7 @@ model EmojiReaction {
 model Attachment {
   id               String       @id @default(cuid())
   taskId           String
+  spaceId          String
   fileName         String
   mimeType         String
   currentVersionId String?
@@ -616,23 +663,29 @@ model Attachment {
   createdAt        DateTime     @default(now())
 
   task             Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  space            Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   versions         FileVersion[]
 
   @@index([taskId])
+  @@index([spaceId])
   @@map("attachments")
 }
 
 model FileVersion {
-  id           String     @id @default(cuid())
-  attachmentId String
-  s3Key        String
-  versionNum   Int
-  sizeBytes    Int
-  uploadedById String
-  uploadedAt   DateTime   @default(now())
+  id               String             @id @default(cuid())
+  attachmentId     String
+  storageKey       String
+  versionNum       Int
+  fileSize         BigInt
+  checksum         String?
+  provider         AttachmentProvider @default(LOCAL)
+  externalUrl      String?
+  embeddingStatus  EmbeddingStatus    @default(PENDING)
+  uploadedById     String
+  uploadedAt       DateTime           @default(now())
 
-  attachment   Attachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
-  uploader     User       @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  attachment       Attachment         @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+  uploader         User               @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
 
   @@index([attachmentId])
   @@index([uploadedById])
@@ -663,6 +716,90 @@ model Approval {
   @@index([status])
   @@index([requestedAt])
   @@map("approvals")
+}
+
+// Generic Workflow Engine — handles all approval types
+// (task approval, budget, AI actions, leave requests, etc.)
+
+model WorkflowDefinition {
+  id          String   @id @default(cuid())
+  spaceId     String
+  name        String
+  triggerType String   // 'MANUAL' | 'AI_PROPOSED' | 'SCHEDULED'
+  isActive    Boolean  @default(true)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps       WorkflowStep[]
+  instances   WorkflowInstance[]
+
+  @@index([spaceId])
+  @@index([isActive])
+  @@map("workflow_definitions")
+}
+
+model WorkflowStep {
+  id            String   @id @default(cuid())
+  definitionId  String
+  order         Int
+  name          String
+  approverType  String   // 'USER' | 'ROLE' | 'MANAGER_OF_REQUESTER'
+  approverIds   String[]
+  approverRole  String?
+  isParallel    Boolean  @default(false)
+  requiresAll   Boolean  @default(true)
+  timeoutHours  Int?
+
+  definition    WorkflowDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+
+  @@index([definitionId])
+  @@map("workflow_steps")
+}
+
+model WorkflowInstance {
+  id            String   @id @default(cuid())
+  definitionId  String
+  spaceId       String
+  entityType    String   // 'TASK' | 'AI_ACTION' | 'BUDGET' | 'CUSTOM'
+  entityId      String
+  requesterId   String
+  currentStep   Int      @default(0)
+  status        String   @default("PENDING") // 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'TIMED_OUT'
+  context       Json?
+  deletedAt     DateTime?
+  deletedById   String?
+  restoreToken  String?
+  createdAt     DateTime @default(now())
+  resolvedAt    DateTime?
+
+  definition    WorkflowDefinition @relation(fields: [definitionId], references: [id])
+  requester     User             @relation("WorkflowRequester", fields: [requesterId], references: [id])
+  actions       WorkflowAction[]
+
+  @@index([definitionId])
+  @@index([spaceId])
+  @@index([entityType, entityId])
+  @@index([requesterId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("workflow_instances")
+}
+
+model WorkflowAction {
+  id          String   @id @default(cuid())
+  instanceId  String
+  stepOrder   Int
+  actorId     String
+  decision    String   // 'APPROVED' | 'REJECTED' | 'DELEGATED'
+  note        String?
+  createdAt   DateTime @default(now())
+
+  instance    WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@index([instanceId])
+  @@index([actorId])
+  @@map("workflow_actions")
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -836,15 +973,34 @@ model AIProposedAction {
   status          ApprovalStatus @default(PENDING)
   reviewedById    String?
   reviewedAt      DateTime?
+  executedAt      DateTime?
+  executedBy      String?
+  executionStatus String?        @default("PENDING") // 'PENDING' | 'SUCCESS' | 'FAILED'
   createdAt       DateTime       @default(now())
 
   aiRequest       AIRequest      @relation(fields: [traceId], references: [traceId])
   reviewer        User?          @relation("AIActionReviewer", fields: [reviewedById], references: [id])
+  executor        User?          @relation("AIActionExecutor", fields: [executedBy], references: [id])
 
   @@index([traceId])
   @@index([spaceId])
   @@index([status])
   @@map("ai_proposed_actions")
+}
+
+model AIConversationTurn {
+  id        String   @id @default(cuid())
+  userId    String
+  spaceId   String
+  role      String   // 'user' | 'assistant'
+  content   String
+  traceId   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, spaceId, createdAt])
+  @@map("ai_conversation_turns")
 }
 
 model AIEvalResult {
@@ -863,4 +1019,179 @@ model AIEvalResult {
   @@index([metricName])
   @@index([createdAt])
   @@map("ai_eval_results")
-}
+}
+
+model FeatureFlag {
+  id             String   @id @default(cuid())
+  key            String   @unique
+  description    String
+  isEnabled      Boolean  @default(false)
+  enabledFor     String[] // User IDs or Space IDs
+  rolloutPercent Int      @default(0) // 0-100
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("feature_flags")
+}
+
+model UserPreference {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language   String   @default("en")
+  timezone   String   @default("UTC")
+  theme      String   @default("system") // 'light' | 'dark' | 'system'
+  dateFormat String   @default("DD/MM/YYYY")
+  weekStart  String   @default("MON")
+  updatedAt  DateTime @updatedAt
+
+  @@map("user_preferences")
+}
+
+model Integration {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String   // "google_drive"
+  accessToken  String   // stored encrypted (AES-256)
+  refreshToken String   // stored encrypted
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("integrations")
+}
+
+model DriveAttachment {
+  id          String    @id @default(cuid())
+  taskId      String
+  driveFileId String
+  driveLink   String
+  fileName    String
+  mimeType    String
+  size        BigInt?
+  version     Int       @default(1)
+  watchExpiry DateTime? // Google Drive push notification expiry
+  channelId   String?   // Drive webhook channel ID
+  createdAt   DateTime  @default(now())
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([driveFileId])
+  @@map("drive_attachments")
+}
+
+model AIMemoryProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  preferences  Json     // stores extracted facts/preferences
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_memory_profiles")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// WHATSAPP (Meta Cloud API)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+model WhatsAppAccount {
+  id              String   @id @default(cuid())
+  spaceId         String   @unique
+  phoneNumberId   String   // Meta phone number ID
+  wabaId          String   // WhatsApp Business Account ID
+  accessToken     String   // Encrypted (system user permanent token)
+  displayName     String
+  isActive        Boolean  @default(true)
+  webhookSecret   String?  // App secret used for payload signature verification
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("whatsapp_accounts")
+}
+
+model WhatsAppContact {
+  id          String   @id @default(cuid())
+  userId      String   // Mongez user
+  spaceId     String
+  phoneNumber String   // E.164 format (+966...)
+  waId        String?  // WhatsApp ID
+  isVerified  Boolean  @default(false)
+  optedIn     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, spaceId])
+  @@index([phoneNumber])
+  @@map("whatsapp_contacts")
+}
+
+model WhatsAppMessage {
+  id            String   @id @default(cuid())
+  spaceId       String
+  direction     String   // 'OUTBOUND' | 'INBOUND'
+  waMessageId   String?  @unique // Meta's message ID
+  fromPhone     String
+  toPhone       String
+  templateName  String?  // For outbound template messages
+  content       String   // Message body
+  mediaUrl      String?
+  status        String   @default("PENDING") // PENDING | SENT | DELIVERED | READ | FAILED
+  errorCode     String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([spaceId, createdAt])
+  @@index([waMessageId])
+  @@map("whatsapp_messages")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TELEGRAM (Bot API)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+model TelegramAccount {
+  id              String   @id @default(cuid())
+  spaceId         String   @unique
+  botToken        String   // Encrypted space bot token
+  botUsername     String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("telegram_accounts")
+}
+
+model TelegramContact {
+  id          String   @id @default(cuid())
+  userId      String
+  spaceId     String
+  chatId      String   // Telegram chat ID (unique per bot/user pair)
+  username    String?
+  isVerified  Boolean  @default(false)
+  optedIn     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, spaceId])
+  @@unique([chatId, spaceId])
+  @@map("telegram_contacts")
+}
+
+model TelegramMessage {
+  id            String   @id @default(cuid())
+  spaceId       String
+  direction     String   // 'OUTBOUND' | 'INBOUND'
+  tgMessageId   Int?     // Telegram message ID
+  chatId        String
+  content       String   // Message body
+  status        String   @default("PENDING") // PENDING | SENT | FAILED
+  errorCode     String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([spaceId, createdAt])
+  @@map("telegram_messages")
+}

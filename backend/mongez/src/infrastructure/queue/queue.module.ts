@@ -1,6 +1,7 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { NotificationsQueueEventsListener, AIProcessingQueueEventsListener } from './dlq.processor';
 
 @Global()
 @Module({
@@ -21,11 +22,12 @@ import { BullModule } from '@nestjs/bullmq';
             delay: 2000,
           },
           removeOnComplete: 100,
-          removeOnFail: 50,
+          removeOnFail: false, // Keep failed jobs visible for DLQ processing
         },
       }),
     }),
   ],
-  exports: [BullModule],
+  providers: [NotificationsQueueEventsListener, AIProcessingQueueEventsListener],
+  exports: [BullModule, NotificationsQueueEventsListener, AIProcessingQueueEventsListener],
 })
 export class QueueModule {}

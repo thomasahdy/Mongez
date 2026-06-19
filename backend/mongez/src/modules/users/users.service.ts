@@ -4,19 +4,23 @@ import {
   BadRequestException,
   UnauthorizedException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
 import { CacheService } from '../../infrastructure/cache/cache.service';
 import { PasswordService } from '../auth/services/password.service';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 import { UserRepository } from './repositories/user.repository';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { paginate } from '../../shared/dto/pagination.dto';
 import { randomUUID } from 'crypto';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   private readonly CACHE_PREFIX = 'user';
   private readonly CACHE_TTL = 300; // 5 minutes
 
@@ -24,6 +28,7 @@ export class UsersService {
     private readonly userRepo: UserRepository,
     private readonly cache: CacheService,
     private readonly passwordService: PasswordService,
+    private readonly storage: StorageService,
   ) {}
 
   async getById(id: string) {
@@ -95,5 +100,91 @@ export class UsersService {
     } catch {
       throw new NotFoundException('Invalid or expired verification token');
     }
+  }
+
+  /**
+   * Upload avatar to storage and update user profile.
+   */
+  async uploadAvatar(userId: string, file: { buffer: Buffer; mimeType: string; originalName: string }) {
+    // Validate image MIME type
+    if (!file.mimeType.startsWith('image/')) {
+      throw new BadRequestException('Avatar must be an image');
+    }
+    if (file.buffer.length > 5 * 1024 * 1024) {
+      // 5MB limit for avatars
+      throw new BadRequestException('Avatar image must be under 5MB');
+    }
+
+    const ext = file.originalName.split('.').pop() || 'png';
+    const key = `avatars/${userId}/${randomUUID()}.${ext}`;
+
+    const result = await this.storage.upload(key, file.buffer, file.mimeType);
+    const user = await this.userRepo.updateAvatar(userId, result.key);
+    await this.cache.invalidateEntity(this.CACHE_PREFIX, userId);
+    return user;
+  }
+
+  /**
+   * GDPR-compliant soft-delete: anonymize PII, revoke sessions.
+   */
+  async deleteOwnAccount(userId: string): Promise<void> {
+    const anonymizedEmail = `deleted+${userId}@anon.mongez.local`;
+
+    await this.userRepo.anonymizeAndDelete(userId, anonymizedEmail);
+    await this.userRepo.revokeAllSessions(userId);
+    await this.cache.invalidateEntity(this.CACHE_PREFIX, userId);
+
+    this.logger.log(`User ${userId} deleted their account (PII anonymized)`);
+  }
+
+  /**
+   * Get notification preferences for current user.
+   */
+  async getNotificationPreferences(userId: string) {
+    const pref = await this.userRepo.getNotificationPreferences(userId);
+    return (
+      pref ?? {
+        userId,
+        preferences: {},
+        quietHours: null,
+      }
+    );
+  }
+
+  /**
+   * Update notification preferences for current user.
+   */
+  async updateNotificationPreferences(userId: string, dto: UpdateNotificationPreferencesDto) {
+    const pref = await this.userRepo.upsertNotificationPreferences(
+      userId,
+      dto.preferences,
+      dto.quietHours,
+    );
+    await this.cache.invalidateEntity(this.CACHE_PREFIX, userId);
+    return pref;
+  }
+
+  async getPreferences(userId: string) {
+    let pref = await this.userRepo.getPreferences(userId);
+    if (!pref) {
+      // Return defaults if not set in DB yet
+      pref = {
+        id: '',
+        userId,
+        language: 'en',
+        timezone: 'UTC',
+        theme: 'system',
+        dateFormat: 'DD/MM/YYYY',
+        weekStart: 'MON',
+        updatedAt: new Date(),
+      };
+    }
+    return pref;
+  }
+
+  async updatePreferences(userId: string, dto: import('./dto/update-preference.dto').UpdatePreferenceDto) {
+    const pref = await this.userRepo.updatePreferences(userId, dto);
+    await this.cache.invalidateEntity(this.CACHE_PREFIX, userId);
+    return pref;
   }
 }

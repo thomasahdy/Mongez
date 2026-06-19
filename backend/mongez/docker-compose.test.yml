@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: mongez_postgres_test
+    environment:
+      POSTGRES_USER: mongez_test
+      POSTGRES_PASSWORD: mongeztestpassword
+      POSTGRES_DB: mongez_db_test
+    ports:
+      - "5435:5432"
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: mongez_redis_test
+    ports:
+      - "6381:6379"
+    command: redis-server --appendonly no
+
+  qdrant-test:
+    image: qdrant/qdrant:v1.12.1
+    container_name: mongez_qdrant_test
+    ports:
+      - "6335:6333"

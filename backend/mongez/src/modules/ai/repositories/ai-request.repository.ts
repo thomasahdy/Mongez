@@ -10,6 +10,7 @@ export interface CreateAIRequestDto {
 }
 
 export interface UpdateAIRequestDto {
+  intent?: string;
   rewrittenQuery?: string;
   finalResponse?: string;
   modelUsed?: string;

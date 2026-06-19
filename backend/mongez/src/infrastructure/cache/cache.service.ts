@@ -87,4 +87,99 @@ export class CacheService {
       this.logger.error(`Cache EXPIRE error for key "${key}": ${err.message}`);
     }
   }
+
+  async incr(key: string, ttlSeconds?: number): Promise<number> {
+    try {
+      const count = await this.redis.incr(key);
+      if (count === 1 && ttlSeconds) {
+        await this.redis.expire(key, ttlSeconds);
+      }
+      return count;
+    } catch (err: any) {
+      this.logger.error(`Cache INCR error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<number> {
+    try {
+      return await this.redis.zadd(key, score, member);
+    } catch (err: any) {
+      this.logger.error(`Cache ZADD error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async zrem(key: string, member: string): Promise<number> {
+    try {
+      return await this.redis.zrem(key, member);
+    } catch (err: any) {
+      this.logger.error(`Cache ZREM error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async zremrangebyscore(key: string, min: number | string, max: number | string): Promise<number> {
+    try {
+      return await this.redis.zremrangebyscore(key, min, max);
+    } catch (err: any) {
+      this.logger.error(`Cache ZREMRANGEBYSCORE error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async zrange(key: string, start: number, stop: number): Promise<string[]> {
+    try {
+      return await this.redis.zrange(key, start, stop);
+    } catch (err: any) {
+      this.logger.error(`Cache ZRANGE error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async hset(key: string, field: string, value: string): Promise<number> {
+    try {
+      return await this.redis.hset(key, field, value);
+    } catch (err: any) {
+      this.logger.error(`Cache HSET error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async hget(key: string, field: string): Promise<string | null> {
+    try {
+      return await this.redis.hget(key, field);
+    } catch (err: any) {
+      this.logger.error(`Cache HGET error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async hgetall(key: string): Promise<Record<string, string>> {
+    try {
+      return await this.redis.hgetall(key);
+    } catch (err: any) {
+      this.logger.error(`Cache HGETALL error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async hdel(key: string, field: string): Promise<number> {
+    try {
+      return await this.redis.hdel(key, field);
+    } catch (err: any) {
+      this.logger.error(`Cache HDEL error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async mget(keys: string[]): Promise<(string | null)[]> {
+    try {
+      if (keys.length === 0) return [];
+      return await this.redis.mget(keys);
+    } catch (err: any) {
+      this.logger.error(`Cache MGET error: ${err.message}`);
+      throw err;
+    }
+  }
 }

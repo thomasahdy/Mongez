@@ -68,4 +68,70 @@ export class UserRepository {
   async revokeAllSessions(userId: string) {
     return this.prisma.userSession.deleteMany({ where: { userId } });
   }
+
+  async updateAvatar(id: string, avatarUrl: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { avatarUrl },
+      select: SELECT_SAFE_USER,
+    });
+  }
+
+  /**
+   * GDPR soft-delete + PII anonymization.
+   * Keeps the row for referential integrity but strips all PII.
+   * Uses SUSPENDED status (closest semantic; DELETED not in enum).
+   */
+  async anonymizeAndDelete(id: string, anonymizedEmail: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        email: anonymizedEmail,
+        name: 'Deleted User',
+        avatarUrl: null,
+        passwordHash: null,
+        status: UserStatus.SUSPENDED,
+        isVerified: false,
+        emailVerificationToken: null,
+        provider: 'DELETED',
+      },
+      select: { id: true },
+    });
+  }
+
+  async getNotificationPreferences(userId: string) {
+    const pref = await this.prisma.notificationPreference.findUnique({
+      where: { userId },
+    });
+    return pref;
+  }
+
+  async upsertNotificationPreferences(userId: string, preferences: Record<string, unknown>, quietHours?: Record<string, unknown> | null) {
+    return this.prisma.notificationPreference.upsert({
+      where: { userId },
+      create: { userId, preferences: preferences as any, quietHours: (quietHours ?? null) as any },
+      update: { preferences: preferences as any, ...(quietHours !== undefined ? { quietHours: quietHours as any } : {}) },
+    });
+  }
+
+  async getPreferences(userId: string) {
+    return this.prisma.userPreference.findUnique({
+      where: { userId },
+    });
+  }
+
+  async updatePreferences(userId: string, data: Partial<import('../dto/update-preference.dto').UpdatePreferenceDto>) {
+    return this.prisma.userPreference.upsert({
+      where: { userId },
+      create: {
+        userId,
+        language: data.language ?? 'en',
+        timezone: data.timezone ?? 'UTC',
+        theme: data.theme ?? 'system',
+        dateFormat: data.dateFormat ?? 'DD/MM/YYYY',
+        weekStart: data.weekStart ?? 'MON',
+      },
+      update: data,
+    });
+  }
 }

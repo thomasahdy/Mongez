@@ -1,6 +1,7 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ServiceApiKeyGuard } from './guards/service-api-key.guard';
 import { AIDataProviderService } from './ai-data-provider.service';
+import { AIActionRepository } from './repositories/ai-action.repository';
 
 /**
  * Internal API for the Python AI service.
@@ -10,7 +11,10 @@ import { AIDataProviderService } from './ai-data-provider.service';
 @Controller('internal/ai')
 @UseGuards(ServiceApiKeyGuard)
 export class AIDataProviderController {
-  constructor(private readonly dataProvider: AIDataProviderService) {}
+  constructor(
+    private readonly dataProvider: AIDataProviderService,
+    private readonly actionRepo: AIActionRepository,
+  ) {}
 
   /**
    * GET /internal/ai/tasks/:spaceId[?boardId=xxx]
@@ -60,5 +64,21 @@ export class AIDataProviderController {
   @Get('schema')
   getSchema() {
     return this.dataProvider.getSchemaDescription();
+  }
+
+  /**
+   * POST /internal/ai/propose-action
+   * Receives a proposed action from the AI service and stores it.
+   */
+  @Post('propose-action')
+  async proposeAction(@Body() body: any) {
+    const commandType = body.commandType || body.command_type;
+    return this.actionRepo.create({
+      traceId: body.traceId,
+      spaceId: body.spaceId,
+      commandType,
+      payload: body.payload,
+      reason: body.reason,
+    });
   }
 }

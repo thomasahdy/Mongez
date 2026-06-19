@@ -12,6 +12,7 @@ describe('RegisterDto', () => {
     const dto = plainToInstance(RegisterDto, {
       email: 'user@example.com',
       password: 'Password123',
+      name: 'John Doe',
     });
     const errors = await validate(dto);
 
@@ -19,57 +20,64 @@ describe('RegisterDto', () => {
   });
 
   it('UT-DTO-002: should reject invalid email', async () => {
-    const errors = await getErrors({ email: 'notanemail', password: 'Password123' });
+    const errors = await getErrors({ email: 'notanemail', password: 'Password123', name: 'John Doe' });
 
     expect(errors).toHaveLength(1);
     expect(errors[0].property).toBe('email');
   });
 
   it('UT-DTO-003: should reject missing email', async () => {
-    const errors = await getErrors({ password: 'Password123' });
+    const errors = await getErrors({ password: 'Password123', name: 'John Doe' });
 
     expect(errors).toHaveLength(1);
     expect(errors[0].property).toBe('email');
   });
 
   it('UT-DTO-004: should reject missing password', async () => {
-    const errors = await getErrors({ email: 'user@example.com' });
+    const errors = await getErrors({ email: 'user@example.com', name: 'John Doe' });
 
     expect(errors).toHaveLength(1);
     expect(errors[0].property).toBe('password');
   });
 
   it('UT-DTO-005: should reject weak password (no uppercase)', async () => {
-    const errors = await getErrors({ email: 'user@example.com', password: 'password123' });
+    const errors = await getErrors({ email: 'user@example.com', password: 'password123', name: 'John Doe' });
 
     expect(errors).toHaveLength(1);
     expect(errors[0].property).toBe('password');
   });
 
   it('should reject password with less than 8 characters', async () => {
-    const errors = await getErrors({ email: 'user@example.com', password: 'Pass1' });
+    const errors = await getErrors({ email: 'user@example.com', password: 'Pass1', name: 'John Doe' });
 
     expect(errors).toHaveLength(1);
     expect(errors[0].property).toBe('password');
   });
 
   it('should reject password with no lowercase', async () => {
-    const errors = await getErrors({ email: 'user@example.com', password: 'PASSWORD123' });
+    const errors = await getErrors({ email: 'user@example.com', password: 'PASSWORD123', name: 'John Doe' });
 
     expect(errors).toHaveLength(1);
     expect(errors[0].property).toBe('password');
   });
 
   it('should reject password with no digit', async () => {
-    const errors = await getErrors({ email: 'user@example.com', password: 'PasswordABC' });
+    const errors = await getErrors({ email: 'user@example.com', password: 'PasswordABC', name: 'John Doe' });
 
     expect(errors).toHaveLength(1);
     expect(errors[0].property).toBe('password');
   });
 
+  it('should reject invalid name (too short)', async () => {
+    const errors = await getErrors({ email: 'user@example.com', password: 'Password123', name: 'A' });
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0].property).toBe('name');
+  });
+
   it('should reject empty body', async () => {
     const errors = await getErrors({});
 
-    expect(errors).toHaveLength(2);
+    expect(errors).toHaveLength(3);
   });
 });

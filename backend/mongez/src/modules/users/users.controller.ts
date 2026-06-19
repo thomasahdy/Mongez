@@ -85,4 +85,16 @@ export class UsersController {
   ) {
     return this.usersService.updateStatus(id, req.user.userId, dto);
   }
+
+  @Get('me/preferences')
+  @ApiOperation({ summary: 'Get own preferences' })
+  async getPreferences(@Req() req: any) {
+    return this.usersService.getPreferences(req.user.userId);
+  }
+
+  @Patch('me/preferences')
+  @ApiOperation({ summary: 'Update own preferences' })
+  async updatePreferences(@Req() req: any, @Body() dto: import('./dto/update-preference.dto').UpdatePreferenceDto) {
+    return this.usersService.updatePreferences(req.user.userId, dto);
+  }
 }
