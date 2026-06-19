@@ -13,6 +13,7 @@ import ReportsPage from './pages/reports/ReportsPage';
 import { useTranslation } from "react-i18next";
 import SettingsPage from './pages/settings/SettingsPage';
 import InboxPage from './pages/Inbox/InboxPage';
+import SearchPage from './pages/search/SearchPage';
 
 function AuthenticatedApp({ path, setPath }) {
   return (
@@ -26,6 +27,10 @@ function AuthenticatedApp({ path, setPath }) {
           <Route path='reports' element={<ReportsPage setPath={setPath}/>}/>
           <Route path='settings' element={<SettingsPage setPath={setPath}/>}/>
           <Route path='inbox' element={<InboxPage setPath={setPath}/>}/>
+          <Route
+                path='/search'
+                element={<SearchPage/>}
+            />
         </Route>
       </Routes>
     </div>
@@ -44,7 +49,7 @@ function PublicApp() {
 }
 
 function AppContent() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -95,6 +100,16 @@ function AppContent() {
 }
 
 function App() {
+  const [language, setLanguage] = useState("en");
+
+  const { i18n } = useTranslation();
+
+    useEffect(() => {
+    document.documentElement.dir =
+      language === "ar" ? "rtl" : "ltr";
+      i18n.changeLanguage(language);
+  }, [language]);
+
   return (
     <BrowserRouter>
       <AppContent />

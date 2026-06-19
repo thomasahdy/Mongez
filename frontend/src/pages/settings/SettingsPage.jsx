@@ -33,7 +33,19 @@ const INITIAL_PREFS = {
 
 
 
-
+let path=[
+  {
+    name:"Al-Noor Foundation",
+    color:"text-slate-400",
+    ref:""
+  },
+  {
+    name:"Settings",
+    color:"text-slate-800",
+    ref:""
+  },
+  
+]
 
 
 export default function SettingsPage({ onSave, onDeleteAccount, setPath }) {
