@@ -9,6 +9,10 @@ import RegisterPage from './pages/auth/RegisterPage';
 import LandingPage from './pages/landing/LandingPage';
 import OnboardingPage from './pages/onboarding/OnboardingPage';
 import WhiteBoardPage from './pages/whiteboard/WhiteBoardPage';
+import ReportsPage from './pages/reports/ReportsPage';
+import { useTranslation } from "react-i18next";
+import SettingsPage from './pages/settings/SettingsPage';
+import InboxPage from './pages/Inbox/InboxPage';
 
 function AuthenticatedApp({ path, setPath }) {
   return (
@@ -19,6 +23,9 @@ function AuthenticatedApp({ path, setPath }) {
           <Route index element={<KanbanBoard setPath={setPath}/>}/>
           <Route path='spaces' element={<SpacesPage setPath={setPath}/>}/>
           <Route path='whiteboard' element={<WhiteBoardPage/>}/>
+          <Route path='reports' element={<ReportsPage setPath={setPath}/>}/>
+          <Route path='settings' element={<SettingsPage setPath={setPath}/>}/>
+          <Route path='inbox' element={<InboxPage setPath={setPath}/>}/>
         </Route>
       </Routes>
     </div>

@@ -8,7 +8,6 @@ import InviteStep from "./steps/InviteStep";
 import OrganizationStep from "./steps/OrganizationStep";
 import TemplateStep from "./steps/TemplateStep";
 
-
 const initialValues = {
   account: {
     firstName: "",
