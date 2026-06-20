@@ -111,8 +111,11 @@ app.include_router(health.router, prefix="/health", tags=["Health"])
 from app.api.routes import chat as chat_route  # noqa: E402
 from app.api.routes import risk as risk_route  # noqa: E402
 from app.api.routes import report as report_route  # noqa: E402
+from app.api.routes import meetings as meetings_route  # noqa: E402
 
 app.include_router(chat_route.router, prefix="/chat", tags=["Chat"])
 app.include_router(risk_route.router, prefix="/risk", tags=["Risk"])
 app.include_router(report_route.router, prefix="/report", tags=["Report"])
+app.include_router(meetings_route.router, prefix="/meetings", tags=["Meetings"])
+
 

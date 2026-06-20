@@ -23,6 +23,7 @@ interface SendWhatsappJob {
   entityId?: string;
   entityType?: string;
   interactive?: { bodyText: string; buttons: InteractiveButton[] };
+  metadata?: any;
 }
 
 /**
@@ -84,14 +85,65 @@ export class WhatsAppProcessor extends WorkerHost {
     });
 
     // 2. Dispatch via Meta Cloud API.
-    const result = data.interactive
-      ? await this.service.sendInteractiveButtons(
-          account,
-          toPhone,
-          data.interactive.bodyText,
-          data.interactive.buttons,
-        )
-      : await this.service.sendText(account, toPhone, data.content || '');
+    let result: any;
+
+    if (data.interactive) {
+      result = await this.service.sendInteractiveButtons(
+        account,
+        toPhone,
+        data.interactive.bodyText,
+        data.interactive.buttons,
+      );
+    } else if (data.type === 'APPROVAL_REQUESTED' || data.type === 'WORKFLOW_APPROVAL_REQUEST') {
+      const meta = data.metadata || {};
+      const workflowName = String(meta.title || meta.workflowName || 'Workflow');
+      const taskName = String(meta.body || meta.taskName || 'Task Review');
+      const requesterName = String(meta.actorName || meta.requesterName || 'System');
+
+      result = await this.service.sendTemplate(
+        account,
+        toPhone,
+        'approval_request',
+        undefined,
+        [workflowName, taskName, requesterName]
+      );
+
+      if (result.status !== 'SENT') {
+        this.logger.warn(`Template approval_request failed, falling back to plain text`);
+        result = await this.service.sendText(account, toPhone, data.content || '');
+      }
+    } else if (data.type === 'TASK_ASSIGNED' || data.type === 'TASK_DUE') {
+      const meta = data.metadata || {};
+      const boardName = String(meta.boardName || 'General');
+      const taskName = String(meta.taskIdentifier || meta.title || 'Task');
+      const dueDate = String(meta.dueDate || 'No due date');
+      const assignerName = String(meta.actorName || 'Someone');
+
+      result = await this.service.sendTemplate(
+        account,
+        toPhone,
+        'task_notification',
+        undefined,
+        [boardName, taskName, dueDate, assignerName]
+      );
+
+      if (result.status !== 'SENT') {
+        this.logger.warn(`Template task_notification failed, falling back to plain text`);
+        result = await this.service.sendText(account, toPhone, data.content || '');
+      }
+    } else if (data.type === 'otp_verification') {
+      result = await this.service.sendTemplate(
+        account,
+        toPhone,
+        'otp_verification',
+        data.content
+      );
+      if (result.status !== 'SENT') {
+        result = await this.service.sendText(account, toPhone, data.content || '');
+      }
+    } else {
+      result = await this.service.sendText(account, toPhone, data.content || '');
+    }
 
     // 3. Record the outcome.
     if (result.status === 'SENT' && result.waMessageId) {

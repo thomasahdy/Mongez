@@ -81,6 +81,7 @@ export class PrismaService implements OnModuleInit {
   get outboxEvent() { return this.prisma.outboxEvent; }
   get deviceSession() { return this.prisma.deviceSession; }
   get notificationPreference() { return this.prisma.notificationPreference; }
+  get notificationEvent() { return this.prisma.notificationEvent; }
   get auditLog() { return this.prisma.auditLog; }
   get taskJournal() { return this.prisma.taskJournal; }
   get activity() { return this.prisma.activity; }
@@ -100,9 +101,28 @@ export class PrismaService implements OnModuleInit {
   get whatsAppAccount() { return this.prisma.whatsAppAccount; }
   get whatsAppContact() { return this.prisma.whatsAppContact; }
   get whatsAppMessage() { return this.prisma.whatsAppMessage; }
+  get whatsAppOtpCode() { return this.prisma.whatsAppOtpCode; }
   get telegramAccount() { return this.prisma.telegramAccount; }
   get telegramContact() { return this.prisma.telegramContact; }
   get telegramMessage() { return this.prisma.telegramMessage; }
+
+  // ─── Approval Delegation ────────────────────────────────────
+  get approvalDelegate() { return this.prisma.approvalDelegate; }
+
+  // ─── Calendar & Meeting Intelligence (Phase 3, 4, 5) ────────
+  get calendarEvent() { return this.prisma.calendarEvent; }
+  get calendarEventParticipant() { return this.prisma.calendarEventParticipant; }
+  get googleCalendarSync() { return this.prisma.googleCalendarSync; }
+  get holidayCache() { return this.prisma.holidayCache; }
+  get meeting() { return this.prisma.meeting; }
+  get proposedTask() { return this.prisma.proposedTask; }
+  get userActivity() { return this.prisma.userActivity; }
+  get userDelegation() { return this.prisma.userDelegation; }
+  get slaMetric() { return this.prisma.slaMetric; }
+  get savedView() { return this.prisma.savedView; }
+  get decisionRecord() { return this.prisma.decisionRecord; }
+
+
 
   // ─── Raw query access ───────────────────────────────────────
   get $queryRaw() { return this.prisma.$queryRaw.bind(this.prisma); }

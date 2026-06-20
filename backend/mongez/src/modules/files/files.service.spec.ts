@@ -78,16 +78,18 @@ describe('FilesService', () => {
     );
   });
 
-  describe('upload()', () => {
-    const mockFile: UploadedFile = {
-      fieldname: 'file',
-      originalname: 'test.pdf',
-      encoding: '7bit',
-      mimetype: 'application/pdf',
-      size: 1000,
-      buffer: Buffer.from('hello world'),
-    };
+  const mockFile: UploadedFile = {
+    fieldname: 'file',
+    originalname: 'test.pdf',
+    encoding: '7bit',
+    mimetype: 'application/pdf',
+    size: 1000,
+    buffer: Buffer.from('hello world'),
+  };
 
+  // ─── upload() ────────────────────────────────────────────────
+
+  describe('upload()', () => {
     it('should upload a clean file successfully', async () => {
       virusScanner.scan.mockResolvedValue({ clean: true });
       storage.buildKey.mockReturnValue('space-1/task/task-1/uuid.pdf');
@@ -128,7 +130,54 @@ describe('FilesService', () => {
       await expect(service.upload(mockFile, 'task-1', 'user-1', 'space-1')).rejects.toThrow(BadRequestException);
       expect(storage.upload).not.toHaveBeenCalled();
     });
+
+    it('should throw BadRequestException if no file is provided', async () => {
+      await expect(service.upload(null as any, 'task-1', 'user-1', 'space-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if file size exceeds maximum config limit', async () => {
+      const oversizedFile = { ...mockFile, size: 30 * 1024 * 1024 }; // 30MB
+      await expect(service.upload(oversizedFile, 'task-1', 'user-1', 'space-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if mimetype is not allowed', async () => {
+      const disallowedFile = { ...mockFile, mimetype: 'audio/mp3', originalname: 'audio.mp3' };
+      await expect(service.upload(disallowedFile, 'task-1', 'user-1', 'space-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if file has no extension', async () => {
+      const noExtensionFile = { ...mockFile, originalname: 'noextension' };
+      await expect(service.upload(noExtensionFile, 'task-1', 'user-1', 'space-1')).rejects.toThrow(BadRequestException);
+    });
   });
+
+  // ─── listForTask() ───────────────────────────────────────────
+
+  describe('listForTask()', () => {
+    it('should return paginated and enriched file list with signed URLs', async () => {
+      const mockAttachmentList = {
+        data: [
+          {
+            id: 'attach-1',
+            fileName: 'test.pdf',
+            versions: [{ id: 'v-1', storageKey: 'key-1' }],
+          },
+        ],
+        total: 1,
+      };
+
+      fileRepo.listForTask.mockResolvedValue(mockAttachmentList as any);
+      storage.getSignedUrl.mockResolvedValue('https://signed-url.com/key-1');
+
+      const result = await service.listForTask('task-1', { page: 1, limit: 10 });
+
+      expect(fileRepo.listForTask).toHaveBeenCalledWith('task-1', { page: 1, limit: 10 });
+      expect(storage.getSignedUrl).toHaveBeenCalledWith('key-1');
+      expect(result.data[0].downloadUrl).toBe('https://signed-url.com/key-1');
+    });
+  });
+
+  // ─── getDownloadUrl() ────────────────────────────────────────
 
   describe('getDownloadUrl()', () => {
     it('should return download URL if user is a member of the space', async () => {
@@ -162,7 +211,19 @@ describe('FilesService', () => {
 
       await expect(service.getDownloadUrl('attach-1', 'user-1')).rejects.toThrow(ForbiddenException);
     });
+
+    it('should throw NotFoundException if file is not found', async () => {
+      fileRepo.findById.mockResolvedValue(null);
+      await expect(service.getDownloadUrl('attach-1', 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException if file has no currentVersionId', async () => {
+      fileRepo.findById.mockResolvedValue({ id: 'attach-1', currentVersionId: null } as any);
+      await expect(service.getDownloadUrl('attach-1', 'user-1')).rejects.toThrow(NotFoundException);
+    });
   });
+
+  // ─── downloadByKey() ─────────────────────────────────────────
 
   describe('downloadByKey()', () => {
     it('should return file buffer if user is authorized', async () => {
@@ -266,6 +327,71 @@ describe('FilesService', () => {
       await expect(service.downloadByKey(key, undefined, expires, signature)).rejects.toThrow(
         new ForbiddenException('Download link has expired'),
       );
+    });
+
+    it('should throw ForbiddenException if authentication is required but no signature/expires and no userId is provided', async () => {
+      await expect(service.downloadByKey('key-123', undefined, undefined, undefined)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw NotFoundException if file is not found when downloading by key (authenticated)', async () => {
+      fileRepo.findByStorageKey.mockResolvedValue(null);
+      await expect(service.downloadByKey('key-123', 'user-1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── getVersions() ───────────────────────────────────────────
+
+  describe('getVersions()', () => {
+    it('should return list of file versions', async () => {
+      const mockAttachment = {
+        id: 'attach-1',
+        versions: [{ id: 'v-1', fileSize: 500n }],
+      };
+      fileRepo.findById.mockResolvedValue(mockAttachment as any);
+
+      const result = await service.getVersions('attach-1');
+
+      expect(result).toEqual([{ id: 'v-1', fileSize: 500 }]);
+    });
+
+    it('should throw NotFoundException if file not found', async () => {
+      fileRepo.findById.mockResolvedValue(null);
+      await expect(service.getVersions('attach-1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── softDelete() ────────────────────────────────────────────
+
+  describe('softDelete()', () => {
+    it('should throw NotFoundException if file not found', async () => {
+      fileRepo.findById.mockResolvedValue(null);
+      await expect(service.softDelete('attach-1', 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if user is not member of the space', async () => {
+      fileRepo.findById.mockResolvedValue({ id: 'attach-1', spaceId: 'space-1' } as any);
+      prisma.membership.findFirst.mockResolvedValue(null);
+
+      await expect(service.softDelete('attach-1', 'user-1')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ForbiddenException if user is member but not the uploader', async () => {
+      fileRepo.findById.mockResolvedValue({ id: 'attach-1', spaceId: 'space-1', uploadedById: 'uploader-id' } as any);
+      prisma.membership.findFirst.mockResolvedValue({ id: 'member-1' } as any);
+
+      await expect(service.softDelete('attach-1', 'user-1')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should delete file successfully if uploader and space member', async () => {
+      fileRepo.findById.mockResolvedValue({ id: 'attach-1', spaceId: 'space-1', uploadedById: 'user-1' } as any);
+      prisma.membership.findFirst.mockResolvedValue({ id: 'member-1' } as any);
+      fileRepo.softDelete.mockResolvedValue({} as any);
+
+      await service.softDelete('attach-1', 'user-1');
+
+      expect(fileRepo.softDelete).toHaveBeenCalledWith('attach-1');
     });
   });
 });

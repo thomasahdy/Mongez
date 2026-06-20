@@ -27,7 +27,7 @@ import { ConfigService } from '@nestjs/config';
 import { TelegramService } from './services/telegram.service';
 import { TelegramRepository } from './repositories/telegram.repository';
 import { EncryptionService } from '../../shared/services/encryption.service';
-import { MessagingCommandExecutor } from '../messaging/services/messaging-command-executor.service';
+import { MessagingCommandExecutor } from '../messaging/commands/messaging-command-executor.service';
 import { SetupTelegramDto } from './dto/setup-telegram.dto';
 import { RegisterTelegramContactDto } from './dto/register-telegram-contact.dto';
 

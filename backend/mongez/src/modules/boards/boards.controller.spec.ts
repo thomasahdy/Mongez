@@ -3,6 +3,7 @@ import { BoardsController, DepartmentBoardsController } from './boards.controlle
 import { BoardsService } from './boards.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BoardAccessGuard } from './guards/board-access.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 
 describe('BoardsController & DepartmentBoardsController', () => {
   let boardsController: BoardsController;
@@ -33,6 +34,8 @@ describe('BoardsController & DepartmentBoardsController', () => {
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(BoardAccessGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(PermissionsGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

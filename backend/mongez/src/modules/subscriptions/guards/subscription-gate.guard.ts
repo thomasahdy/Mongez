@@ -34,7 +34,11 @@ export class SubscriptionGateGuard implements CanActivate {
     if (!feature) return true; // No feature required → allow
 
     const store = this.tenant.getStore();
-    const spaceId = store?.spaceId;
+    let spaceId = store?.spaceId;
+    if (!spaceId) {
+      const request = context.switchToHttp().getRequest();
+      spaceId = request.body?.spaceId ?? request.query?.spaceId ?? request.params?.spaceId;
+    }
     if (!spaceId) {
       throw new ForbiddenException('Cannot resolve tenant for subscription check.');
     }

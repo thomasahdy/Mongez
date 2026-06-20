@@ -28,6 +28,7 @@ import { TasksModule } from '../tasks/tasks.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuditModule } from '../audit/audit.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { CalendarModule } from '../calendar/calendar.module';
 import { QUEUE_NAMES } from '../../infrastructure/queue/queue.constants';
 
 @Module({
@@ -38,6 +39,7 @@ import { QUEUE_NAMES } from '../../infrastructure/queue/queue.constants';
     NotificationsModule,
     AuditModule,
     SubscriptionsModule,
+    CalendarModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.AI_PROCESSING },
       { name: QUEUE_NAMES.NOTIFICATIONS },

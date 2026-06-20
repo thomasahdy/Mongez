@@ -10,6 +10,8 @@ export const QUEUE_NAMES = {
   WORKSPACE_EXPORT: 'workspace-export',
   WHATSAPP: 'whatsapp',
   TELEGRAM: 'telegram',
+  APPROVAL_EXPIRY: 'approval-expiry',
+  ANALYTICS_FUNNEL: 'analytics-funnel',
 } as const;
 
 export const JOB_NAMES = {
@@ -35,4 +37,8 @@ export const JOB_NAMES = {
   // Messaging channels
   SEND_WHATSAPP: 'send-whatsapp',
   SEND_TELEGRAM: 'send-telegram',
+
+  // Messaging lifecycle
+  APPROVAL_EXPIRY_SWEEP: 'approval-expiry-sweep',
+  FUNNEL_RECORD: 'funnel-record',
 } as const;

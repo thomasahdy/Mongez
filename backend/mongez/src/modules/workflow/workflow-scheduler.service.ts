@@ -12,8 +12,8 @@ export class WorkflowSchedulerService {
     private readonly repo: WorkflowRepository,
   ) {}
 
-  // Every 15 minutes — check for timed-out workflow steps
-  @Cron('*/15 * * * *')
+  // Every 5 minutes — check for timed-out workflow steps (SLA enforcement)
+  @Cron('*/5 * * * *')
   async checkWorkflowTimeouts() {
     this.logger.debug('Running scheduled workflow timeout check...');
     try {

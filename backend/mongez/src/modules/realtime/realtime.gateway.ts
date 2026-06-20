@@ -103,8 +103,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       client.data.boards = new Set<string>();
       client.data.tasks = new Set<string>();
 
-      // Initial heartbeat on connection
-      await this.cacheService.set(`user:${payload.sub}:last_seen`, new Date().toISOString(), 60);
+      // Initial heartbeat on connection (90s TTL)
+      await this.cacheService.set(`user:${payload.sub}:last_seen`, new Date().toISOString(), 90);
 
     } catch {
       client.disconnect();
@@ -116,9 +116,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const userId = client.data.userId;
     if (userId) {
       const now = Date.now();
-      const expirationScore = now + 60000;
+      const expirationScore = now + 90000; // 90s TTL
 
-      await this.cacheService.set(`user:${userId}:last_seen`, new Date().toISOString(), 60);
+      await this.cacheService.set(`user:${userId}:last_seen`, new Date().toISOString(), 90);
 
       // Heartbeat updates score for all active boards the user is on
       if (client.data.boards) {
@@ -192,7 +192,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
         const presenceKey = `presence:board:${boardId}`;
         const statesKey = `presence:board:${boardId}:states`;
-        const expirationScore = Date.now() + 60000;
+        const expirationScore = Date.now() + 90000; // 90s TTL
 
         await this.cacheService.zadd(presenceKey, expirationScore, userId);
         await this.cacheService.hset(statesKey, userId, 'VIEWING');
@@ -258,7 +258,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
         const presenceKey = `presence:task:${taskId}`;
         const statesKey = `presence:task:${taskId}:states`;
-        const expirationScore = Date.now() + 60000;
+        const expirationScore = Date.now() + 90000; // 90s TTL
 
         await this.cacheService.zadd(presenceKey, expirationScore, userId);
         await this.cacheService.hset(statesKey, userId, 'VIEWING');

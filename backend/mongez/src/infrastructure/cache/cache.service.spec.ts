@@ -10,6 +10,16 @@ describe('CacheService', () => {
     keys: jest.Mock;
     exists: jest.Mock;
     expire: jest.Mock;
+    incr: jest.Mock;
+    zadd: jest.Mock;
+    zrem: jest.Mock;
+    zremrangebyscore: jest.Mock;
+    zrange: jest.Mock;
+    hset: jest.Mock;
+    hget: jest.Mock;
+    hgetall: jest.Mock;
+    hdel: jest.Mock;
+    mget: jest.Mock;
   };
 
   beforeEach(() => {
@@ -21,6 +31,16 @@ describe('CacheService', () => {
       keys: jest.fn(),
       exists: jest.fn(),
       expire: jest.fn(),
+      incr: jest.fn(),
+      zadd: jest.fn(),
+      zrem: jest.fn(),
+      zremrangebyscore: jest.fn(),
+      zrange: jest.fn(),
+      hset: jest.fn(),
+      hget: jest.fn(),
+      hgetall: jest.fn(),
+      hdel: jest.fn(),
+      mget: jest.fn(),
     };
 
     service = new CacheService(redisMock as any);
@@ -213,6 +233,110 @@ describe('CacheService', () => {
       redisMock.expire.mockRejectedValue(new Error('Redis error'));
 
       await expect(service.expire('key', 300)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('incr()', () => {
+    it('should increment key and set expire if count is 1 and ttl provided', async () => {
+      redisMock.incr.mockResolvedValue(1);
+      redisMock.expire.mockResolvedValue(1);
+
+      const result = await service.incr('key', 60);
+
+      expect(result).toBe(1);
+      expect(redisMock.incr).toHaveBeenCalledWith('key');
+      expect(redisMock.expire).toHaveBeenCalledWith('key', 60);
+    });
+
+    it('should increment key and NOT set expire if count is > 1', async () => {
+      redisMock.incr.mockResolvedValue(2);
+
+      const result = await service.incr('key', 60);
+
+      expect(result).toBe(2);
+      expect(redisMock.incr).toHaveBeenCalledWith('key');
+      expect(redisMock.expire).not.toHaveBeenCalled();
+    });
+
+    it('should throw error on Redis error', async () => {
+      redisMock.incr.mockRejectedValue(new Error('Redis error'));
+
+      await expect(service.incr('key')).rejects.toThrow('Redis error');
+    });
+  });
+
+  describe('Sorted Set methods (zadd, zrem, zremrangebyscore, zrange)', () => {
+    it('should zadd successfully', async () => {
+      redisMock.zadd.mockResolvedValue(1);
+      const res = await service.zadd('zkey', 10, 'member');
+      expect(res).toBe(1);
+      expect(redisMock.zadd).toHaveBeenCalledWith('zkey', 10, 'member');
+    });
+
+    it('should zrem successfully', async () => {
+      redisMock.zrem.mockResolvedValue(1);
+      const res = await service.zrem('zkey', 'member');
+      expect(res).toBe(1);
+      expect(redisMock.zrem).toHaveBeenCalledWith('zkey', 'member');
+    });
+
+    it('should zremrangebyscore successfully', async () => {
+      redisMock.zremrangebyscore.mockResolvedValue(2);
+      const res = await service.zremrangebyscore('zkey', 0, 100);
+      expect(res).toBe(2);
+      expect(redisMock.zremrangebyscore).toHaveBeenCalledWith('zkey', 0, 100);
+    });
+
+    it('should zrange successfully', async () => {
+      redisMock.zrange.mockResolvedValue(['m1', 'm2']);
+      const res = await service.zrange('zkey', 0, -1);
+      expect(res).toEqual(['m1', 'm2']);
+      expect(redisMock.zrange).toHaveBeenCalledWith('zkey', 0, -1);
+    });
+  });
+
+  describe('Hash methods (hset, hget, hgetall, hdel)', () => {
+    it('should hset successfully', async () => {
+      redisMock.hset.mockResolvedValue(1);
+      const res = await service.hset('hkey', 'field', 'val');
+      expect(res).toBe(1);
+      expect(redisMock.hset).toHaveBeenCalledWith('hkey', 'field', 'val');
+    });
+
+    it('should hget successfully', async () => {
+      redisMock.hget.mockResolvedValue('val');
+      const res = await service.hget('hkey', 'field');
+      expect(res).toBe('val');
+      expect(redisMock.hget).toHaveBeenCalledWith('hkey', 'field');
+    });
+
+    it('should hgetall successfully', async () => {
+      redisMock.hgetall.mockResolvedValue({ f1: 'v1' });
+      const res = await service.hgetall('hkey');
+      expect(res).toEqual({ f1: 'v1' });
+      expect(redisMock.hgetall).toHaveBeenCalledWith('hkey');
+    });
+
+    it('should hdel successfully', async () => {
+      redisMock.hdel.mockResolvedValue(1);
+      const res = await service.hdel('hkey', 'field');
+      expect(res).toBe(1);
+      expect(redisMock.hdel).toHaveBeenCalledWith('hkey', 'field');
+    });
+  });
+
+  describe('mget()', () => {
+    it('should return empty array for empty keys', async () => {
+      const res = await service.mget([]);
+      expect(res).toEqual([]);
+      expect(redisMock.mget).not.toHaveBeenCalled();
+    });
+
+    it('should return mget results', async () => {
+      redisMock.mget.mockResolvedValue(['v1', null]);
+      const res = await service.mget(['k1', 'k2']);
+      expect(res).toEqual(['v1', null]);
+      expect(redisMock.mget).toHaveBeenCalledWith(['k1', 'k2']);
     });
   });
 });

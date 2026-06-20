@@ -104,6 +104,14 @@ enum NotificationChannelType {
   TELEGRAM
 }
 
+enum NotificationFunnelStage {
+  SENT
+  DELIVERED
+  OPENED
+  ACTED_UPON
+  EXPIRED
+}
+
 enum SubscriptionTier {
   FREE
   PRO
@@ -171,6 +179,10 @@ model User {
   preference     UserPreference?
   integrations   Integration[]
   aiMemoryProfile AIMemoryProfile?
+  calendarEvents           CalendarEvent[]
+  googleCalendarSyncs      GoogleCalendarSync[]
+  calendarEventParticipants CalendarEventParticipant[]
+  meetings                 Meeting[]
 
   @@index([email])
   @@index([status])
@@ -750,6 +762,7 @@ model WorkflowStep {
   isParallel    Boolean  @default(false)
   requiresAll   Boolean  @default(true)
   timeoutHours  Int?
+  escalationPolicy Json?  // { type: 'ESCALATE_TO_MANAGER' | 'ESCALATE_TO_ROLE' | 'AUTO_APPROVE' | 'AUTO_REJECT', targetRoleId?: string }
 
   definition    WorkflowDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
 
@@ -767,6 +780,9 @@ model WorkflowInstance {
   currentStep   Int      @default(0)
   status        String   @default("PENDING") // 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'TIMED_OUT'
   context       Json?
+  startedAt     DateTime @default(now())
+  durationMinutes Int?   // Recorded when resolved — SLA tracking
+  reminderSentAt  DateTime? // Tracks when 80% timeout reminder was sent
   deletedAt     DateTime?
   deletedById   String?
   restoreToken  String?
@@ -850,11 +866,28 @@ model Notification {
 model NotificationPreference {
   id           String   @id @default(cuid())
   userId       String   @unique
-  preferences  Json     
-  quietHours   Json?    
+  preferences  Json
+  quietHours   Json?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+model NotificationEvent {
+  id             String                  @id @default(cuid())
+  notificationId String
+  userId         String
+  spaceId        String
+  channel        NotificationChannelType
+  eventType      String
+  stage          NotificationFunnelStage
+  metadata       Json?
+  createdAt      DateTime                @default(now())
+
+  @@index([notificationId, stage])
+  @@index([userId, channel, createdAt])
+  @@index([spaceId, eventType, createdAt])
+  @@map("notification_events")
 }
 
 model DeviceSession {
@@ -1035,15 +1068,17 @@ model FeatureFlag {
 }
 
 model UserPreference {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  language   String   @default("en")
-  timezone   String   @default("UTC")
-  theme      String   @default("system") // 'light' | 'dark' | 'system'
-  dateFormat String   @default("DD/MM/YYYY")
-  weekStart  String   @default("MON")
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language       String   @default("en")
+  timezone       String   @default("UTC")
+  theme          String   @default("system") // 'light' | 'dark' | 'system'
+  dateFormat     String   @default("DD/MM/YYYY")
+  weekStart      String   @default("MON")
+  calendarType   String   @default("GREGORIAN") // 'GREGORIAN' | 'HIJRI'
+  holidayCountry String   @default("EG")        // SA, AE, EG, QA, KW
+  updatedAt      DateTime @updatedAt
 
   @@map("user_preferences")
 }
@@ -1091,6 +1126,24 @@ model AIMemoryProfile {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ai_memory_profiles")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// APPROVAL DELEGATION
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+model ApprovalDelegate {
+  id         String    @id @default(cuid())
+  spaceId    String
+  fromUserId String
+  toUserId   String
+  startsAt   DateTime
+  endsAt     DateTime
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  @@index([fromUserId, spaceId, isActive])
+  @@map("approval_delegates")
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1148,6 +1201,21 @@ model WhatsAppMessage {
   @@map("whatsapp_messages")
 }
 
+model WhatsAppOtpCode {
+  id          String   @id @default(cuid())
+  userId      String
+  spaceId     String
+  phoneNumber String   // E.164 format
+  codeHash    String   // bcrypt hash of the 6-digit code
+  attempts    Int      @default(0)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([phoneNumber, createdAt])
+  @@index([userId, spaceId])
+  @@map("whatsapp_otp_codes")
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TELEGRAM (Bot API)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1195,3 +1263,241 @@ model TelegramMessage {
   @@index([spaceId, createdAt])
   @@map("telegram_messages")
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CALENDAR & MEETING INTELLIGENCE (Phase 3, 4, 5)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum CalendarType {
+  GREGORIAN
+  HIJRI
+}
+
+enum CalendarEventSource {
+  MONGEZ
+  GOOGLE
+  HOLIDAY
+  MEETING
+  APPROVAL
+  ESCALATION
+}
+
+enum CalendarEventVisibility {
+  PUBLIC
+  PRIVATE
+  TEAM
+}
+
+model CalendarEvent {
+  id              String                    @id @default(cuid())
+  spaceId         String
+  title           String
+  description     String?
+  startDate       DateTime
+  endDate         DateTime
+  allDay          Boolean                   @default(false)
+  calendarType    CalendarType              @default(GREGORIAN)
+  hijriDate       String?                   // e.g. "1447-06-15"
+  source          CalendarEventSource       @default(MONGEZ)
+  visibility      CalendarEventVisibility   @default(PUBLIC)
+  googleEventId   String?                   // Google Calendar event ID
+  color           String?
+  location        String?
+  recurrence      Json?                     // RFC 5545 recurrence rules
+  reminders       Json?                     // [{minutes: 30, method: 'popup'}]
+  metadata        Json?
+  
+  // Unified Timeline fields
+  taskId          String?                   // Optional link to Mongez task
+  isTaskGenerated Boolean                   @default(false)
+  entityType      String?                   // "WorkflowInstance" | "Task" | "Approval" | "Escalation"
+  entityId        String?                   // Direct identifier link
+  
+  participants    CalendarEventParticipant[]
+  createdById     String
+  createdBy       User                      @relation(fields: [createdById], references: [id])
+  isDeleted       Boolean                   @default(false)
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@index([spaceId, startDate, endDate])
+  @@index([googleEventId])
+  @@index([taskId])
+  @@index([source])
+  @@index([createdById])
+  @@index([visibility])
+  @@index([entityType, entityId])
+  @@map("calendar_events")
+}
+
+model CalendarEventParticipant {
+  id             String        @id @default(cuid())
+  eventId        String
+  event          CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId         String?       // Optional link to Mongez user ID
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email          String        // Attendee email
+  displayName    String?
+  status         String        @default("PENDING") // PENDING | ACCEPTED | DECLINED | TENTATIVE
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([eventId, email])
+  @@index([userId])
+  @@map("calendar_event_participants")
+}
+
+model GoogleCalendarSync {
+  id                     String    @id @default(cuid())
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spaceId                String
+  calendarId             String    @default("primary")
+  accessTokenEncrypted   String?   // Encrypted Google OAuth access token
+  refreshTokenEncrypted  String?   // Encrypted Google OAuth refresh token
+  tokenExpiresAt         DateTime? // Access token expiration time
+  syncToken              String?   // Incremental sync token
+  channelId              String?   // Watch channel ID
+  resourceId             String?   // Watch resource ID
+  channelExpiry          DateTime? // Re-subscribe timestamp
+  lastSyncAt             DateTime?
+  isActive               Boolean   @default(true)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@unique([userId, spaceId, calendarId])
+  @@index([channelId])
+  @@map("google_calendar_syncs")
+}
+
+model HolidayCache {
+  id        String   @id @default(cuid())
+  country   String   // ISO 3166-1 alpha-2 (SA, AE, EG, QA, KW)
+  year      Int
+  holidays  Json     // Preloaded static holidays: [{date: "2026-01-07", name: "Coptic Christmas"}]
+  fetchedAt DateTime @default(now())
+
+  @@unique([country, year])
+  @@map("holiday_cache")
+}
+
+// --- Models for Phase 5 (Optimized Storage) ---
+
+model Meeting {
+  id              String         @id @default(cuid())
+  spaceId         String
+  title           String
+  description     String?
+  audioUrl        String?        // Storage key/URL to audio file in S3/MinIO
+  transcriptUrl   String?        // Storage key/URL to raw transcript text file in S3/MinIO
+  summary         Json?          // Structured metadata summary stored directly as JSON
+  proposedTasks   ProposedTask[]
+  createdById     String
+  createdBy       User           @relation(fields: [createdById], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([spaceId])
+  @@map("meetings")
+}
+
+model ProposedTask {
+  id            String         @id @default(cuid())
+  meetingId     String
+  meeting       Meeting        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  spaceId       String
+  title         String
+  description   String?
+  assigneeId    String?
+  dueDate       DateTime?
+  status        ApprovalStatus @default(PENDING) // PENDING | APPROVED | REJECTED
+  taskId        String?        // Created task ID upon approval
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([meetingId])
+  @@index([spaceId])
+  @@map("proposed_tasks")
+}
+
+model UserActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // e.g. "CREATE_TASK", "SUBMIT_APPROVAL", "UPLOAD_MEETING"
+  feature   String   // e.g. "AI_CHAT", "WORKFLOW", "CALENDAR"
+  spaceId   String?
+  metadata  Json?    // Client information
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+  @@map("user_activities")
+}
+
+model UserDelegation {
+  id         String   @id @default(cuid())
+  userId     String   // The owner delegating authority
+  delegateId String   // The recipient of delegated authority
+  spaceId    String
+  startDate  DateTime
+  endDate    DateTime
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, spaceId, delegateId])
+  @@index([delegateId])
+  @@map("user_delegations")
+}
+
+model SlaMetric {
+  id                 String   @id @default(cuid())
+  spaceId            String
+  workflowInstanceId String
+  stepOrder          Int
+  targetHours        Float
+  actualHours        Float
+  isViolated         Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([spaceId])
+  @@index([isViolated])
+  @@map("sla_metrics")
+}
+
+model SavedView {
+  id        String   @id @default(cuid())
+  spaceId   String
+  userId    String
+  name      String
+  icon      String?
+  filters   Json     // JSON filtering rules (status, assignees, dates, priority)
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, spaceId, name])
+  @@map("saved_views")
+}
+
+model DecisionRecord {
+  id                 String    @id @default(cuid())
+  spaceId            String
+  workflowInstanceId String    @unique
+  entityType         String    // "TASK" | "BUDGET" | "AI_ACTION" | "CUSTOM"
+  entityId           String
+  title              String    // E.g., "Vendor A Contract Selection"
+  outcome            String    // "APPROVED" | "REJECTED"
+  decidedById        String    // Last approver triggering completion
+  summary            String    // Decision justification
+  confidence         Float     @default(1.0)
+  validUntil         DateTime? // Fact expiration (avoids stale memory in the future)
+  metadata           Json?     // Snapshotted entity details
+  createdAt          DateTime  @default(now())
+
+  @@index([spaceId])
+  @@index([entityType, entityId])
+  @@map("decision_records")
+}
+

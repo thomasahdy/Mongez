@@ -5,8 +5,9 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { WhatsAppController } from './whatsapp.controller';
 import { WhatsAppService } from './services/whatsapp.service';
+import { WhatsAppOtpService } from './services/whatsapp-otp.service';
 import { WhatsAppRepository } from './repositories/whatsapp.repository';
-import { WhatsAppChannel } from './channels/whatsapp.channel';
+import { WhatsAppChannel } from '../messaging/channels/whatsapp.channel';
 import { WhatsAppProcessor } from './processors/whatsapp.processor';
 
 @Module({
@@ -18,10 +19,11 @@ import { WhatsAppProcessor } from './processors/whatsapp.processor';
   controllers: [WhatsAppController],
   providers: [
     WhatsAppService,
+    WhatsAppOtpService,
     WhatsAppRepository,
     WhatsAppChannel,
     WhatsAppProcessor,
   ],
-  exports: [WhatsAppService, WhatsAppChannel, WhatsAppRepository],
+  exports: [WhatsAppService, WhatsAppOtpService, WhatsAppChannel, WhatsAppRepository],
 })
 export class WhatsAppModule {}

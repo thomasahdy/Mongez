@@ -176,8 +176,11 @@ export class UsersService {
         theme: 'system',
         dateFormat: 'DD/MM/YYYY',
         weekStart: 'MON',
+        calendarType: 'GREGORIAN',
+        holidayCountry: 'EG',
         updatedAt: new Date(),
       };
+
     }
     return pref;
   }

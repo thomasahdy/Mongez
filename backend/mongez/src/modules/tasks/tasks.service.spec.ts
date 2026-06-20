@@ -3,7 +3,7 @@ import { TaskRepository, CommentRepository, TimeLogRepository } from './reposito
 import { CacheService } from '../../infrastructure/cache/cache.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { IdentifierService } from '../../shared/services/identifier.service';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { EventBus } from '@nestjs/cqrs';
 import { TrashService } from '../trash/trash.service';
 import {
@@ -140,6 +140,22 @@ describe('TasksService', () => {
       // Fire-and-forget — cache invalidation is called (may complete async)
       expect(cache.delPattern).toHaveBeenCalledWith('ai:chat:space-1:*');
       expect(cache.delPattern).toHaveBeenCalledWith('ai:risk:space-1:*');
+    });
+
+    it('UT-TASK-SVC-005-a: should throw ForbiddenException if database level tenant verification fails', async () => {
+      taskRepo.create.mockRejectedValue(new ForbiddenException('Tenant violation'));
+
+      await expect(service.createTask(createDto, 'user-1', 'space-1', 'PROJ')).rejects.toThrow(ForbiddenException);
+      expect(eventBus.publish).not.toHaveBeenCalled();
+      expect(aiQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('UT-TASK-SVC-005-b: should propagate error if AI queue addition fails', async () => {
+      taskRepo.create.mockResolvedValue(mockTask);
+      aiQueue.add.mockRejectedValue(new Error('Queue connection failed'));
+
+      await expect(service.createTask(createDto, 'user-1', 'space-1', 'PROJ')).rejects.toThrow('Queue connection failed');
+      expect(eventBus.publish).not.toHaveBeenCalled();
     });
   });
 

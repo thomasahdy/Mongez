@@ -29,11 +29,13 @@ import {
 } from '../spaces/guards/space-member.guard';
 import { ConfigService } from '@nestjs/config';
 import { WhatsAppService } from './services/whatsapp.service';
+import { WhatsAppOtpService } from './services/whatsapp-otp.service';
 import { WhatsAppRepository } from './repositories/whatsapp.repository';
 import { EncryptionService } from '../../shared/services/encryption.service';
-import { MessagingCommandExecutor } from '../messaging/services/messaging-command-executor.service';
+import { MessagingCommandExecutor } from '../messaging/commands/messaging-command-executor.service';
 import { SetupWhatsappDto } from './dto/setup-whatsapp.dto';
 import { RegisterContactDto } from './dto/register-contact.dto';
+import { RequestOtpDto, ConfirmOtpDto } from './dto/verify-phone.dto';
 
 @ApiTags('WhatsApp')
 @Controller('whatsapp')
@@ -42,6 +44,7 @@ export class WhatsAppController {
 
   constructor(
     private readonly service: WhatsAppService,
+    private readonly otpService: WhatsAppOtpService,
     private readonly repo: WhatsAppRepository,
     private readonly encryption: EncryptionService,
     private readonly config: ConfigService,
@@ -142,9 +145,9 @@ export class WhatsAppController {
       normalizedPhone,
       spaceId,
     );
-    if (!contact) {
+    if (!contact || !contact.isVerified) {
       this.logger.log(
-        `Inbound WhatsApp from unknown contact ${normalizedPhone} (space ${spaceId}).`,
+        `Inbound WhatsApp from unverified/unknown contact ${normalizedPhone} (space ${spaceId}).`,
       );
       return;
     }
@@ -285,6 +288,38 @@ export class WhatsAppController {
       optedIn: false,
     });
     return { optedIn: updated.optedIn };
+  }
+
+  // ── OTP Verification endpoints ─────────────────────────────────
+
+  @Post('spaces/:spaceId/otp/request')
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Request an OTP code for WhatsApp phone verification',
+  })
+  async requestOtp(
+    @Param('spaceId') spaceId: string,
+    @Req() req: any,
+    @Body() dto: RequestOtpDto,
+  ) {
+    await this.otpService.issueOtp(req.user.userId, spaceId, dto.phoneNumber);
+    return { success: true, message: 'Verification code sent to WhatsApp.' };
+  }
+
+  @Post('spaces/:spaceId/otp/confirm')
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Confirm OTP code and verify phone number',
+  })
+  async confirmOtp(
+    @Param('spaceId') _spaceId: string,
+    @Req() req: any,
+    @Body() dto: ConfirmOtpDto,
+  ) {
+    await this.otpService.confirmOtp(req.user.userId, dto);
+    return { success: true, message: 'Phone number verified successfully.' };
   }
 
   // ── Webhook registration helper ────────────────────────────────
