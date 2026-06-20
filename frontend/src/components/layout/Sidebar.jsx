@@ -16,7 +16,7 @@ const OVERVIEW_LINKS = [
 ];
 
 const VIEW_LINKS = [
-  { href: "/calendar", icon: "fa-regular fa-calendar", label: "Calendar", badge: { label: "2 mtgs", variant: "neutral" } },
+  { href: "/calendar", icon: "fa-regular fa-calendar", label: "Calendar", badge: { label: "", variant: "neutral" } },
   { href: "/timeline", icon: "fa-bars-staggered",       label: "Timeline" },
   { href: "/whiteboard",icon: "fa-chalkboard",          label: "Whiteboard" },
   { href: "/reports",  icon: "fa-chart-line",           label: "Reports" },
@@ -95,8 +95,8 @@ const Sidebar = ({setLanguage, language}) => {
 
       {/* Footer */}
       <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
-        <NavItem href="settings.html" icon="fa-gear" label={t("settings")} />
-        <a href="login.html" className="flex items-center gap-2 px-2 py-[7px] rounded-lg text-[13px] font-medium text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all duration-150">
+        <NavItem href="settings" icon="fa-gear" label={t("settings")} />
+        <a href="login" className="flex items-center gap-2 px-2 py-[7px] rounded-lg text-[13px] font-medium text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all duration-150">
           <span className="w-5 flex justify-center"><i className="fa-solid fa-arrow-right-from-bracket" /></span>
           {t("logout")}
         </a>

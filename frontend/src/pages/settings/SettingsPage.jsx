@@ -16,11 +16,11 @@ import PreferencesSection from "./sections/PreferencesSection";
 
 
 const INITIAL_FORM = {
-  firstName: "Thomas",
-  lastName:  "User",
+  firstName: "Alsherif",
+  lastName:  "Ashraf",
   jobTitle:  "Product Manager",
   bio:       "",
-  email:     "thomas@mongez.com",
+  email:     "Alsherif@mongez.com",
   phone:     "",
   timezone:  "Central European Time (CET)",
 };
