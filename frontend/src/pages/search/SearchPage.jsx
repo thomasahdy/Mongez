@@ -10,6 +10,7 @@ import SearchBar from "./sections/SearchBar";
 import SuggestionChips from "./sections/SuggestionChips";
 import SearchHero from "./sections/SearchHero";
 import ResultItem from "../../components/search/ResultItem";
+import ViewTabs from "../home/viewtabs/ViewTabs";
 
 // ─────────────────────────────────────────────
 // CONSTANTS / DATA
@@ -142,28 +143,6 @@ const VIEW_TABS_DATA = [
 ];
 
 
-// ─────────────────────────────────────────────
-// VIEW TABS
-// ─────────────────────────────────────────────
-
-function ViewTabs() {
-  return (
-    <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-5 shrink-0">
-      <nav className="flex items-center overflow-x-auto" aria-label="View tabs">
-        {VIEW_TABS_DATA.map((tab) => (
-          <a
-            key={tab.id}
-            href={tab.href}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 text-[13px] font-medium text-slate-400 dark:text-slate-500 border-b-2 border-transparent hover:text-slate-600 dark:hover:text-slate-200 whitespace-nowrap transition-all duration-150"
-          >
-            <i className={`fa-solid ${tab.icon}`} aria-hidden="true" />
-            {tab.label}
-          </a>
-        ))}
-      </nav>
-    </div>
-  );
-}
 
 
 export default function SearchPage({ initialQuery = "" }) {
@@ -193,7 +172,6 @@ export default function SearchPage({ initialQuery = "" }) {
 
   return (
     <>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
       
           <ViewTabs />

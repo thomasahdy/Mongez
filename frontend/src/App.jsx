@@ -14,11 +14,12 @@ import { useTranslation } from "react-i18next";
 import SettingsPage from './pages/settings/SettingsPage';
 import InboxPage from './pages/Inbox/InboxPage';
 import SearchPage from './pages/search/SearchPage';
+import MyWorkPage from './pages/mywork/MyWorkPage';
 
-function AuthenticatedApp({ path, setPath }) {
+function AuthenticatedApp({ path, setPath, setLanguage, language}) {
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans animate-fadeIn">
-      <div className="hidden lg:block shrink-0"><Sidebar /></div>
+      <div className="hidden lg:block shrink-0"><Sidebar setLanguage={setLanguage} language={language}/></div>
       <Routes>
         <Route path='/' element={<Home path={path}/>}>
           <Route index element={<KanbanBoard setPath={setPath}/>}/>
@@ -30,6 +31,10 @@ function AuthenticatedApp({ path, setPath }) {
           <Route
                 path='/search'
                 element={<SearchPage/>}
+            />
+          <Route
+                path='/mywork'
+                element={<MyWorkPage setPath={setPath}/>}
             />
         </Route>
       </Routes>
@@ -54,6 +59,15 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const [path, setPath] = useState([]);
+   const [language, setLanguage] = useState("en");
+
+  const { i18n } = useTranslation();
+
+    useEffect(() => {
+    document.documentElement.dir =
+      language === "ar" ? "rtl" : "ltr";
+      i18n.changeLanguage(language);
+  }, [language]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -93,22 +107,14 @@ function AppContent() {
   }
 
   return isLoggedIn ? (
-    <AuthenticatedApp path={path} setPath={setPath} />
+    <AuthenticatedApp path={path} setPath={setPath} setLanguage={setLanguage} language={language}/>
   ) : (
     <PublicApp />
   );
 }
 
 function App() {
-  const [language, setLanguage] = useState("en");
-
-  const { i18n } = useTranslation();
-
-    useEffect(() => {
-    document.documentElement.dir =
-      language === "ar" ? "rtl" : "ltr";
-      i18n.changeLanguage(language);
-  }, [language]);
+ 
 
   return (
     <BrowserRouter>

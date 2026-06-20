@@ -1,4 +1,20 @@
 {
   "welcome": "Welcome",
-  "login": "Login"
+  "login": "Login",
+  "mongez": "Mongez",
+  "My Work": "My Work",
+  "Inbox": "Inbox",
+  "Dashboard": "Dashboard",
+  "Search": "Search",
+  "AI Assistant": "AI Assistant",
+  "Calendar": "Calendar",
+  "Timeline": "Timeline",
+  "Whiteboard": "Whiteboard",
+  "Reports": "Reports",
+  "overview": "Overview",
+  "views":"Views",
+  "spaces": "Spaces",
+  "settings": "Settings",
+  "logout": "Log Out",
+  "manage spaces": "Manage Spaces"
 }

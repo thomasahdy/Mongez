@@ -1,4 +1,20 @@
 {
-  "welcome": "مرحباً",
-  "login": "تسجيل الدخول"
+  "welcome": "مرحبًا",
+  "login": "تسجيل الدخول",
+  "mongez": "منجز",
+  "My Work": "عملي",
+  "Inbox": "الوارد",
+  "Dashboard": "لوحة التحكم",
+  "Search": "بحث",
+  "AI Assistant": "المساعد الذكي",
+  "Calendar": "التقويم",
+  "Timeline": "الجدول الزمني",
+  "Whiteboard": "السبورة",
+  "Reports": "التقارير",
+  "overview": "رؤيه عامه",
+  "views": "طرق العرض",
+  "spaces": "المساحات",
+  "settings": "الاعدادات",
+  "logout": "تسجيل الخروج",
+  "manage spaces": "ادارة المساحات"
 }

@@ -3,6 +3,8 @@ import SpaceCard from "./SpaceCard";
 import SpacesHeader from "./SpacesHeader";
 import CreateSpaceCard from "./CreateSpaceCard";
 import QuotaBanner from "./QuotaBanner";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchSpaces } from "../../store/spaces/spacesThunks";
  
 const SPACES_DATA = [
   {
@@ -108,7 +110,11 @@ const QUOTA = { used: 2, total: 5 };
   
 ]
  
-export default function SpacesPagee({setPath}) {
+export default function SpacesPage({setPath}) {
+  const dispatch = useDispatch();
+  const { items: spaces, loading, error } = useSelector((s) => s.spaces);
+
+  useEffect(() => { dispatch(fetchSpaces()); }, [dispatch]);
   const remaining = QUOTA.total - QUOTA.used;
   useEffect(()=>{
       setPath(path)
@@ -117,10 +123,7 @@ export default function SpacesPagee({setPath}) {
   return (
     <>
       {/* Font Awesome — load via <link> in index.html in production */}
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-      />
+      
  
  
         {/* Main */}
