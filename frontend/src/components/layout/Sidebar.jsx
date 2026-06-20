@@ -8,7 +8,7 @@ import { NavLink } from 'react-router';
 import ToggleLanguage from './ToggleLanguage';
 
 const OVERVIEW_LINKS = [
-  { href: "/my-work",      icon: "fa-circle-check",       label: "My Work",     badge: { label: "5", variant: "danger" } },
+  { href: "/mywork",      icon: "fa-circle-check",       label: "My Work",     badge: { label: "5", variant: "danger" } },
   { href: "/inbox",        icon: "fa-inbox",              label: "Inbox",        badge: { label: "3", variant: "danger" } },
   { href: "/dashboard",    icon: "fa-chart-pie",          label: "Dashboard" },
   { href: "/search",       icon: "fa-magnifying-glass",   label: "Search",       kbd: "⌘K" },
