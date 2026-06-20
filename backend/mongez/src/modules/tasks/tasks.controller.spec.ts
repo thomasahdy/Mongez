@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TaskAccessGuard } from './guards/task-access.guard';
 import { BoardAccessGuard } from '../boards/guards/board-access.guard';
 import { SpaceMemberGuard } from '../spaces/guards/space-member.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 
 describe('TasksController', () => {
   let controller: TasksController;
@@ -47,6 +48,8 @@ describe('TasksController', () => {
       .overrideGuard(BoardAccessGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(SpaceMemberGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(PermissionsGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

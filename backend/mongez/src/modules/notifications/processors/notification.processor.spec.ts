@@ -2,8 +2,8 @@ import { NotificationProcessor } from './notification.processor';
 import { CacheService } from '../../../infrastructure/cache/cache.service';
 import { EmailChannel } from '../channels/email.channel';
 import { WebSocketChannel } from '../channels/websocket.channel';
-import { WhatsAppChannel } from '../../whatsapp/channels/whatsapp.channel';
-import { TelegramChannel } from '../../telegram/channels/telegram.channel';
+import { WhatsAppChannel } from '../../messaging/channels/whatsapp.channel';
+import { TelegramChannel } from '../../messaging/channels/telegram.channel';
 import { PresenceService } from '../presence/presence.service';
 import { NotificationsService } from '../notifications.service';
 import { Queue } from 'bullmq';
@@ -20,7 +20,11 @@ describe('NotificationProcessor', () => {
   let telegramChannel: jest.Mocked<TelegramChannel>;
   let presenceService: jest.Mocked<PresenceService>;
   let notificationsService: jest.Mocked<NotificationsService>;
+  let notificationPreferenceService: any;
+  let messagingAnalytics: any;
+  let prisma: any;
   let notificationQueue: jest.Mocked<Queue>;
+  let traceContext: any;
 
   const mockNotif = { id: 'notif-1', userId: 'user-1' };
 
@@ -55,11 +59,25 @@ describe('NotificationProcessor', () => {
       createAndNotify: jest.fn().mockResolvedValue(mockNotif),
     } as any;
 
+    notificationPreferenceService = {
+      getEnabledChannels: jest.fn().mockResolvedValue(['inApp', 'email', 'push', 'whatsapp', 'telegram']),
+    } as any;
+
+    messagingAnalytics = {
+      record: jest.fn().mockResolvedValue(undefined),
+    } as any;
+
+    prisma = {
+      userPreference: {
+        findUnique: jest.fn().mockResolvedValue({ language: 'en' }),
+      },
+    } as any;
+
     notificationQueue = {
       add: jest.fn().mockResolvedValue({ id: 'job-1' }),
     } as any;
 
-    const traceContext = {
+    traceContext = {
       run: jest.fn().mockImplementation((id, fn) => fn()),
     } as any;
 
@@ -71,6 +89,9 @@ describe('NotificationProcessor', () => {
       telegramChannel,
       presenceService,
       notificationsService,
+      notificationPreferenceService,
+      messagingAnalytics,
+      prisma,
       notificationQueue,
       traceContext,
     );
@@ -117,22 +138,36 @@ describe('NotificationProcessor', () => {
       expect(notificationsService.createAndNotify).not.toHaveBeenCalled();
     });
 
-    it('UT-NOTIF-PROC-002: should process event for online user via WebSocket', async () => {
+    it('UT-NOTIF-PROC-002: should process event for online user via WebSocket and bypass suppression for CRITICAL priority', async () => {
       presenceService.isUserOnline.mockResolvedValue(true);
+      const criticalEvent = {
+        ...baseEvent,
+        payload: {
+          ...baseEvent.payload,
+          priority: 'CRITICAL',
+        },
+      };
 
-      await processor.handleProcessEvent(makeJob(baseEvent));
+      await processor.handleProcessEvent(makeJob(criticalEvent));
 
       expect(notificationsService.createAndNotify).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user-1', type: 'TASK_UPDATED' }),
       );
-      expect(webSocketChannel.send).toHaveBeenCalledWith(mockNotif, baseEvent.payload);
-      // Phase 1: fan-out to WhatsApp + Telegram channels
-      expect(whatsappChannel.send).toHaveBeenCalledWith(mockNotif, baseEvent.payload);
-      expect(telegramChannel.send).toHaveBeenCalledWith(mockNotif, baseEvent.payload);
+      expect(webSocketChannel.send).toHaveBeenCalledWith(mockNotif, criticalEvent.payload);
+      // Phase 1: fan-out to WhatsApp + Telegram channels (critical bypasses suppression)
+      expect(whatsappChannel.send).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-1', type: 'TASK_UPDATED' }),
+        criticalEvent.payload,
+      );
+      expect(telegramChannel.send).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-1', type: 'TASK_UPDATED' }),
+        criticalEvent.payload,
+      );
     });
 
     it('UT-NOTIF-PROC-003: should queue digest for offline user instead of immediate push', async () => {
       presenceService.isUserOnline.mockResolvedValue(false);
+      notificationPreferenceService.getEnabledChannels.mockResolvedValue(['email', 'whatsapp', 'telegram']);
       // mock redis on cacheService
       (cacheService as any).redis = {
         rpush: jest.fn().mockResolvedValue(1),

@@ -100,7 +100,7 @@ describe('RealtimeGateway', () => {
       expect(mockSocket.data.userId).toBe('user-1');
       expect(mockSocket.join).toHaveBeenCalledWith('user:user-1');
       expect(mockSocket.join).toHaveBeenCalledWith('space:space-1');
-      expect(cacheService.set).toHaveBeenCalledWith('user:user-1:last_seen', expect.any(String), 60);
+      expect(cacheService.set).toHaveBeenCalledWith('user:user-1:last_seen', expect.any(String), 90);
     });
 
     it('should disconnect client on authentication failure', async () => {
@@ -122,7 +122,7 @@ describe('RealtimeGateway', () => {
 
       await gateway.handleHeartbeat(mockSocket);
 
-      expect(cacheService.set).toHaveBeenCalledWith('user:user-1:last_seen', expect.any(String), 60);
+      expect(cacheService.set).toHaveBeenCalledWith('user:user-1:last_seen', expect.any(String), 90);
       expect(cacheService.zadd).toHaveBeenCalledWith('presence:board:board-1', expect.any(Number), 'user-1');
       expect(cacheService.zadd).toHaveBeenCalledWith('presence:task:task-1', expect.any(Number), 'user-1');
     });

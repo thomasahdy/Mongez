@@ -6,7 +6,7 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { TelegramController } from './telegram.controller';
 import { TelegramService } from './services/telegram.service';
 import { TelegramRepository } from './repositories/telegram.repository';
-import { TelegramChannel } from './channels/telegram.channel';
+import { TelegramChannel } from '../messaging/channels/telegram.channel';
 import { TelegramProcessor } from './processors/telegram.processor';
 
 @Module({

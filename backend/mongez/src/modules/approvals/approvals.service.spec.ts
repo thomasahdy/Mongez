@@ -76,4 +76,51 @@ describe('ApprovalsService', () => {
       expect(approvalRepo.withdraw).toHaveBeenCalledWith('app-1', 'user-1');
     });
   });
+
+  describe('getPendingForReviewer()', () => {
+    it('should return paginated pending approvals for reviewer', async () => {
+      approvalRepo.findPendingForReviewer.mockResolvedValue({
+        data: [{ id: 'app-1' }],
+        total: 1,
+      } as any);
+
+      const result = await service.getPendingForReviewer('user-1', 1, 10);
+
+      expect(approvalRepo.findPendingForReviewer).toHaveBeenCalledWith('user-1', 1, 10);
+      expect(result.data).toHaveLength(1);
+      expect(result.meta.total).toBe(1);
+    });
+  });
+
+  describe('listForTask()', () => {
+    it('should return paginated list of approvals for task', async () => {
+      approvalRepo.listForTask.mockResolvedValue({
+        data: [{ id: 'app-1' }],
+        total: 1,
+      } as any);
+
+      const result = await service.listForTask('task-1', 1, 10);
+
+      expect(approvalRepo.listForTask).toHaveBeenCalledWith('task-1', 1, 10);
+      expect(result.data).toHaveLength(1);
+    });
+  });
+
+  describe('findById()', () => {
+    it('should return approval record if found', async () => {
+      const mockApproval = { id: 'app-1' };
+      approvalRepo.findById.mockResolvedValue(mockApproval as any);
+
+      const result = await service.findById('app-1');
+
+      expect(result).toEqual(mockApproval);
+      expect(approvalRepo.findById).toHaveBeenCalledWith('app-1');
+    });
+
+    it('should throw NotFoundException if approval not found', async () => {
+      approvalRepo.findById.mockResolvedValue(null);
+
+      await expect(service.findById('bad-id')).rejects.toThrow(NotFoundException);
+    });
+  });
 });

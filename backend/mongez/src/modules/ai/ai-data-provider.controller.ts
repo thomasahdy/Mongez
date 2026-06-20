@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/co
 import { ServiceApiKeyGuard } from './guards/service-api-key.guard';
 import { AIDataProviderService } from './ai-data-provider.service';
 import { AIActionRepository } from './repositories/ai-action.repository';
+import { CalendarService } from '../calendar/services/calendar.service';
 
 /**
  * Internal API for the Python AI service.
@@ -14,6 +15,7 @@ export class AIDataProviderController {
   constructor(
     private readonly dataProvider: AIDataProviderService,
     private readonly actionRepo: AIActionRepository,
+    private readonly calendarService: CalendarService,
   ) {}
 
   /**
@@ -81,4 +83,22 @@ export class AIDataProviderController {
       reason: body.reason,
     });
   }
+
+  /**
+   * GET /internal/ai/calendar/:spaceId
+   * Returns merged calendar events (custom, Google, approvals, tasks, holidays) for RAG/agent diagnostics.
+   */
+  @Get('calendar/:spaceId')
+  async getCalendar(
+    @Param('spaceId') spaceId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const start = startDate || new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+    const end = endDate || new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString();
+    return this.calendarService.getUnifiedFeed(spaceId, start, end, undefined, {
+      sources: ['MONGEZ', 'GOOGLE', 'HOLIDAY', 'MEETING', 'APPROVAL', 'ESCALATION'],
+    });
+  }
 }
+

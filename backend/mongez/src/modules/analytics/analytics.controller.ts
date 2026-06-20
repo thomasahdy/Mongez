@@ -4,13 +4,17 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { AnalyticsService } from './analytics.service';
+import { MessagingAnalyticsService } from '../messaging/analytics/messaging-analytics.service';
 
 @ApiTags('Analytics')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller()
 export class AnalyticsController {
-  constructor(private readonly analytics: AnalyticsService) {}
+  constructor(
+    private readonly analytics: AnalyticsService,
+    private readonly messagingAnalytics: MessagingAnalyticsService,
+  ) {}
 
   @Get('analytics/overview')
   @RequirePermissions(['read', 'analytics'])
@@ -65,6 +69,32 @@ export class AnalyticsController {
   @ApiOperation({ summary: 'Export raw task data (CSV-able rows)' })
   async exportData(@Query('spaceId') spaceId: string) {
     return this.analytics.exportData(spaceId);
+  }
+
+  @Get('analytics/adoption')
+  @RequirePermissions(['read', 'analytics'])
+  @ApiOperation({ summary: 'User adoption insights and telemetry' })
+  async getAdoptionInsights(@Query('spaceId') spaceId: string) {
+    return this.analytics.getAdoptionInsights(spaceId);
+  }
+
+
+  @Get('analytics/messaging/funnel')
+  @RequirePermissions(['read', 'analytics'])
+  @ApiOperation({ summary: 'Messaging funnel metrics (SENT→DELIVERED→OPENED→ACTED_UPON)' })
+  async getMessagingFunnel(
+    @Query('spaceId') spaceId: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('eventType') eventType?: string,
+  ) {
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    return this.messagingAnalytics.getFunnelMetrics(spaceId, {
+      from: fromDate,
+      to: toDate,
+      eventType,
+    });
   }
 
   private toPeriod(period?: string) {

@@ -19,6 +19,7 @@ export class FileRepository {
 
     const where = {
       taskId,
+      currentVersionId: { not: null },
       ...(filters.mimeType ? { mimeType: { contains: filters.mimeType } } : {}),
     };
 

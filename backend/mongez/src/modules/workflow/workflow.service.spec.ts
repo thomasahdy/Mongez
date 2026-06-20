@@ -7,6 +7,9 @@ import { WorkflowService } from './workflow.service';
 import { WorkflowRepository } from './workflow.repository';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { EventBus } from '@nestjs/cqrs';
+import { DelegationService } from '../delegation/delegation.service';
+import { SlaService } from '../sla/sla.service';
 
 // Helper: build a mock workflow instance
 const buildInstance = (overrides: Partial<any> = {}): any => ({
@@ -47,6 +50,10 @@ describe('WorkflowService', () => {
   let repo: jest.Mocked<WorkflowRepository>;
   let notifications: jest.Mocked<NotificationsService>;
   let realtime: jest.Mocked<RealtimeService>;
+  let messagingApproval: any;
+  let eventBus: jest.Mocked<EventBus>;
+  let delegationService: jest.Mocked<DelegationService>;
+  let slaService: jest.Mocked<SlaService>;
 
   beforeEach(() => {
     repo = {
@@ -70,7 +77,31 @@ describe('WorkflowService', () => {
       emitToUser: jest.fn(),
     } as any;
 
-    service = new WorkflowService(repo, notifications, realtime);
+    messagingApproval = {
+      sendApprovalRequestToUser: jest.fn().mockResolvedValue(undefined),
+    } as any;
+
+    eventBus = {
+      publish: jest.fn(),
+    } as any;
+
+    delegationService = {
+      getActiveDelegate: jest.fn().mockResolvedValue(null),
+    } as any;
+
+    slaService = {
+      recordMetric: jest.fn().mockResolvedValue(undefined),
+    } as any;
+
+    service = new WorkflowService(
+      repo,
+      notifications,
+      realtime,
+      messagingApproval,
+      eventBus,
+      delegationService,
+      slaService,
+    );
   });
 
   // ─── createDefinition ────────────────────────────────────────
@@ -170,6 +201,7 @@ describe('WorkflowService', () => {
       await service.startWorkflow('user-requester', dto);
 
       expect(repo.createInstance).toHaveBeenCalled();
+      expect(eventBus.publish).toHaveBeenCalled();
       expect(notifications.queueNotification).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user-approver', type: 'WORKFLOW_APPROVAL_REQUEST' }),
       );
@@ -274,6 +306,128 @@ describe('WorkflowService', () => {
         expect.objectContaining({ type: 'WORKFLOW_REJECTED' }),
       );
     });
+
+    it('should allow approval from an active delegate of a designated approver', async () => {
+      const instance = buildInstance();
+      const instanceAfterAction = buildInstance({
+        actions: [{ stepOrder: 0, actorId: 'user-delegate', decision: 'APPROVED' }],
+      });
+      repo.findInstanceById
+        .mockResolvedValueOnce(instance)
+        .mockResolvedValueOnce(instanceAfterAction)
+        .mockResolvedValueOnce(instanceAfterAction);
+
+      delegationService.getActiveDelegate.mockResolvedValue('user-delegate');
+      repo.createAction.mockResolvedValue(undefined as any);
+      repo.updateInstance.mockResolvedValue({ ...instance, status: 'APPROVED' } as any);
+
+      await service.submitDecision('instance-1', 'user-delegate', 'APPROVED');
+
+      expect(delegationService.getActiveDelegate).toHaveBeenCalledWith('user-approver', 'space-1');
+      expect(repo.createAction).toHaveBeenCalledWith(expect.objectContaining({ actorId: 'user-delegate' }));
+    });
+
+    it('should not resolve parallel step with requiresAll=true when only one has approved', async () => {
+      const instance = buildInstance({
+        definition: {
+          id: 'def-1',
+          name: 'Parallel Flow',
+          steps: [
+            {
+              id: 'step-1',
+              order: 0,
+              name: 'Parallel Step',
+              approverType: 'USER',
+              approverIds: ['user-a', 'user-b'],
+              approverRole: null,
+              isParallel: true,
+              requiresAll: true,
+              timeoutHours: 24,
+            },
+          ],
+        },
+      });
+
+      const instanceAfterAction = buildInstance({
+        definition: instance.definition,
+        actions: [{ stepOrder: 0, actorId: 'user-a', decision: 'APPROVED' }],
+      });
+
+      repo.findInstanceById
+        .mockResolvedValueOnce(instance)
+        .mockResolvedValueOnce(instanceAfterAction)
+        .mockResolvedValueOnce(instanceAfterAction);
+
+      await service.submitDecision('instance-1', 'user-a', 'APPROVED');
+
+      expect(repo.updateInstance).not.toHaveBeenCalled();
+    });
+
+    it('should resolve parallel step with requiresAll=false immediately on first approval', async () => {
+      const instance = buildInstance({
+        definition: {
+          id: 'def-1',
+          name: 'Parallel Flow',
+          steps: [
+            {
+              id: 'step-1',
+              order: 0,
+              name: 'Parallel Step',
+              approverType: 'USER',
+              approverIds: ['user-a', 'user-b'],
+              approverRole: null,
+              isParallel: true,
+              requiresAll: false,
+              timeoutHours: 24,
+            },
+          ],
+        },
+      });
+
+      const instanceAfterAction = buildInstance({
+        definition: instance.definition,
+        actions: [{ stepOrder: 0, actorId: 'user-a', decision: 'APPROVED' }],
+      });
+
+      repo.findInstanceById
+        .mockResolvedValueOnce(instance)
+        .mockResolvedValueOnce(instanceAfterAction)
+        .mockResolvedValueOnce(instanceAfterAction);
+
+      repo.updateInstance.mockResolvedValue({ ...instance, status: 'APPROVED' } as any);
+
+      await service.submitDecision('instance-1', 'user-a', 'APPROVED');
+
+      expect(repo.updateInstance).toHaveBeenCalledWith('instance-1', expect.objectContaining({ status: 'APPROVED' }));
+    });
+
+    it('should record SLA metric when a step completes', async () => {
+      const stepActivatedAt = new Date(Date.now() - 2 * 3600_000).toISOString(); // 2 hours ago
+      const instance = buildInstance({
+        context: { _stepActivatedAt: stepActivatedAt },
+      });
+      const instanceAfterAction = buildInstance({
+        context: { _stepActivatedAt: stepActivatedAt },
+        actions: [{ stepOrder: 0, actorId: 'user-approver', decision: 'APPROVED' }],
+      });
+
+      repo.findInstanceById
+        .mockResolvedValueOnce(instance)
+        .mockResolvedValueOnce(instanceAfterAction)
+        .mockResolvedValueOnce(instanceAfterAction);
+
+      repo.updateInstance.mockResolvedValue({ ...instance, status: 'APPROVED' } as any);
+
+      await service.submitDecision('instance-1', 'user-approver', 'APPROVED');
+
+      expect(slaService.recordMetric).toHaveBeenCalledWith(
+        'space-1',
+        'instance-1',
+        0,
+        168, // Default timeout: 7 days * 24 = 168 hours
+        expect.closeTo(2, 1),
+      );
+    });
   });
 
   // ─── cancelInstance ──────────────────────────────────────────
@@ -348,6 +502,7 @@ describe('WorkflowService', () => {
         'instance-1',
         expect.objectContaining({ status: 'TIMED_OUT' }),
       );
+      expect(eventBus.publish).toHaveBeenCalled();
       expect(notifications.queueNotification).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user-requester', type: 'WORKFLOW_TIMED_OUT' }),
       );

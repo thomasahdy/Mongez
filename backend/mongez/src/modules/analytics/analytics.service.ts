@@ -185,6 +185,47 @@ export class AnalyticsService {
     return tasks;
   }
 
+  async getAdoptionInsights(spaceId: string) {
+    const memberships = await this.prisma.membership.findMany({
+      where: { spaceId },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatarUrl: true } },
+      },
+    });
+
+    const insights: any[] = [];
+
+    for (const member of memberships) {
+      const lastActivity = await this.prisma.userActivity.findFirst({
+        where: { userId: member.userId, spaceId },
+        orderBy: { timestamp: 'desc' },
+      });
+
+      const workflowActionsCount = await this.prisma.workflowAction.count({
+        where: { actorId: member.userId, instance: { spaceId } },
+      });
+
+      const workflowsCreatedCount = await this.prisma.workflowInstance.count({
+        where: { requesterId: member.userId, spaceId },
+      });
+
+      insights.push({
+        userId: member.userId,
+        name: member.user.name,
+        email: member.user.email,
+        avatarUrl: member.user.avatarUrl,
+        lastActiveAt: lastActivity ? lastActivity.timestamp : null,
+        workflowActionsCount,
+        workflowsCreatedCount,
+        isInactive: lastActivity
+          ? (new Date().getTime() - new Date(lastActivity.timestamp).getTime()) > 30 * 24 * 3600 * 1000
+          : true,
+      });
+    }
+
+    return insights;
+  }
+
   // ── Helpers ──────────────────────────────────────────────────
 
   private async getCompletionRate(spaceId: string): Promise<number> {

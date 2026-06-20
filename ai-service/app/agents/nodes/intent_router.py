@@ -11,7 +11,7 @@ from app.agents.state import MongezAgentState
 
 logger = logging.getLogger(__name__)
 
-VALID_INTENTS = {"risk", "chat", "report", "action"}
+VALID_INTENTS = {"risk", "chat", "report", "action", "calendar"}
 
 # Inline prompt — kept here rather than a .txt file because it's routing logic,
 # not a user-facing generation. The system prompt is very short and deterministic.
@@ -22,8 +22,9 @@ Categories:
 - chat: General questions about project status, task details, assignments, team info
 - report: Requests to generate reports, summaries, weekly updates, or analytics
 - action: Requests to DO something (assign task, escalate, create reminder, update status)
+- calendar: Questions about calendars, scheduling, meetings, conflicts, public holidays, or workload warnings
 
-Reply with ONLY the category word (risk/chat/report/action). No explanation."""
+Reply with ONLY the category word (risk/chat/report/action/calendar). No explanation."""
 
 
 async def intent_router_node(state: MongezAgentState) -> dict:

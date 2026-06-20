@@ -65,6 +65,18 @@ class NestJSClient:
         resp.raise_for_status()
         return self._extract_data(resp.json()) or []
 
+    async def get_calendar(self, space_id: str, start_date: str | None = None, end_date: str | None = None) -> list[dict]:
+        """Fetch merged calendar events, tasks, approvals, holidays from NestJS."""
+        params = {}
+        if start_date:
+            params["startDate"] = start_date
+        if end_date:
+            params["endDate"] = end_date
+        resp = await self._client.get(f"/internal/ai/calendar/{space_id}", params=params)
+        resp.raise_for_status()
+        return self._extract_data(resp.json()) or []
+
+
     async def get_schema(self) -> dict:
         """Fetch the simplified DB schema description for Text-to-SQL prompts."""
         resp = await self._client.get("/internal/ai/schema")

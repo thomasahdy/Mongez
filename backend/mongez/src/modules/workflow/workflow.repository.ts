@@ -91,7 +91,7 @@ export class WorkflowRepository {
 
   async updateInstance(
     id: string,
-    data: Partial<{ currentStep: number; status: string; resolvedAt: Date | null }>,
+    data: Partial<{ currentStep: number; status: string; resolvedAt: Date | null; context: Prisma.InputJsonValue }>,
   ) {
     return this.prisma.workflowInstance.update({
       where: { id },
