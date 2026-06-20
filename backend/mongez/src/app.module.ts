@@ -1,7 +1,7 @@
 import { Module, ValidationPipe, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_PIPE } from '@nestjs/core';
+import { APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -38,6 +38,14 @@ import { ApprovalsModule } from './modules/approvals/approvals.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
+import { MeetingsModule } from './modules/meetings/meetings.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { DelegationModule } from './modules/delegation/delegation.module';
+import { SlaModule } from './modules/sla/sla.module';
+import { SavedViewsModule } from './modules/saved-views/saved-views.module';
+import { DecisionsModule } from './modules/decisions/decisions.module';
+import { ActivityLoggerInterceptor } from './modules/analytics/activity-logger.interceptor';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
@@ -93,6 +101,13 @@ import { AppService } from './app.service';
     IntegrationsModule,
     WhatsAppModule,
     TelegramModule,
+    CalendarModule,
+    MeetingsModule,
+    OnboardingModule,
+    DelegationModule,
+    SlaModule,
+    SavedViewsModule,
+    DecisionsModule,
 
     // Bull Board Queue Dashboard
     BullBoardModule.forRootAsync({
@@ -145,6 +160,10 @@ import { AppService } from './app.service';
     {
       provide: APP_PIPE,
       useClass: ValidationPipe,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ActivityLoggerInterceptor,
     },
   ],
 })

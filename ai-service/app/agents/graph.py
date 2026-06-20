@@ -18,6 +18,7 @@ from app.agents.nodes.chat_responder import chat_responder_node
 from app.agents.nodes.report_generator import report_generator_node
 from app.agents.nodes.recommendation import recommendation_node
 from app.agents.nodes.human_gate import human_gate_node
+from app.agents.nodes.calendar_intelligence import calendar_intelligence_node
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 def _route_by_intent(state: MongezAgentState) -> str:
     """Conditional edge function — routes to the correct agent node."""
     intent = state.get("intent", "chat")
-    if intent in ("risk", "chat", "report", "action"):
+    if intent in ("risk", "chat", "report", "action", "calendar"):
         return intent
     logger.warning("Unexpected intent %r, routing to chat", intent)
     return "chat"
@@ -43,6 +44,7 @@ def build_graph() -> StateGraph:
     graph.add_node("report_generator", report_generator_node)
     graph.add_node("recommendation", recommendation_node)
     graph.add_node("human_gate", human_gate_node)
+    graph.add_node("calendar_intelligence", calendar_intelligence_node)
 
     # ── Define edges ──────────────────────────────────────────────────────────
     graph.set_entry_point("query_rewriter")
@@ -57,6 +59,7 @@ def build_graph() -> StateGraph:
             "chat": "chat_responder",
             "report": "report_generator",
             "action": "recommendation",
+            "calendar": "calendar_intelligence",
         },
     )
 
@@ -64,6 +67,7 @@ def build_graph() -> StateGraph:
     graph.add_edge("risk_detector", END)
     graph.add_edge("chat_responder", END)
     graph.add_edge("report_generator", END)
+    graph.add_edge("calendar_intelligence", END)
 
     # Action path: recommendation → human review → END
     graph.add_edge("recommendation", "human_gate")

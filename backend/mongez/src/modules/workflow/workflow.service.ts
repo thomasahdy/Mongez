@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { WorkflowRepository } from './workflow.repository';
@@ -12,6 +13,12 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { WorkflowFilterDto } from './dto/workflow-filter.dto';
 import { StartWorkflowDto } from './dto/start-workflow.dto';
 import { paginate } from '../../shared/dto/pagination.dto';
+import { MESSAGING_APPROVAL_PORT } from '../messaging/approvals/ports/messaging-approval.port';
+import type { MessagingApprovalPort } from '../messaging/approvals/ports/messaging-approval.port';
+import { EventBus } from '@nestjs/cqrs';
+import { WorkflowInitiatedEvent, WorkflowTimeoutEvent, WorkflowResolvedEvent } from './events/workflow-events';
+import { DelegationService } from '../delegation/delegation.service';
+import { SlaService } from '../sla/sla.service';
 
 type Decision = 'APPROVED' | 'REJECTED' | 'DELEGATED';
 
@@ -59,6 +66,11 @@ export class WorkflowService {
     private readonly repo: WorkflowRepository,
     private readonly notifications: NotificationsService,
     private readonly realtime: RealtimeService,
+    @Inject(MESSAGING_APPROVAL_PORT)
+    private readonly messagingApproval: MessagingApprovalPort,
+    private readonly eventBus: EventBus,
+    private readonly delegationService: DelegationService,
+    private readonly slaService: SlaService,
   ) {}
 
   // ── Definitions ──────────────────────────────────────────────
@@ -114,7 +126,12 @@ export class WorkflowService {
     await this.notifyStepReviewers(updated as unknown as InstanceWithRelations);
 
     this.realtime.emitToUser(requesterId, 'workflow:started', { instanceId: instance.id });
-    return this.repo.findInstanceById(instance.id);
+    
+    const finalInstance = await this.repo.findInstanceById(instance.id);
+    if (finalInstance) {
+      this.eventBus.publish(new WorkflowInitiatedEvent(finalInstance));
+    }
+    return finalInstance;
   }
 
   async submitDecision(
@@ -136,7 +153,8 @@ export class WorkflowService {
     if (!step) throw new BadRequestException('No active step for this workflow instance.');
 
     // Authorization: actor must be a designated approver for the current step
-    if (!this.isApprover(step, actorId)) {
+    const canApprove = await this.isApprover(step, actorId, instance.spaceId);
+    if (!canApprove) {
       throw new ForbiddenException('You are not an approver for the current step.');
     }
 
@@ -250,6 +268,16 @@ export class WorkflowService {
     });
 
     this.realtime.emitToUser(instance.requesterId, 'workflow:timed_out', { instanceId });
+
+    this.eventBus.publish(
+      new WorkflowTimeoutEvent(
+        instanceId,
+        stepOrder,
+        instance.spaceId,
+        instance.requesterId,
+        `Request timed out: ${instance.definition.name}`,
+      ),
+    );
   }
 
   // ── Internal: Step Evaluation ────────────────────────────────
@@ -267,6 +295,7 @@ export class WorkflowService {
     // Any rejection immediately fails the workflow (standard pattern)
     const hasRejection = stepActions.some((a) => a.decision === 'REJECTED');
     if (hasRejection) {
+      await this.recordSlaMetric(instance, step);
       await this.resolveWorkflow(instance, 'REJECTED');
       return;
     }
@@ -283,6 +312,9 @@ export class WorkflowService {
       // Still waiting on more decisions for this step
       return;
     }
+
+    // Record SLA Metric before advancing
+    await this.recordSlaMetric(instance, step);
 
     // Step complete — advance to next step
     await this.advanceToNextStep(instance);
@@ -340,6 +372,8 @@ export class WorkflowService {
       outcome,
     });
 
+    this.eventBus.publish(new WorkflowResolvedEvent(updated, outcome));
+
     this.logger.log(`Workflow ${instance.id} resolved as ${outcome}`);
   }
 
@@ -349,15 +383,47 @@ export class WorkflowService {
     const step = instance.definition.steps[instance.currentStep];
     if (!step) return;
 
-    for (const approverId of step.approverIds) {
+    // Compute approval expiry from step.timeoutHours (default 7 days)
+    const timeoutHours = step.timeoutHours ?? 7 * 24; // Default: 7 days
+    const expiresAt = new Date(Date.now() + timeoutHours * 3600_000);
+
+    // Store expiry and activation time in instance context for later checks
+    await this.repo.updateInstance(instance.id, {
+      context: {
+        ...(instance.context as Prisma.JsonObject | undefined),
+        _approvalExpiresAt: expiresAt.toISOString(),
+        _stepActivatedAt: new Date().toISOString(),
+      },
+    });
+
+    const approverIds = this.resolveApproverIds(step, instance);
+    const title = `Approval needed: ${instance.definition.name}`;
+    const body = `Step "${step.name}" is awaiting your decision.`;
+
+    // Send to all approvers via messaging port (WhatsApp, Telegram)
+    await Promise.allSettled(
+      approverIds.map((userId) =>
+        this.messagingApproval.sendApprovalRequestToUser({
+          spaceId: instance.spaceId,
+          userId,
+          instanceId: instance.id,
+          title,
+          body,
+          expiresAt,
+        }),
+      ),
+    );
+
+    // Also send in-app notifications to all approvers
+    for (const approverId of approverIds) {
       await this.notifications.queueNotification({
         userId: approverId,
         spaceId: instance.spaceId,
         type: 'WORKFLOW_APPROVAL_REQUEST',
         channel: 'IN_APP',
         priority: 'HIGH',
-        title: `Approval needed: ${instance.definition.name}`,
-        body: `Step "${step.name}" is awaiting your decision.`,
+        title,
+        body,
         entityType: 'workflow',
         entityId: instance.id,
       });
@@ -368,12 +434,71 @@ export class WorkflowService {
     }
   }
 
+  /**
+   * Resolve the list of approver IDs for a step based on the approverType.
+   * For USER type, returns explicit approverIds.
+   * For ROLE type, resolves to users with that role in the space.
+   * For MANAGER_OF_REQUESTER type, resolves to the requester's manager (placeholder).
+   */
+  private resolveApproverIds(
+    step: InstanceWithRelations['definition']['steps'][number],
+    instance: InstanceWithRelations,
+  ): string[] {
+    switch (step.approverType) {
+      case 'USER':
+        return step.approverIds;
+      case 'ROLE':
+        // TODO: Resolve role-based approvers
+        // This requires querying Membership for the space and role
+        return step.approverIds; // Fallback to explicit IDs for now
+      case 'MANAGER_OF_REQUESTER':
+        // TODO: Resolve manager from requester's department
+        return step.approverIds; // Fallback to explicit IDs for now
+      default:
+        return step.approverIds;
+    }
+  }
+
   // ── Internal: Authorization Helpers ──────────────────────────
 
-  private isApprover(
+  private async isApprover(
     step: InstanceWithRelations['definition']['steps'][number],
     userId: string,
-  ): boolean {
-    return step.approverIds.includes(userId);
+    spaceId: string,
+  ): Promise<boolean> {
+    if (step.approverIds.includes(userId)) {
+      return true;
+    }
+
+    for (const approverId of step.approverIds) {
+      const delegateId = await this.delegationService.getActiveDelegate(approverId, spaceId);
+      if (delegateId === userId) {
+        return true;
+      }
+    }
+
+    return false;
   }
-}
+
+  private async recordSlaMetric(instance: InstanceWithRelations, step: any): Promise<void> {
+    try {
+      const context = instance.context as any;
+      if (context && context._stepActivatedAt) {
+        const activatedAt = new Date(context._stepActivatedAt);
+        const now = new Date();
+        const actualHours = (now.getTime() - activatedAt.getTime()) / 3600_000;
+        const targetHours = step.timeoutHours ?? 7 * 24;
+
+        await this.slaService.recordMetric(
+          instance.spaceId,
+          instance.id,
+          step.order,
+          targetHours,
+          actualHours
+        );
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to record SLA metric for instance ${instance.id}: ${err.message}`);
+    }
+  }
+}

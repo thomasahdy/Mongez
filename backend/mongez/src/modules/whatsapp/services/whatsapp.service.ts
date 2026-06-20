@@ -92,17 +92,70 @@ export class WhatsAppService {
     return null;
   }
 
-  /** Send a plain text message. */
+  /** Send a plain text message. Optionally accepts a template name. */
   async sendText(
     account: ResolvedWhatsappAccount,
     toPhone: string,
     text: string,
+    templateName?: string,
   ): Promise<SendResult> {
+    // If template name is provided, try template first, fallback to text
+    if (templateName) {
+      const templateResult = await this.sendTemplate(account, toPhone, templateName, text);
+      if (templateResult.status === 'SENT') {
+        return templateResult;
+      }
+      // Template failed (likely error 132000 - not approved), fall back to plain text
+      this.logger.warn(`Template ${templateName} failed, falling back to plain text`);
+    }
+
     return this.sendMessage(account, {
       messaging_product: 'whatsapp',
       to: this.normalizePhone(toPhone),
       type: 'text',
       text: { body: text, preview_url: false },
+    });
+  }
+
+  /**
+   * Send a template message (e.g. for OTP verification or notifications).
+   * Templates must be pre-approved in Meta WhatsApp Manager.
+   */
+  async sendTemplate(
+    account: ResolvedWhatsappAccount,
+    toPhone: string,
+    templateName: string,
+    bodyText?: string,
+    parameters?: string[],
+  ): Promise<SendResult> {
+    let templateParams = parameters;
+
+    if (!templateParams && bodyText) {
+      // Extract 6-digit code from bodyText if it looks like an OTP
+      const codeMatch = bodyText.match(/\b\d{6}\b/);
+      if (codeMatch) {
+        templateParams = [codeMatch[0]];
+      }
+    }
+
+    const components = templateParams?.length
+      ? [
+          {
+            type: 'body',
+            parameters: templateParams.map((p) => ({ type: 'text', text: p })),
+          },
+        ]
+      : [];
+
+    return this.sendMessage(account, {
+      messaging_product: 'whatsapp',
+      to: this.normalizePhone(toPhone),
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: 'en' }, // Default to English, could be made dynamic
+        components,
+      },
     });
   }
 

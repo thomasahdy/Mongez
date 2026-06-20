@@ -6,14 +6,19 @@ import { CacheService } from '../../../infrastructure/cache/cache.service';
 import { BaseEvent } from '../core/contracts/event.contracts';
 import { EmailChannel } from '../channels/email.channel';
 import { WebSocketChannel } from '../channels/websocket.channel';
-import { WhatsAppChannel } from '../../whatsapp/channels/whatsapp.channel';
-import { TelegramChannel } from '../../telegram/channels/telegram.channel';
+import { WhatsAppChannel } from '../../messaging/channels/whatsapp.channel';
+import { TelegramChannel } from '../../messaging/channels/telegram.channel';
 import { PresenceService } from '../presence/presence.service';
 import { NotificationsService } from '../notifications.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { TraceContextService } from '../../../infrastructure/logging/trace-context.service';
+import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { randomUUID } from 'crypto';
+import { NotificationPreferenceService } from '../../messaging/notifications/notification-preference.service';
+import { MessagingAnalyticsService } from '../../messaging/analytics/messaging-analytics.service';
+import { renderNotification, normalizeLang } from '../../messaging/templates/messaging-i18n';
+import { NotificationChannelType } from '@prisma/client';
 
 @Processor(QUEUE_NAMES.NOTIFICATIONS)
 export class NotificationProcessor extends WorkerHost {
@@ -27,6 +32,9 @@ export class NotificationProcessor extends WorkerHost {
     private readonly telegramChannel: TelegramChannel,
     private readonly presenceService: PresenceService,
     private readonly notificationsService: NotificationsService,
+    private readonly notificationPreferenceService: NotificationPreferenceService,
+    private readonly messagingAnalytics: MessagingAnalyticsService,
+    private readonly prisma: PrismaService,
     @InjectQueue(QUEUE_NAMES.NOTIFICATIONS) private readonly notificationQueue: Queue,
     private readonly traceContext: TraceContextService,
   ) {
@@ -97,47 +105,96 @@ export class NotificationProcessor extends WorkerHost {
   private async processSingleNotification(userId: string, event: any) {
     const spaceId = event.payload.spaceId || '';
     const eventId = event.payload.eventId;
+    const eventType = event.eventType;
+    const priority = (event.payload.priority || 'NORMAL') as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 
-    // Phase 5: Presence-Aware Routing & Aggregation
+    // Check presence
     const isOnline = await this.presenceService.isUserOnline(userId);
-    console.log(`[NotificationProcessor DEBUG] User: ${userId}, isOnline: ${isOnline}`);
+    console.log(`[NotificationProcessor DEBUG] User: ${userId}, isOnline: ${isOnline}, priority: ${priority}`);
 
-    if (isOnline) {
-      // User is active! Persist and send instantly via WebSocket.
-      this.logger.log(`User ${userId} is ONLINE. Routing to WebSocket only.`);
+    // Resolve enabled channels from user preferences
+    const enabledChannels = await this.notificationPreferenceService.getEnabledChannels(
+      userId,
+      eventType,
+      priority,
+    );
+    console.log(`[NotificationProcessor DEBUG] Enabled channels for ${eventType}:`, enabledChannels);
 
+    // Apply presence suppression: if online and not CRITICAL, suppress WhatsApp/Telegram
+    const targetChannels = enabledChannels.filter((ch) => {
+      if (ch === 'whatsapp' || ch === 'telegram') {
+        // Suppress mobile messaging when user is active in-app — UNLESS critical
+        return !isOnline || priority === 'CRITICAL';
+      }
+      return true;
+    });
+    console.log(`[NotificationProcessor DEBUG] Target channels after presence filter:`, targetChannels);
+
+    // Always include IN_APP as a fallback if no channels enabled
+    const finalChannels = targetChannels.length > 0 ? targetChannels : ['inApp'];
+
+    // Get user language preference
+    const userPref = await this.prisma.userPreference.findUnique({
+      where: { userId },
+      select: { language: true },
+    });
+    const lang = normalizeLang(userPref?.language);
+
+    // Build localized notification content
+    const rendered = renderNotification(eventType, lang, {
+      title: event.payload.title || null,
+      body: event.payload.body || null,
+      actorName: event.payload.actorName || null,
+      entityLabel: event.payload.entityLabel || null,
+      taskIdentifier: event.payload.taskIdentifier || null,
+      dueDate: event.payload.dueDate || null,
+      boardName: event.payload.boardName || null,
+    });
+
+    const title = rendered.title || (lang === 'ar' ? 'منجز' : 'Mongez');
+    const body = rendered.body || '';
+
+    if (finalChannels.includes('inApp')) {
+      // Create and send in-app notification
       const notification = await this.notificationsService.createAndNotify({
         userId,
         spaceId,
-        type: event.eventType,
+        type: eventType,
         channel: 'IN_APP',
-        priority: 'NORMAL',
-        title: `System Alert: ${event.eventType}`,
-        body: `Event occurred on ${event.aggregateType} ${event.aggregateId}`,
+        priority,
+        title,
+        body,
         entityType: event.aggregateType,
         entityId: event.aggregateId,
         metadata: event.payload,
       });
 
       await this.webSocketChannel.send(notification, event.payload);
-      // Fan out to messaging channels (WhatsApp/Telegram) — no-op when no contact.
-      await this.fanOutToMessaging(notification, event.payload);
-    } else {
-      // User is offline. Push instant WhatsApp/Telegram + queue the email digest.
-      this.logger.log(`User ${userId} is OFFLINE. Queuing for aggregation.`);
 
-      // Build a lightweight notification shape so the messaging channels can
-      // resolve the contact + render a localized message without persisting a
-      // dedicated Notification row for each push.
+      // Record analytics for IN_APP
+      await this.messagingAnalytics.record('SENT', {
+        notificationId: notification.id,
+        userId,
+        spaceId,
+        channel: 'IN_APP',
+        eventType,
+        metadata: { source: 'processor' },
+      });
+    }
+
+    // Fan out to messaging channels (WhatsApp/Telegram)
+    const messagingChannels = finalChannels.filter((ch) => ch === 'whatsapp' || ch === 'telegram');
+    if (messagingChannels.length > 0) {
+      // Create a lightweight notification shape for messaging
       const pseudoNotification = {
         id: `evt-${eventId}`,
         userId,
         spaceId,
-        type: event.eventType,
-        priority: 'NORMAL',
-        channel: 'WHATSAPP' as const,
-        title: `System Alert: ${event.eventType}`,
-        body: `Event occurred on ${event.aggregateType} ${event.aggregateId}`,
+        type: eventType,
+        priority,
+        channel: 'WHATSAPP',
+        title,
+        body,
         entityType: event.aggregateType,
         entityId: event.aggregateId,
         status: 'QUEUED',
@@ -146,8 +203,12 @@ export class NotificationProcessor extends WorkerHost {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      await this.fanOutToMessaging(pseudoNotification as any, event.payload);
 
+      await this.fanOutToMessaging(pseudoNotification as any, event.payload, messagingChannels);
+    }
+
+    // Queue email digest if offline and email is enabled
+    if (!isOnline && finalChannels.includes('email')) {
       const aggregationGroup = `digest_${userId}_${event.aggregateType}_${event.aggregateId}`;
 
       await this.notificationQueue.add('process_digest', {
@@ -155,9 +216,12 @@ export class NotificationProcessor extends WorkerHost {
         spaceId,
         aggregateType: event.aggregateType,
         aggregateId: event.aggregateId,
-        group: aggregationGroup
+        group: aggregationGroup,
+        eventType,
+        title,
+        body,
       }, {
-        jobId: `digest-job-${aggregationGroup}`, // Deduplication key
+        jobId: `digest-job-${aggregationGroup}`,
         delay: 300000, // 5 minutes delay
         removeOnComplete: true,
       });
@@ -168,25 +232,70 @@ export class NotificationProcessor extends WorkerHost {
         await redis.rpush(aggregationGroup, JSON.stringify({
           id: `notif-${eventId}`,
           userId,
-          type: event.eventType,
-          title: `System Alert: ${event.eventType}`,
-          body: `Event occurred on ${event.aggregateType} ${event.aggregateId}`,
+          type: eventType,
+          title,
+          body,
         }));
-        await redis.expire(aggregationGroup, 86400); // 24h TTL
+        await redis.expire(aggregationGroup, 86400);
       }
     }
   }
 
   /**
-   * Push the notification to WhatsApp and Telegram in parallel. Each channel
+   * Push the notification to WhatsApp and/or Telegram in parallel. Each channel
    * is independent and silently skips when the recipient has no registered /
    * opted-in contact or no provider account is configured (dev fallback).
+   *
+   * @param notification Notification payload
+   * @param payload Event payload
+   * @param targetChannels List of channels to use (e.g. ['whatsapp', 'telegram'])
    */
-  private async fanOutToMessaging(notification: any, payload: BaseEvent): Promise<void> {
-    await Promise.allSettled([
-      this.whatsappChannel.send(notification, payload),
-      this.telegramChannel.send(notification, payload),
-    ]);
+  private async fanOutToMessaging(
+    notification: any,
+    payload: BaseEvent,
+    targetChannels: string[] = ['whatsapp', 'telegram'],
+  ): Promise<void> {
+    const promises: Promise<any>[] = [];
+
+    if (targetChannels.includes('whatsapp')) {
+      promises.push(
+        this.whatsappChannel.send(notification, payload).then((result) => {
+          if (result) {
+            // Record analytics for WhatsApp
+            this.messagingAnalytics.record('SENT', {
+              notificationId: notification.id,
+              userId: notification.userId,
+              spaceId: notification.spaceId,
+              channel: 'WHATSAPP',
+              eventType: notification.type,
+              metadata: { source: 'processor' },
+            }).catch(() => {}); // Fire and forget
+          }
+          return result;
+        })
+      );
+    }
+
+    if (targetChannels.includes('telegram')) {
+      promises.push(
+        this.telegramChannel.send(notification, payload).then((result) => {
+          if (result) {
+            // Record analytics for Telegram
+            this.messagingAnalytics.record('SENT', {
+              notificationId: notification.id,
+              userId: notification.userId,
+              spaceId: notification.spaceId,
+              channel: 'TELEGRAM',
+              eventType: notification.type,
+              metadata: { source: 'processor' },
+            }).catch(() => {}); // Fire and forget
+          }
+          return result;
+        })
+      );
+    }
+
+    await Promise.allSettled(promises);
   }
 
   async handleProcessDigest(job: Job<{ userId: string, spaceId: string, aggregateType: string, aggregateId: string, group: string }>) {

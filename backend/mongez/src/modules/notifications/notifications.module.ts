@@ -12,6 +12,7 @@ import { EmailChannel } from './channels/email.channel';
 import { WebSocketChannel } from './channels/websocket.channel';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { MessagingModule } from '../messaging/messaging.module';
 import { PresenceService } from './presence/presence.service';
 
 import { CacheModule } from '../../infrastructure/cache/cache.module';
@@ -22,6 +23,7 @@ import { forwardRef } from '@nestjs/common';
     RealtimeModule,
     forwardRef(() => WhatsAppModule),
     forwardRef(() => TelegramModule),
+    MessagingModule,
     CacheModule,
   ],
   controllers: [NotificationsController],
