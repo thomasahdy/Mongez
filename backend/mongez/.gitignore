@@ -49,5 +49,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 *.tsbuildinfo
 
 # Uploads / generated storage
-uploads/
-storage/
+/uploads/
+/storage/

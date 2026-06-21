@@ -37,8 +37,8 @@ export class OutboxRelayService {
           await this.outboxRepository.markAsProcessed(event.id);
         } catch (error) {
           this.logger.error(`Failed to relay OutboxEvent ${event.id}`, error);
-          // If it fails to publish to BullMQ, it remains processedAt: null
-          // so the relay will try again on the next tick.
+          // Revert status to PENDING so it can be retried on subsequent ticks
+          await this.outboxRepository.revertToPending(event.id);
         }
       }
     } catch (error) {

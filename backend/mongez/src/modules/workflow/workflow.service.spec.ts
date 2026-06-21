@@ -10,6 +10,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { EventBus } from '@nestjs/cqrs';
 import { DelegationService } from '../delegation/delegation.service';
 import { SlaService } from '../sla/sla.service';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 // Helper: build a mock workflow instance
 const buildInstance = (overrides: Partial<any> = {}): any => ({
@@ -54,6 +55,7 @@ describe('WorkflowService', () => {
   let eventBus: jest.Mocked<EventBus>;
   let delegationService: jest.Mocked<DelegationService>;
   let slaService: jest.Mocked<SlaService>;
+  let prisma: any;
 
   beforeEach(() => {
     repo = {
@@ -64,6 +66,7 @@ describe('WorkflowService', () => {
       createInstance: jest.fn(),
       updateInstance: jest.fn(),
       findInstanceById: jest.fn(),
+      findInstanceByIdForUpdateTx: jest.fn(),
       createAction: jest.fn(),
       findPendingForReviewer: jest.fn(),
       findMyRequests: jest.fn(),
@@ -93,6 +96,20 @@ describe('WorkflowService', () => {
       recordMetric: jest.fn().mockResolvedValue(undefined),
     } as any;
 
+    prisma = {
+      $transaction: jest.fn().mockImplementation((cb) => cb(prisma)),
+      workflowInstance: {
+        update: jest.fn().mockResolvedValue({}),
+      },
+      workflowAction: {
+        create: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      slaMetric: {
+        create: jest.fn().mockResolvedValue({}),
+      },
+    } as any;
+
     service = new WorkflowService(
       repo,
       notifications,
@@ -101,6 +118,7 @@ describe('WorkflowService', () => {
       eventBus,
       delegationService,
       slaService,
+      prisma as PrismaService,
     );
   });
 
@@ -217,7 +235,7 @@ describe('WorkflowService', () => {
 
   describe('submitDecision()', () => {
     it('should throw NotFoundException when instance not found', async () => {
-      repo.findInstanceById.mockResolvedValue(null);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(null);
 
       await expect(service.submitDecision('instance-1', 'user-1', 'APPROVED')).rejects.toThrow(
         NotFoundException,
@@ -225,7 +243,7 @@ describe('WorkflowService', () => {
     });
 
     it('should throw BadRequestException when workflow already resolved', async () => {
-      repo.findInstanceById.mockResolvedValue(buildInstance({ status: 'APPROVED' }));
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(buildInstance({ status: 'APPROVED' }));
 
       await expect(
         service.submitDecision('instance-1', 'user-approver', 'APPROVED'),
@@ -236,7 +254,7 @@ describe('WorkflowService', () => {
     });
 
     it('should throw ForbiddenException when actor is not an approver', async () => {
-      repo.findInstanceById.mockResolvedValue(buildInstance());
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(buildInstance());
 
       await expect(
         service.submitDecision('instance-1', 'user-not-approver', 'APPROVED'),
@@ -247,7 +265,7 @@ describe('WorkflowService', () => {
       const instanceWithAction = buildInstance({
         actions: [{ stepOrder: 0, actorId: 'user-approver', decision: 'APPROVED' }],
       });
-      repo.findInstanceById.mockResolvedValue(instanceWithAction);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(instanceWithAction);
 
       await expect(
         service.submitDecision('instance-1', 'user-approver', 'APPROVED'),
@@ -259,19 +277,17 @@ describe('WorkflowService', () => {
       const instanceAfterAction = buildInstance({
         actions: [{ stepOrder: 0, actorId: 'user-approver', decision: 'APPROVED' }],
       });
-      repo.findInstanceById
-        .mockResolvedValueOnce(instance)        // first call for validation
-        .mockResolvedValueOnce(instanceAfterAction) // reload after createAction
-        .mockResolvedValueOnce(instanceAfterAction); // final return
-
-      repo.createAction.mockResolvedValue(undefined as any);
-      repo.updateInstance.mockResolvedValue({ ...instance, status: 'APPROVED' } as any);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(instance);
+      prisma.workflowAction.findMany.mockResolvedValue(instanceAfterAction.actions);
+      repo.findInstanceById.mockResolvedValue({ ...instance, status: 'APPROVED', actions: instanceAfterAction.actions });
 
       await service.submitDecision('instance-1', 'user-approver', 'APPROVED');
 
-      expect(repo.updateInstance).toHaveBeenCalledWith(
-        'instance-1',
-        expect.objectContaining({ status: 'APPROVED' }),
+      expect(prisma.workflowInstance.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'instance-1' },
+          data: expect.objectContaining({ status: 'APPROVED' }),
+        })
       );
       expect(notifications.queueNotification).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user-requester', type: 'WORKFLOW_APPROVED' }),
@@ -288,19 +304,17 @@ describe('WorkflowService', () => {
       const instanceAfterReject = buildInstance({
         actions: [{ stepOrder: 0, actorId: 'user-approver', decision: 'REJECTED' }],
       });
-      repo.findInstanceById
-        .mockResolvedValueOnce(instance)
-        .mockResolvedValueOnce(instanceAfterReject)
-        .mockResolvedValueOnce(instanceAfterReject);
-
-      repo.createAction.mockResolvedValue(undefined as any);
-      repo.updateInstance.mockResolvedValue({ ...instance, status: 'REJECTED' } as any);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(instance);
+      prisma.workflowAction.findMany.mockResolvedValue(instanceAfterReject.actions);
+      repo.findInstanceById.mockResolvedValue({ ...instance, status: 'REJECTED', actions: instanceAfterReject.actions });
 
       await service.submitDecision('instance-1', 'user-approver', 'REJECTED');
 
-      expect(repo.updateInstance).toHaveBeenCalledWith(
-        'instance-1',
-        expect.objectContaining({ status: 'REJECTED' }),
+      expect(prisma.workflowInstance.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'instance-1' },
+          data: expect.objectContaining({ status: 'REJECTED' }),
+        })
       );
       expect(notifications.queueNotification).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'WORKFLOW_REJECTED' }),
@@ -312,19 +326,20 @@ describe('WorkflowService', () => {
       const instanceAfterAction = buildInstance({
         actions: [{ stepOrder: 0, actorId: 'user-delegate', decision: 'APPROVED' }],
       });
-      repo.findInstanceById
-        .mockResolvedValueOnce(instance)
-        .mockResolvedValueOnce(instanceAfterAction)
-        .mockResolvedValueOnce(instanceAfterAction);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(instance);
+      prisma.workflowAction.findMany.mockResolvedValue(instanceAfterAction.actions);
+      repo.findInstanceById.mockResolvedValue({ ...instance, status: 'APPROVED', actions: instanceAfterAction.actions });
 
       delegationService.getActiveDelegate.mockResolvedValue('user-delegate');
-      repo.createAction.mockResolvedValue(undefined as any);
-      repo.updateInstance.mockResolvedValue({ ...instance, status: 'APPROVED' } as any);
 
       await service.submitDecision('instance-1', 'user-delegate', 'APPROVED');
 
       expect(delegationService.getActiveDelegate).toHaveBeenCalledWith('user-approver', 'space-1');
-      expect(repo.createAction).toHaveBeenCalledWith(expect.objectContaining({ actorId: 'user-delegate' }));
+      expect(prisma.workflowAction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ actorId: 'user-delegate' }),
+        })
+      );
     });
 
     it('should not resolve parallel step with requiresAll=true when only one has approved', async () => {
@@ -353,14 +368,13 @@ describe('WorkflowService', () => {
         actions: [{ stepOrder: 0, actorId: 'user-a', decision: 'APPROVED' }],
       });
 
-      repo.findInstanceById
-        .mockResolvedValueOnce(instance)
-        .mockResolvedValueOnce(instanceAfterAction)
-        .mockResolvedValueOnce(instanceAfterAction);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(instance);
+      prisma.workflowAction.findMany.mockResolvedValue(instanceAfterAction.actions);
+      repo.findInstanceById.mockResolvedValue(instanceAfterAction);
 
       await service.submitDecision('instance-1', 'user-a', 'APPROVED');
 
-      expect(repo.updateInstance).not.toHaveBeenCalled();
+      expect(prisma.workflowInstance.update).not.toHaveBeenCalled();
     });
 
     it('should resolve parallel step with requiresAll=false immediately on first approval', async () => {
@@ -389,16 +403,18 @@ describe('WorkflowService', () => {
         actions: [{ stepOrder: 0, actorId: 'user-a', decision: 'APPROVED' }],
       });
 
-      repo.findInstanceById
-        .mockResolvedValueOnce(instance)
-        .mockResolvedValueOnce(instanceAfterAction)
-        .mockResolvedValueOnce(instanceAfterAction);
-
-      repo.updateInstance.mockResolvedValue({ ...instance, status: 'APPROVED' } as any);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(instance);
+      prisma.workflowAction.findMany.mockResolvedValue(instanceAfterAction.actions);
+      repo.findInstanceById.mockResolvedValue({ ...instance, status: 'APPROVED', actions: instanceAfterAction.actions });
 
       await service.submitDecision('instance-1', 'user-a', 'APPROVED');
 
-      expect(repo.updateInstance).toHaveBeenCalledWith('instance-1', expect.objectContaining({ status: 'APPROVED' }));
+      expect(prisma.workflowInstance.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'instance-1' },
+          data: expect.objectContaining({ status: 'APPROVED' }),
+        })
+      );
     });
 
     it('should record SLA metric when a step completes', async () => {
@@ -411,21 +427,19 @@ describe('WorkflowService', () => {
         actions: [{ stepOrder: 0, actorId: 'user-approver', decision: 'APPROVED' }],
       });
 
-      repo.findInstanceById
-        .mockResolvedValueOnce(instance)
-        .mockResolvedValueOnce(instanceAfterAction)
-        .mockResolvedValueOnce(instanceAfterAction);
-
-      repo.updateInstance.mockResolvedValue({ ...instance, status: 'APPROVED' } as any);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(instance);
+      prisma.workflowAction.findMany.mockResolvedValue(instanceAfterAction.actions);
+      repo.findInstanceById.mockResolvedValue({ ...instance, status: 'APPROVED', actions: instanceAfterAction.actions });
 
       await service.submitDecision('instance-1', 'user-approver', 'APPROVED');
 
-      expect(slaService.recordMetric).toHaveBeenCalledWith(
-        'space-1',
-        'instance-1',
-        0,
-        168, // Default timeout: 7 days * 24 = 168 hours
-        expect.closeTo(2, 1),
+      expect(prisma.slaMetric.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            workflowInstanceId: 'instance-1',
+            isViolated: false,
+          }),
+        })
       );
     });
   });
@@ -477,30 +491,31 @@ describe('WorkflowService', () => {
 
   describe('handleStepTimeout()', () => {
     it('should do nothing when instance not found', async () => {
-      repo.findInstanceById.mockResolvedValue(null);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(null);
 
       await service.handleStepTimeout('instance-1', 0);
 
-      expect(repo.updateInstance).not.toHaveBeenCalled();
+      expect(prisma.workflowInstance.update).not.toHaveBeenCalled();
     });
 
     it('should do nothing when instance has advanced past the timed-out step', async () => {
-      repo.findInstanceById.mockResolvedValue(buildInstance({ currentStep: 1 }));
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(buildInstance({ currentStep: 1 }));
 
       await service.handleStepTimeout('instance-1', 0); // Step 0 already passed
 
-      expect(repo.updateInstance).not.toHaveBeenCalled();
+      expect(prisma.workflowInstance.update).not.toHaveBeenCalled();
     });
 
     it('should mark instance as TIMED_OUT and notify requester', async () => {
-      repo.findInstanceById.mockResolvedValue(buildInstance({ status: 'IN_PROGRESS', currentStep: 0 }));
-      repo.updateInstance.mockResolvedValue({ id: 'instance-1', status: 'TIMED_OUT' } as any);
+      repo.findInstanceByIdForUpdateTx.mockResolvedValue(buildInstance({ status: 'IN_PROGRESS', currentStep: 0 }));
 
       await service.handleStepTimeout('instance-1', 0);
 
-      expect(repo.updateInstance).toHaveBeenCalledWith(
-        'instance-1',
-        expect.objectContaining({ status: 'TIMED_OUT' }),
+      expect(prisma.workflowInstance.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'instance-1' },
+          data: expect.objectContaining({ status: 'TIMED_OUT' }),
+        })
       );
       expect(eventBus.publish).toHaveBeenCalled();
       expect(notifications.queueNotification).toHaveBeenCalledWith(

@@ -14,12 +14,14 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { PresenceService } from './presence/presence.service';
+import { ApprovalExpiryProcessor } from '../messaging/approvals/approval-expiry.service';
 
 import { CacheModule } from '../../infrastructure/cache/cache.module';
 import { forwardRef } from '@nestjs/common';
 @Module({
   imports: [
     BullModule.registerQueue({ name: QUEUE_NAMES.NOTIFICATIONS }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.APPROVAL_EXPIRY }),
     RealtimeModule,
     forwardRef(() => WhatsAppModule),
     forwardRef(() => TelegramModule),
@@ -36,6 +38,7 @@ import { forwardRef } from '@nestjs/common';
     EmailChannel,
     WebSocketChannel,
     PresenceService,
+    ApprovalExpiryProcessor,
   ],
   exports: [NotificationsService, OutboxRepository, PresenceService],
 })
