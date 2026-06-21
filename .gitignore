@@ -113,9 +113,9 @@ docker/data/
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # UPLOADS & GENERATED FILES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-uploads/
+/backend/mongez/uploads/
 public/uploads/
-storage/
+/backend/mongez/storage/
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # DIAGNOSTIC REPORTS
