@@ -37,6 +37,7 @@ describe('JwtAccessStrategy', () => {
       const result = await strategy.validate(payload);
 
       expect(result).toEqual({
+        id: 'user-1',
         userId: 'user-1',
         email: 'test@example.com',
         role: 'MEMBER',

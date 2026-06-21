@@ -815,6 +815,7 @@ model WorkflowAction {
 
   @@index([instanceId])
   @@index([actorId])
+  @@unique([instanceId, actorId, stepOrder])
   @@map("workflow_actions")
 }
 
@@ -822,16 +823,25 @@ model WorkflowAction {
 // NOTIFICATIONS & AUDIT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model OutboxEvent {
-  id            String   @id @default(cuid())
+  id            String       @id @default(cuid())
   aggregateType String   
   aggregateId   String
   eventType     String   
   payload       Json     
+  status        OutboxStatus @default(PENDING)
   processedAt   DateTime?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime     @default(now())
 
   @@index([processedAt, createdAt])
+  @@index([status, createdAt])
   @@map("outbox_events")
 }
 

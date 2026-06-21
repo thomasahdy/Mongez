@@ -78,6 +78,35 @@ export class WorkflowRepository {
     });
   }
 
+  /**
+   * Performs a SELECT FOR UPDATE locking query on a workflow instance row
+   * to guarantee race-condition protection.
+   */
+  async findInstanceByIdForUpdateTx(tx: Prisma.TransactionClient, id: string) {
+    const instances = await tx.$queryRawUnsafe<any[]>(
+      `SELECT * FROM "workflow_instances" WHERE "id" = $1 FOR UPDATE`,
+      id
+    );
+    if (!instances.length) return null;
+    const instance = instances[0];
+
+    const definition = await tx.workflowDefinition.findUnique({
+      where: { id: instance.definitionId },
+      include: { steps: { orderBy: { order: 'asc' } } }
+    });
+
+    const actions = await tx.workflowAction.findMany({
+      where: { instanceId: id },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    return {
+      ...instance,
+      definition,
+      actions
+    };
+  }
+
   async createInstance(data: {
     definitionId: string;
     spaceId: string;

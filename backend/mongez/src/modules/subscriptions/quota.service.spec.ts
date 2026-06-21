@@ -1,10 +1,12 @@
 import { QuotaService } from './quota.service';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { CacheService } from '../../infrastructure/cache/cache.service';
 import { Logger } from '@nestjs/common';
 
 describe('QuotaService', () => {
   let service: QuotaService;
   let prisma: any;
+  let cache: any;
 
   beforeEach(() => {
     prisma = {
@@ -18,7 +20,14 @@ describe('QuotaService', () => {
       },
     };
 
-    service = new QuotaService(prisma as PrismaService);
+    cache = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+      exists: jest.fn().mockResolvedValue(false),
+      incr: jest.fn().mockResolvedValue(1),
+    };
+
+    service = new QuotaService(prisma as PrismaService, cache as CacheService);
   });
 
   describe('checkQuota()', () => {
@@ -68,6 +77,36 @@ describe('QuotaService', () => {
       expect(result).toBe(true);
       expect(prisma.usageRecord.aggregate).not.toHaveBeenCalled();
     });
+
+    it('UT-QUOTA-003a: should check Redis cache first and return cached value if present', async () => {
+      prisma.space.findUnique.mockResolvedValue({
+        subscriptionPlan: { name: 'FREE' },
+      });
+      cache.get.mockResolvedValue(10); // Cache hit
+
+      const result = await service.checkQuota('space-1', 'AI_REQUESTS', 5);
+
+      expect(result).toBe(true); // 10 + 5 = 15 <= 20
+      expect(cache.get).toHaveBeenCalledWith('quota:space-1:AI_REQUESTS');
+      expect(prisma.usageRecord.aggregate).not.toHaveBeenCalled();
+    });
+
+    it('UT-QUOTA-003b: should query DB and write to Cache when Redis cache is empty', async () => {
+      prisma.space.findUnique.mockResolvedValue({
+        subscriptionPlan: { name: 'FREE' },
+      });
+      cache.get.mockResolvedValue(null); // Cache miss
+      prisma.usageRecord.aggregate.mockResolvedValue({
+        _sum: { value: 12 },
+      });
+
+      const result = await service.checkQuota('space-1', 'AI_REQUESTS', 5);
+
+      expect(result).toBe(true); // 12 + 5 = 17 <= 20
+      expect(cache.get).toHaveBeenCalledWith('quota:space-1:AI_REQUESTS');
+      expect(prisma.usageRecord.aggregate).toHaveBeenCalled();
+      expect(cache.set).toHaveBeenCalledWith('quota:space-1:AI_REQUESTS', 12, expect.any(Number));
+    });
   });
 
   describe('recordUsage()', () => {
@@ -92,6 +131,39 @@ describe('QuotaService', () => {
       );
 
       loggerSpy.mockRestore();
+    });
+
+    it('UT-QUOTA-005a: should increment Redis cache when key exists', async () => {
+      prisma.usageRecord.create.mockResolvedValue({});
+      cache.exists.mockResolvedValue(true);
+
+      await service.recordUsage('space-1', 'AI_REQUESTS', 1);
+
+      expect(cache.exists).toHaveBeenCalledWith('quota:space-1:AI_REQUESTS');
+      expect(cache.incr).toHaveBeenCalledWith('quota:space-1:AI_REQUESTS', expect.any(Number));
+    });
+
+    it('UT-QUOTA-005b: should update Cache with custom value when value > 1 and key exists', async () => {
+      prisma.usageRecord.create.mockResolvedValue({});
+      cache.exists.mockResolvedValue(true);
+      cache.get.mockResolvedValue(10);
+
+      await service.recordUsage('space-1', 'AI_REQUESTS', 5);
+
+      expect(cache.exists).toHaveBeenCalledWith('quota:space-1:AI_REQUESTS');
+      expect(cache.get).toHaveBeenCalledWith('quota:space-1:AI_REQUESTS');
+      expect(cache.set).toHaveBeenCalledWith('quota:space-1:AI_REQUESTS', 15, expect.any(Number));
+    });
+
+    it('UT-QUOTA-005c: should not increment/update Redis cache when key does not exist', async () => {
+      prisma.usageRecord.create.mockResolvedValue({});
+      cache.exists.mockResolvedValue(false);
+
+      await service.recordUsage('space-1', 'AI_REQUESTS', 1);
+
+      expect(cache.exists).toHaveBeenCalledWith('quota:space-1:AI_REQUESTS');
+      expect(cache.incr).not.toHaveBeenCalled();
+      expect(cache.set).not.toHaveBeenCalled();
     });
   });
 

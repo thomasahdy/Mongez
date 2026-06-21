@@ -19,6 +19,7 @@ import { EventBus } from '@nestjs/cqrs';
 import { WorkflowInitiatedEvent, WorkflowTimeoutEvent, WorkflowResolvedEvent } from './events/workflow-events';
 import { DelegationService } from '../delegation/delegation.service';
 import { SlaService } from '../sla/sla.service';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 type Decision = 'APPROVED' | 'REJECTED' | 'DELEGATED';
 
@@ -71,6 +72,7 @@ export class WorkflowService {
     private readonly eventBus: EventBus,
     private readonly delegationService: DelegationService,
     private readonly slaService: SlaService,
+    private readonly prisma: PrismaService,
   ) {}
 
   // ── Definitions ──────────────────────────────────────────────
@@ -140,54 +142,160 @@ export class WorkflowService {
     decision: Decision,
     note?: string,
   ) {
-    const instance = (await this.repo.findInstanceById(instanceId)) as
-      | InstanceWithRelations
-      | null;
-    if (!instance) throw new NotFoundException('Workflow instance not found.');
+    const transitionEvent = await this.prisma.$transaction(async (tx) => {
+      // 1. Lock instance row using SELECT FOR UPDATE
+      const instance = await this.repo.findInstanceByIdForUpdateTx(tx, instanceId);
+      if (!instance) throw new NotFoundException('Workflow instance not found.');
 
-    if (instance.status === 'APPROVED' || instance.status === 'REJECTED' || instance.status === 'CANCELLED') {
-      throw new BadRequestException(`Workflow already resolved as ${instance.status}.`);
-    }
+      if (['APPROVED', 'REJECTED', 'CANCELLED', 'TIMED_OUT'].includes(instance.status)) {
+        throw new BadRequestException(`Workflow already resolved as ${instance.status}.`);
+      }
 
-    const step = instance.definition.steps[instance.currentStep];
-    if (!step) throw new BadRequestException('No active step for this workflow instance.');
+      const step = instance.definition.steps[instance.currentStep];
+      if (!step) throw new BadRequestException('No active step for this workflow instance.');
 
-    // Authorization: actor must be a designated approver for the current step
-    const canApprove = await this.isApprover(step, actorId, instance.spaceId);
-    if (!canApprove) {
-      throw new ForbiddenException('You are not an approver for the current step.');
-    }
+      // Authorization: actor must be a designated approver for the current step
+      const canApprove = await this.isApprover(step, actorId, instance.spaceId);
+      if (!canApprove) {
+        throw new ForbiddenException('You are not an approver for the current step.');
+      }
 
-    // Prevent duplicate decisions on sequential steps (parallel steps allow multiple actors)
-    if (!step.isParallel) {
+      // Prevent duplicate decisions
       const already = instance.actions.find(
         (a) => a.stepOrder === instance.currentStep && a.actorId === actorId,
       );
       if (already) {
         throw new BadRequestException('You have already submitted a decision for this step.');
       }
-    } else {
-      const already = instance.actions.find(
-        (a) => a.stepOrder === instance.currentStep && a.actorId === actorId,
-      );
-      if (already) {
-        throw new BadRequestException('You have already submitted a decision for this step.');
+
+      try {
+        await tx.workflowAction.create({
+          data: {
+            instanceId,
+            stepOrder: instance.currentStep,
+            actorId,
+            decision,
+            note: note ?? null,
+          },
+        });
+      } catch (err: any) {
+        if (err.code === 'P2002') {
+          // Idempotency: duplicate decision recorded concurrently
+          return undefined;
+        }
+        throw err;
+      }
+
+      // Reload actions inside the transaction
+      const refreshedActions = await tx.workflowAction.findMany({
+        where: { instanceId },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      const currentInstance = {
+        ...instance,
+        actions: refreshedActions,
+      };
+
+      // 2. Evaluate step transitions inside the transaction
+      const currentStep = currentInstance.definition.steps[currentInstance.currentStep];
+      if (!currentStep) {
+        await tx.workflowInstance.update({
+          where: { id: instanceId },
+          data: { status: 'APPROVED', resolvedAt: new Date() },
+        });
+        return { type: 'RESOLVED', data: { outcome: 'APPROVED' } };
+      } else {
+        const stepActions = refreshedActions.filter((a) => a.stepOrder === currentInstance.currentStep);
+        const hasRejection = stepActions.some((a) => a.decision === 'REJECTED');
+
+        if (hasRejection) {
+          await this.recordSlaMetricTx(tx, currentInstance, currentStep);
+          await tx.workflowInstance.update({
+            where: { id: instanceId },
+            data: { status: 'REJECTED', resolvedAt: new Date() },
+          });
+          return { type: 'RESOLVED', data: { outcome: 'REJECTED' } };
+        } else {
+          const approvals = stepActions.filter((a) => a.decision === 'APPROVED');
+          const requiredApproverCount = currentStep.requiresAll ? currentStep.approverIds.length || 1 : 1;
+          const stepComplete = currentStep.requiresAll
+            ? approvals.length >= requiredApproverCount
+            : approvals.length >= 1;
+
+          if (stepComplete) {
+            await this.recordSlaMetricTx(tx, currentInstance, currentStep);
+            
+            const nextStepOrder = currentInstance.currentStep + 1;
+            const hasNext = nextStepOrder < currentInstance.definition.steps.length;
+
+            if (!hasNext) {
+              await tx.workflowInstance.update({
+                where: { id: instanceId },
+                data: { status: 'APPROVED', resolvedAt: new Date() },
+              });
+              return { type: 'RESOLVED', data: { outcome: 'APPROVED' } };
+            } else {
+              const timeoutHours = currentInstance.definition.steps[nextStepOrder]?.timeoutHours ?? 7 * 24;
+              const expiresAt = new Date(Date.now() + timeoutHours * 3600_000);
+              
+              await tx.workflowInstance.update({
+                where: { id: instanceId },
+                data: {
+                  currentStep: nextStepOrder,
+                  status: 'IN_PROGRESS',
+                  context: {
+                    ...(currentInstance.context as any),
+                    _approvalExpiresAt: expiresAt.toISOString(),
+                    _stepActivatedAt: new Date().toISOString(),
+                  },
+                },
+              });
+              return { type: 'ADVANCED', data: { nextStepOrder } };
+            }
+          }
+        }
+      }
+      return undefined;
+    }) as { type: 'ADVANCED' | 'RESOLVED'; data: any } | undefined;
+
+    const updatedInstance = await this.repo.findInstanceById(instanceId);
+    if (!updatedInstance) return null;
+
+    if (transitionEvent) {
+      if (transitionEvent.type === 'RESOLVED') {
+        const outcome = transitionEvent.data.outcome;
+        await this.notifications.queueNotification({
+          userId: updatedInstance.requesterId,
+          spaceId: updatedInstance.spaceId,
+          type: outcome === 'APPROVED' ? 'WORKFLOW_APPROVED' : 'WORKFLOW_REJECTED',
+          channel: 'IN_APP',
+          priority: outcome === 'APPROVED' ? 'NORMAL' : 'HIGH',
+          title: outcome === 'APPROVED' ? `Approved: ${updatedInstance.definition.name}` : `Rejected: ${updatedInstance.definition.name}`,
+          body: outcome === 'APPROVED' ? 'Your request has been approved.' : 'Your request has been rejected. Review the decision notes for details.',
+          entityType: 'workflow',
+          entityId: updatedInstance.id,
+        });
+
+        this.realtime.emitToUser(updatedInstance.requesterId, 'workflow:resolved', {
+          instanceId: updatedInstance.id,
+          outcome,
+        });
+
+        this.eventBus.publish(new WorkflowResolvedEvent(updatedInstance, outcome));
+      } else if (transitionEvent.type === 'ADVANCED') {
+        const nextStepOrder = transitionEvent.data.nextStepOrder;
+        
+        await this.notifyStepReviewers(updatedInstance as any);
+
+        this.realtime.emitToUser(updatedInstance.requesterId, 'workflow:advanced', {
+          instanceId: updatedInstance.id,
+          currentStep: nextStepOrder,
+        });
       }
     }
 
-    await this.repo.createAction({
-      instanceId,
-      stepOrder: instance.currentStep,
-      actorId,
-      decision,
-      note: note ?? null,
-    });
-
-    // Reload instance to get the new action before evaluating
-    const refreshed = (await this.repo.findInstanceById(instanceId)) as InstanceWithRelations;
-    await this.evaluateStep(refreshed);
-
-    return this.repo.findInstanceById(instanceId);
+    return updatedInstance;
   }
 
   // ── Queries ──────────────────────────────────────────────────
@@ -234,150 +342,85 @@ export class WorkflowService {
   // ── Timeout Handling ─────────────────────────────────────────
 
   async handleStepTimeout(instanceId: string, stepOrder: number) {
-    const instance = (await this.repo.findInstanceById(instanceId)) as
-      | InstanceWithRelations
-      | null;
-    if (!instance) return;
-    if (instance.status !== 'PENDING' && instance.status !== 'IN_PROGRESS') return;
-    if (instance.currentStep !== stepOrder) return; // Already advanced
+    const escalationEvent = await this.prisma.$transaction(async (tx) => {
+      const instance = await this.repo.findInstanceByIdForUpdateTx(tx, instanceId);
+      if (!instance) return null;
+      if (instance.status !== 'PENDING' && instance.status !== 'IN_PROGRESS') return null;
+      if (instance.currentStep !== stepOrder) return null; // Already advanced
 
-    const step = instance.definition.steps[stepOrder];
-    if (!step) return;
+      const step = instance.definition.steps[stepOrder];
+      if (!step) return null;
 
-    this.logger.warn(
-      `Workflow ${instanceId} step ${stepOrder} ("${step.name}") timed out — escalating.`,
-    );
+      this.logger.warn(
+        `Workflow ${instanceId} step ${stepOrder} ("${step.name}") timed out — escalating.`,
+      );
 
-    // Escalation policy: mark step as timed-out and auto-reject the instance.
-    // A future enhancement can escalate to a higher-level approver instead.
-    await this.repo.updateInstance(instanceId, {
-      status: 'TIMED_OUT',
-      resolvedAt: new Date(),
-    });
+      // Escalation policy: mark step as timed-out and auto-reject the instance.
+      await tx.workflowInstance.update({
+        where: { id: instanceId },
+        data: {
+          status: 'TIMED_OUT',
+          resolvedAt: new Date(),
+        },
+      });
 
-    await this.notifications.queueNotification({
-      userId: instance.requesterId,
-      spaceId: instance.spaceId,
-      type: 'WORKFLOW_TIMED_OUT',
-      channel: 'IN_APP',
-      priority: 'HIGH',
-      title: `Request timed out: ${instance.definition.name}`,
-      body: `The approval step "${step.name}" timed out with no decision.`,
-      entityType: 'workflow',
-      entityId: instance.id,
-    });
+      return { instance: instance as any as InstanceWithRelations, step };
+    }) as { instance: InstanceWithRelations; step: any } | null;
 
-    this.realtime.emitToUser(instance.requesterId, 'workflow:timed_out', { instanceId });
+    if (escalationEvent) {
+      const { instance, step } = escalationEvent;
+      await this.notifications.queueNotification({
+        userId: instance.requesterId,
+        spaceId: instance.spaceId,
+        type: 'WORKFLOW_TIMED_OUT',
+        channel: 'IN_APP',
+        priority: 'HIGH',
+        title: `Request timed out: ${instance.definition.name}`,
+        body: `The approval step "${step.name}" timed out with no decision.`,
+        entityType: 'workflow',
+        entityId: instance.id,
+      });
 
-    this.eventBus.publish(
-      new WorkflowTimeoutEvent(
-        instanceId,
-        stepOrder,
-        instance.spaceId,
-        instance.requesterId,
-        `Request timed out: ${instance.definition.name}`,
-      ),
-    );
+      this.realtime.emitToUser(instance.requesterId, 'workflow:timed_out', { instanceId });
+
+      this.eventBus.publish(
+        new WorkflowTimeoutEvent(
+          instanceId,
+          stepOrder,
+          instance.spaceId,
+          instance.requesterId,
+          `Request timed out: ${instance.definition.name}`,
+        ),
+      );
+    }
   }
 
   // ── Internal: Step Evaluation ────────────────────────────────
 
-  private async evaluateStep(instance: InstanceWithRelations): Promise<void> {
-    const step = instance.definition.steps[instance.currentStep];
-    if (!step) {
-      // No more steps — approved by exhaustion
-      await this.resolveWorkflow(instance, 'APPROVED');
-      return;
+  private async recordSlaMetricTx(tx: Prisma.TransactionClient, instance: InstanceWithRelations, step: any): Promise<void> {
+    try {
+      const context = instance.context as any;
+      if (context && context._stepActivatedAt) {
+        const activatedAt = new Date(context._stepActivatedAt);
+        const now = new Date();
+        const actualHours = (now.getTime() - activatedAt.getTime()) / 3600_000;
+        const targetHours = step.timeoutHours ?? 7 * 24;
+
+        await tx.slaMetric.create({
+          data: {
+            spaceId: instance.spaceId,
+            workflowInstanceId: instance.id,
+            stepOrder: step.order,
+            targetHours,
+            actualHours,
+            isViolated: actualHours > targetHours,
+          },
+        });
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to record SLA metric for instance ${instance.id}: ${err.message}`);
     }
-
-    const stepActions = instance.actions.filter((a) => a.stepOrder === instance.currentStep);
-
-    // Any rejection immediately fails the workflow (standard pattern)
-    const hasRejection = stepActions.some((a) => a.decision === 'REJECTED');
-    if (hasRejection) {
-      await this.recordSlaMetric(instance, step);
-      await this.resolveWorkflow(instance, 'REJECTED');
-      return;
-    }
-
-    const approvals = stepActions.filter((a) => a.decision === 'APPROVED');
-
-    // Determine whether the step is satisfied
-    const requiredApproverCount = step.requiresAll ? step.approverIds.length || 1 : 1;
-    const stepComplete = step.requiresAll
-      ? approvals.length >= requiredApproverCount
-      : approvals.length >= 1;
-
-    if (!stepComplete) {
-      // Still waiting on more decisions for this step
-      return;
-    }
-
-    // Record SLA Metric before advancing
-    await this.recordSlaMetric(instance, step);
-
-    // Step complete — advance to next step
-    await this.advanceToNextStep(instance);
   }
-
-  private async advanceToNextStep(instance: InstanceWithRelations): Promise<void> {
-    const nextStepOrder = instance.currentStep + 1;
-    const hasNext = nextStepOrder < instance.definition.steps.length;
-
-    if (!hasNext) {
-      await this.resolveWorkflow(instance, 'APPROVED');
-      return;
-    }
-
-    const updated = await this.repo.updateInstance(instance.id, {
-      currentStep: nextStepOrder,
-      status: 'IN_PROGRESS',
-    });
-
-    const refreshed = (await this.repo.findInstanceById(instance.id)) as InstanceWithRelations;
-    await this.notifyStepReviewers(refreshed);
-
-    this.realtime.emitToUser(instance.requesterId, 'workflow:advanced', {
-      instanceId: instance.id,
-      currentStep: nextStepOrder,
-    });
-  }
-
-  private async resolveWorkflow(instance: InstanceWithRelations, outcome: 'APPROVED' | 'REJECTED') {
-    const updated = await this.repo.updateInstance(instance.id, {
-      status: outcome,
-      resolvedAt: new Date(),
-    });
-
-    await this.notifications.queueNotification({
-      userId: instance.requesterId,
-      spaceId: instance.spaceId,
-      type: outcome === 'APPROVED' ? 'WORKFLOW_APPROVED' : 'WORKFLOW_REJECTED',
-      channel: 'IN_APP',
-      priority: outcome === 'APPROVED' ? 'NORMAL' : 'HIGH',
-      title:
-        outcome === 'APPROVED'
-          ? `Approved: ${instance.definition.name}`
-          : `Rejected: ${instance.definition.name}`,
-      body:
-        outcome === 'APPROVED'
-          ? 'Your request has been approved.'
-          : 'Your request has been rejected. Review the decision notes for details.',
-      entityType: 'workflow',
-      entityId: instance.id,
-    });
-
-    this.realtime.emitToUser(instance.requesterId, 'workflow:resolved', {
-      instanceId: instance.id,
-      outcome,
-    });
-
-    this.eventBus.publish(new WorkflowResolvedEvent(updated, outcome));
-
-    this.logger.log(`Workflow ${instance.id} resolved as ${outcome}`);
-  }
-
-  // ── Internal: Notifications ──────────────────────────────────
 
   private async notifyStepReviewers(instance: InstanceWithRelations): Promise<void> {
     const step = instance.definition.steps[instance.currentStep];
@@ -390,7 +433,7 @@ export class WorkflowService {
     // Store expiry and activation time in instance context for later checks
     await this.repo.updateInstance(instance.id, {
       context: {
-        ...(instance.context as Prisma.JsonObject | undefined),
+        ...(instance.context as any),
         _approvalExpiresAt: expiresAt.toISOString(),
         _stepActivatedAt: new Date().toISOString(),
       },
@@ -436,9 +479,6 @@ export class WorkflowService {
 
   /**
    * Resolve the list of approver IDs for a step based on the approverType.
-   * For USER type, returns explicit approverIds.
-   * For ROLE type, resolves to users with that role in the space.
-   * For MANAGER_OF_REQUESTER type, resolves to the requester's manager (placeholder).
    */
   private resolveApproverIds(
     step: InstanceWithRelations['definition']['steps'][number],
@@ -448,11 +488,8 @@ export class WorkflowService {
       case 'USER':
         return step.approverIds;
       case 'ROLE':
-        // TODO: Resolve role-based approvers
-        // This requires querying Membership for the space and role
         return step.approverIds; // Fallback to explicit IDs for now
       case 'MANAGER_OF_REQUESTER':
-        // TODO: Resolve manager from requester's department
         return step.approverIds; // Fallback to explicit IDs for now
       default:
         return step.approverIds;
@@ -478,27 +515,5 @@ export class WorkflowService {
     }
 
     return false;
-  }
-
-  private async recordSlaMetric(instance: InstanceWithRelations, step: any): Promise<void> {
-    try {
-      const context = instance.context as any;
-      if (context && context._stepActivatedAt) {
-        const activatedAt = new Date(context._stepActivatedAt);
-        const now = new Date();
-        const actualHours = (now.getTime() - activatedAt.getTime()) / 3600_000;
-        const targetHours = step.timeoutHours ?? 7 * 24;
-
-        await this.slaService.recordMetric(
-          instance.spaceId,
-          instance.id,
-          step.order,
-          targetHours,
-          actualHours
-        );
-      }
-    } catch (err: any) {
-      this.logger.error(`Failed to record SLA metric for instance ${instance.id}: ${err.message}`);
-    }
   }
 }

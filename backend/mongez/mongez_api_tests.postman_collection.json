@@ -129,6 +129,7 @@
                   "const jsonData = pm.response.json();",
                   "if (jsonData.id) {",
                   "    pm.environment.set(\"spaceId\", jsonData.id);",
+                  "    pm.environment.set(\"spacePrefix\", jsonData.prefix || \"ACM\");",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -195,6 +196,67 @@
           "response": []
         },
         {
+          "name": "Create Department",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.id) {",
+                  "    pm.environment.set(\"departmentId\", jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Engineering\",\n  \"description\": \"Engineering Department\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "departments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "spaces",
+                "{{spaceId}}",
+                "departments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Invite Member by Email",
           "request": {
             "method": "POST",
@@ -209,14 +271,14 @@
               "raw": "{\n  \"email\": \"collaborator@mongez.app\",\n  \"role\": \"MEMBER\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/spaces/{{spaceId}}/invites",
+              "raw": "{{baseUrl}}/spaces/{{spaceId}}/invitations",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "spaces",
                 "{{spaceId}}",
-                "invites"
+                "invitations"
               ]
             }
           },
@@ -228,18 +290,18 @@
       "name": "Boards & Tasks",
       "item": [
         {
-          "name": "List Boards in Space",
+          "name": "List Boards in Department",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/spaces/{{spaceId}}/boards",
+              "raw": "{{baseUrl}}/departments/{{departmentId}}/boards",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "spaces",
-                "{{spaceId}}",
+                "departments",
+                "{{departmentId}}",
                 "boards"
               ]
             }
@@ -275,16 +337,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Main Project Sprint\",\n  \"description\": \"Main pipeline\"\n}"
+              "raw": "{\n  \"name\": \"Main Project Sprint\",\n  \"description\": \"Main pipeline\",\n  \"departmentId\": \"{{departmentId}}\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/spaces/{{spaceId}}/boards",
+              "raw": "{{baseUrl}}/boards",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "spaces",
-                "{{spaceId}}",
                 "boards"
               ]
             }
@@ -318,16 +378,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Implement Search Engine\",\n  \"description\": \"Write elastic search bindings\",\n  \"boardId\": \"{{boardId}}\",\n  \"columnId\": \"{{columnId}}\",\n  \"priority\": \"HIGH\"\n}"
+              "raw": "{\n  \"title\": \"Implement Search Engine\",\n  \"description\": \"Write elastic search bindings\",\n  \"boardId\": \"{{boardId}}\",\n  \"columnId\": \"{{columnId}}\",\n  \"spaceId\": \"{{spaceId}}\",\n  \"spacePrefix\": \"{{spacePrefix}}\",\n  \"priority\": \"HIGH\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/spaces/{{spaceId}}/tasks",
+              "raw": "{{baseUrl}}/tasks",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "spaces",
-                "{{spaceId}}",
                 "tasks"
               ]
             }
@@ -335,18 +393,18 @@
           "response": []
         },
         {
-          "name": "List/Filter Tasks",
+          "name": "List Tasks on Board",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/spaces/{{spaceId}}/tasks",
+              "raw": "{{baseUrl}}/boards/{{boardId}}/tasks",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "spaces",
-                "{{spaceId}}",
+                "boards",
+                "{{boardId}}",
                 "tasks"
               ]
             }
@@ -766,14 +824,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/spaces/{{spaceId}}/approvals",
+              "raw": "{{baseUrl}}/approvals/pending",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "spaces",
-                "{{spaceId}}",
-                "approvals"
+                "approvals",
+                "pending"
               ]
             }
           },
@@ -782,7 +839,7 @@
         {
           "name": "Submit Approval Decision",
           "request": {
-            "method": "POST",
+            "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
@@ -791,19 +848,16 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"decision\": \"APPROVED\",\n  \"comment\": \"Looks good to me\"\n}"
+              "raw": "{\n  \"status\": \"APPROVED\",\n  \"comment\": \"Looks good to me\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/spaces/{{spaceId}}/approvals/{{approvalId}}/decision",
+              "raw": "{{baseUrl}}/approvals/{{approvalId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "spaces",
-                "{{spaceId}}",
                 "approvals",
-                "{{approvalId}}",
-                "decision"
+                "{{approvalId}}"
               ]
             }
           },
@@ -826,7 +880,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"message\": \"What tasks are blocked right now?\"\n}"
+              "raw": "{\n  \"message\": \"What tasks are blocked right now?\",\n  \"spaceId\": \"{{spaceId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/ai/chat",

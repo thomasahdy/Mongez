@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { resolveSpaceId } from '../../../common/utils/space-resolver';
 
 export const SPACE_ROLES_KEY = 'spaceRoles';
 export const SpaceRoles = (...roles: string[]) => SetMetadata(SPACE_ROLES_KEY, roles);
@@ -14,9 +15,7 @@ export const SpaceRoles = (...roles: string[]) => SetMetadata(SPACE_ROLES_KEY, r
 /**
  * SpaceMemberGuard — the primary tenant-isolation guard.
  *
- * Reads spaceId from:
- *  1. route params: :spaceId or :id
- *  2. request body: body.spaceId
+ * Reads spaceId using resolveSpaceId helper (checks params, body, query).
  *
  * Attaches req.membershipRole for downstream use.
  * Optionally enforces a required space role via @SpaceRoles('OWNER', 'ADMIN').
@@ -33,8 +32,7 @@ export class SpaceMemberGuard implements CanActivate {
     const userId: string | undefined = req.user?.userId;
     if (!userId) return false;
 
-    const spaceId: string | undefined =
-      req.params?.spaceId || req.params?.id || req.body?.spaceId;
+    const spaceId = resolveSpaceId(req);
 
     if (!spaceId) return true; // no space context — skip guard
 
@@ -47,6 +45,7 @@ export class SpaceMemberGuard implements CanActivate {
       throw new ForbiddenException('You are not a member of this space');
     }
 
+    req.spaceId = spaceId;
     req.membershipRole = membership.role.name;
 
     const requiredRoles = this.reflector.get<string[]>(SPACE_ROLES_KEY, context.getHandler());

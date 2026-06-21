@@ -103,6 +103,16 @@ export class NotificationProcessor extends WorkerHost {
   }
 
   private async processSingleNotification(userId: string, event: any) {
+    // Verify user exists to prevent foreign key violations (e.g. for 'system' placeholder)
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!userExists) {
+      this.logger.warn(`User ${userId} does not exist. Skipping notification.`);
+      return;
+    }
+
     const spaceId = event.payload.spaceId || '';
     const eventId = event.payload.eventId;
     const eventType = event.eventType;

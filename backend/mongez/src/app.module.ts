@@ -23,7 +23,7 @@ import { TasksModule } from './modules/tasks/tasks.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SharedModule } from './shared/shared.module';
 import { TraceMiddleware } from './common/middleware/trace.middleware';
-import { TenantMiddleware } from './common/tenant/tenant.middleware';
+import { TenantInterceptor } from './common/tenant/tenant.interceptor';
 import { WorkflowModule } from './modules/workflow/workflow.module';
 import { FilesModule } from './modules/files/files.module';
 import { SearchModule } from './modules/search/search.module';
@@ -163,6 +163,10 @@ import { AppService } from './app.service';
     },
     {
       provide: APP_INTERCEPTOR,
+      useClass: TenantInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
       useClass: ActivityLoggerInterceptor,
     },
   ],
@@ -171,13 +175,6 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(TraceMiddleware)
-      .forRoutes('*');
-
-    // TenantMiddleware must run after JWT validation (which happens in Guards, after middleware).
-    // It reads req.user?.userId (set by Passport) so it silently skips unauthenticated requests.
-    consumer
-      .apply(TenantMiddleware)
-      .exclude('/auth/(.*)', '/health/(.*)')
       .forRoutes('*');
   }
 }
