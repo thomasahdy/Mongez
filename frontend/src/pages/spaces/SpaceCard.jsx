@@ -3,6 +3,9 @@ import SpaceCardHeader from './SpaceCardHeader';
 import DepartmentRow from './DepartmentRow';
 import InviteMemberModal from './InviteMemberModal';
 import { useInviteMember} from '../../hooks/api/useMembers';
+import CreateDepartmentCard from './CreateDepartmentCard';
+import { useCreateDepartment, useSpaceDepartments } from '../../hooks/api/useSpaces';
+import CreateDepartmentModal from './CreateDepartmentModal';
 
 /**
  * Component: SpaceCard
@@ -19,7 +22,30 @@ import { useInviteMember} from '../../hooks/api/useMembers';
 const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
   const [expanded, setExpanded] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showCreateDepModal, setShowCreateDepModal] = useState(false);
   const inviteMember = useInviteMember()
+  const createDepartment = useCreateDepartment();
+  const {data: departments, isLoading, error } = useSpaceDepartments(space.id);
+
+  const rawDepartmentsList = Array.isArray(departments) ? departments : (departments?.departments || []);
+
+const normalizedDepartments = rawDepartmentsList.map((dept) => ({
+  ...dept,
+  color: dept.color || '#6366f1', // Indigo-500 fallback hex color
+  initials: dept.initials || (dept.name ? dept.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'D'),
+  
+  isAdmin: dept.isAdmin !== undefined ? dept.isAdmin : dept.role === 'ADMIN',
+  
+  stats: {
+    boards: dept.stats?.boards ?? dept._count?.boards ?? 0,
+    members: dept.stats?.members ?? dept._count?.memberships ?? dept._count?.members ?? dept.memberCount ?? 0,
+    tasks: dept.stats?.tasks ?? dept._count?.tasks ?? 0,
+  },
+  
+  // Safe default initializations for related arrays
+  boards: dept.boards || [],
+  members: dept.members || [],
+}));
   const handleAddBoard = (deptId) => {
     console.info("Add board to dept:", deptId);
   };
@@ -29,9 +55,26 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
       await inviteMember.mutateAsync({spaceId: space.id,data});
       setShowInviteModal(false);
     } catch (err) {
-      alert(err.response?.data?.message || err.message || "Failed to create space.");
+      alert(err.response?.data?.message || err.message || "Failed to invite a member.");
     }
     
+  }
+
+  const handleCreateDepartment = async(data)=>{
+    try
+    {
+      let res = await createDepartment.mutateAsync({spaceId: space.id, data:data});
+      console.log(res);
+      
+      setShowCreateDepModal(false);
+      
+
+      
+    }
+    catch (err) {
+      alert(err.response?.data?.message || err.message || "Failed to create department.");
+    }
+
   }
 
   return (
@@ -54,15 +97,33 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
         aria-hidden={!expanded}
       >
         <div className="px-6 pb-5 pt-1">
-          {space.departments && space.departments.length > 0 ? (
-            space.departments.map((dept) => (
+          {isLoading ? (
+                <div className="text-center py-12 text-slate-500 font-medium animate-pulse flex flex-col items-center gap-2">
+                  <svg className="w-6 h-6 animate-spin text-indigo-500" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Loading Departments...</span>
+                </div>
+              ) : error ? (
+                <div className="text-center py-12 text-red-500 font-medium">
+                  Error loading Departments: {error.message || "Unknown error occurred"}
+                </div>
+              )  : (
+                normalizedDepartments && normalizedDepartments.length > 0 ? (
+            normalizedDepartments.map((dept) => (
               <DepartmentRow key={dept.id} dept={dept} onAddBoard={handleAddBoard} />
             ))
           ) : (
-            <p className="text-xs text-slate-400 dark:text-slate-500 py-3 pl-2">
+            <p className="text-xs text-center text-slate-400 dark:text-slate-500 py-3 pl-2">
               No departments registered in this space. Click settings to configure departments.
             </p>
-          )}
+          )
+                
+              )}
+          {}
+          <CreateDepartmentCard onClick={()=>{setShowCreateDepModal(true)}} />
+          
         </div>
       </div>
       {showInviteModal && (
@@ -73,6 +134,15 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
                 
               />
             )}
+      {showCreateDepModal && (
+              <CreateDepartmentModal
+                onSubmit={handleCreateDepartment}
+                onClose={() => setShowCreateDepModal(false)}
+                space={space}
+                
+              />
+            )}
+      
     </article>
   );
 }

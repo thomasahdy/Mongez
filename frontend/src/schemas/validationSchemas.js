@@ -76,3 +76,26 @@ export const updateMemberRoleSchema = z.object({
     errorMap: () => ({ message: 'Please select a valid role (OWNER, ADMIN, MEMBER, or VIEWER)' }),
   }),
 });
+
+
+
+export const createDepartmentSchema = z.object({
+  name: z
+    .string()
+    .min(2, { message: 'Department name must be at least 2 characters long' })
+    .max(50, { message: 'Department name cannot exceed 50 characters' })
+    .trim(),
+    
+  description: z
+    .string()
+    .max(200, { message: 'Description cannot exceed 200 characters' })
+    .optional()
+    .or(z.literal('')), // Allows an empty string if optional
+    
+  color: z
+    .string()
+    .min(2, { message: 'Department color must be at least 2 characters' })
+    .max(10, { message: 'Color must be 10 characters or less' })
+    .toUpperCase()
+    .trim()
+});

@@ -197,8 +197,8 @@ const BOARD_COLUMNS = [
         done: true,
         doneLabel: "Approved by CEO",
         celebration: [
-          '<i class="fa-solid fa-trophy" style="color:#f59e0b;margin-right:4px"></i>2 days faster than average!',
-          '<i class="fa-solid fa-chart-line" style="color:#10b981;margin-right:4px"></i>Team rate: 94% (top 10%)',
+          '<i className="fa-solid fa-trophy" style="color:#f59e0b;margin-right:4px"></i>2 days faster than average!',
+          '<i className="fa-solid fa-chart-line" style="color:#10b981;margin-right:4px"></i>Team rate: 94% (top 10%)',
         ],
       },
       { title: "Recruit Field Supervisor — Aswan",    done: true, doneLabel: "Hired & onboarded" },

@@ -59,7 +59,7 @@ const SpaceCardHeader = ({ space, expanded, onToggle, onInvite, onSettings, onDe
           <i className="fa-solid fa-gear text-slate-500 dark:text-slate-400" />
         </Button>
         <Button variant="outline" size="md" onClick={onDelete} aria-label={`Edit settings for ${space.name}`} title="Workspace Settings">
-          <i class="fa-solid fa-delete-left text-red-500 dark:text-red-400"></i>
+          <i className="fa-solid fa-delete-left text-red-500 dark:text-red-400"></i>
         </Button>
 
         {/* Delete Space button (Only allowed for Owners/Admins in business logic) */}
