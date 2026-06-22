@@ -6,9 +6,11 @@ import TreeLink from './TreeLink';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router';
 import ToggleLanguage from './ToggleLanguage';
+import { logout } from '../../services/api/authService';
+import SpaceSwitcher from '../spaces/SpaceSwitcher';
 
 const OVERVIEW_LINKS = [
-  { href: "/mywork",      icon: "fa-circle-check",       label: "My Work",     badge: { label: "5", variant: "danger" } },
+  { href: "/my-work",     icon: "fa-circle-check",       label: "My Work",     badge: { label: "5", variant: "danger" } },
   { href: "/inbox",        icon: "fa-inbox",              label: "Inbox",        badge: { label: "3", variant: "danger" } },
   { href: "/dashboard",    icon: "fa-chart-pie",          label: "Dashboard" },
   { href: "/search",       icon: "fa-magnifying-glass",   label: "Search",       kbd: "⌘K" },
@@ -24,6 +26,12 @@ const VIEW_LINKS = [
 
 const Sidebar = ({setLanguage, language}) => {
   const { t } = useTranslation();
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/';
+  };
+
   return (
     <aside
       className="w-[260px] bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col px-3 py-4 overflow-y-auto h-screen [scrollbar-width:none]"
@@ -52,6 +60,10 @@ const Sidebar = ({setLanguage, language}) => {
           <ToggleLanguage setLanguage={setLanguage} language={language}/>
       </div>
       
+      {/* Space Switcher */}
+      <div className="mb-4">
+        <SpaceSwitcher />
+      </div>
 
       {/* Overview */}
       <NavSection label={t("overview")}>
@@ -95,11 +107,14 @@ const Sidebar = ({setLanguage, language}) => {
 
       {/* Footer */}
       <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
-        <NavItem href="settings.html" icon="fa-gear" label={t("settings")} />
-        <a href="login" className="flex items-center gap-2 px-2 py-[7px] rounded-lg text-[13px] font-medium text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all duration-150">
+        <NavItem href="/settings" icon="fa-gear" label={t("settings")} />
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-[13px] font-medium text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all duration-150 text-left cursor-pointer"
+        >
           <span className="w-5 flex justify-center"><i className="fa-solid fa-arrow-right-from-bracket" /></span>
           {t("logout")}
-        </a>
+        </button>
       </div>
     </aside>
   )

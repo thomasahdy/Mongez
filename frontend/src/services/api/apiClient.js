@@ -8,7 +8,7 @@ import {
 } from "./tokenService";
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || "/api/v1",
   headers: {
     "Content-Type": "application/json",
   },
@@ -39,7 +39,12 @@ apiClient.interceptors.request.use(
 // =========================
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.data && response.data.success === true && 'data' in response.data) {
+      response.data = response.data.data;
+    }
+    return response;
+  },
 
   async (error) => {
     const originalRequest = error.config;

@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import NavBreadcrumb from './NavBreadcrumb';
-import { authService } from '../../services/auth.service';
+import { logout } from '../../services/api/authService';
 
 const Navbar = ({ onToggleAI, path }) => {
   const [focused, setFocused] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleLogout = async () => {
-    await authService.logout();
+    await logout();
     window.location.href = '/';
   };
 

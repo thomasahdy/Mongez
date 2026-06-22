@@ -8,7 +8,22 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import ErrorBoundary from './components/ErrorBoundary';
 import './i18n';
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30 seconds
+      gcTime: 5 * 60 * 1000, // 5 minutes
+      retry: 3,
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      refetchOnReconnect: 'always',
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
+
 createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
@@ -16,7 +31,6 @@ createRoot(document.getElementById('root')).render(
         <App />
       </Provider>
     </ErrorBoundary>
-    <ReactQueryDevtools initialIsOpen={false} />
+    {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
   </QueryClientProvider>
-  
 );

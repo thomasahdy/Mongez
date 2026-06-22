@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Route, Routes, useNavigate, useLocation } from 'react-router';
-import Sidebar from './components/layout/Sidebar';
+import { BrowserRouter, Route, Routes, useNavigate, useLocation, Navigate } from 'react-router';
+import ProtectedLayout from './components/layout/ProtectedLayout';
 import Home from './pages/home/Home';
 import KanbanBoard from './pages/kanbanboard/KanbanBoard';
 import SpacesPage from './pages/spaces/SpacesPage';
@@ -12,33 +12,34 @@ import WhiteBoardPage from './pages/whiteboard/WhiteBoardPage';
 import ReportsPage from './pages/reports/ReportsPage';
 import { useTranslation } from "react-i18next";
 import SettingsPage from './pages/settings/SettingsPage';
+import MembersPage from './pages/settings/MembersPage';
 import InboxPage from './pages/Inbox/InboxPage';
 import SearchPage from './pages/search/SearchPage';
 import MyWorkPage from './pages/mywork/MyWorkPage';
+import AuditLogPage from './pages/audit-log/AuditLogPage';
 
 function AuthenticatedApp({ path, setPath, setLanguage, language}) {
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans animate-fadeIn">
-      <div className="hidden lg:block shrink-0"><Sidebar setLanguage={setLanguage} language={language}/></div>
-      <Routes>
+    <Routes>
+      <Route element={<ProtectedLayout setLanguage={setLanguage} language={language} />}>
         <Route path='/' element={<Home path={path}/>}>
-          <Route index element={<KanbanBoard setPath={setPath}/>}/>
+          <Route index element={<Navigate to="/spaces" replace />} />
+          <Route path='boards/:boardId' element={<KanbanBoard setPath={setPath}/>}/>
           <Route path='spaces' element={<SpacesPage setPath={setPath}/>}/>
           <Route path='whiteboard' element={<WhiteBoardPage/>}/>
           <Route path='reports' element={<ReportsPage setPath={setPath}/>}/>
           <Route path='settings' element={<SettingsPage setPath={setPath}/>}/>
+          <Route path='settings/members' element={<MembersPage setPath={setPath}/>}/>
           <Route path='inbox' element={<InboxPage setPath={setPath}/>}/>
-          <Route
-                path='/search'
-                element={<SearchPage/>}
-            />
-          <Route
-                path='/mywork'
-                element={<MyWorkPage setPath={setPath}/>}
-            />
+          <Route path='search' element={<SearchPage/>}/>
+          <Route path='my-work' element={<MyWorkPage setPath={setPath}/>}/>
+          <Route path='audit-log' element={<AuditLogPage/>}/>
+          <Route path='dashboard' element={<Navigate to="/" replace />} />
+          <Route path='calendar' element={<Navigate to="/" replace />} />
+          <Route path='timeline' element={<Navigate to="/" replace />} />
         </Route>
-      </Routes>
-    </div>
+      </Route>
+    </Routes>
   );
 }
 
@@ -79,7 +80,7 @@ function AppContent() {
           setIsLoggedIn(true);
           // If user is on login/register page after OAuth callback, redirect to dashboard
           if (location.pathname === '/login' || location.pathname === '/register') {
-            navigate('/', { replace: true });
+            navigate('/spaces', { replace: true });
           }
         }
       } catch (error) {

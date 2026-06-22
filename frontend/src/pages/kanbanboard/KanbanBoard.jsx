@@ -3,6 +3,7 @@ import BoardColumn from './BoardColumn';
 import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
 import Board from './Board';
+import TaskBoardSkeleton from '../../components/loading/TaskBoardSkeleton';
 
 
 const BOARD_COLUMNS = [
@@ -236,8 +237,10 @@ const KanbanBoard = ({setPath}) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full" aria-label="Loading" />
+      <div className="flex flex-col h-full overflow-hidden">
+        <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <Toolbar />
+        <TaskBoardSkeleton />
       </div>
     );
   }
