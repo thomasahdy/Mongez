@@ -16,39 +16,50 @@ import MembersPage from './pages/settings/MembersPage';
 import InboxPage from './pages/Inbox/InboxPage';
 import SearchPage from './pages/search/SearchPage';
 import MyWorkPage from './pages/mywork/MyWorkPage';
+import SecurityPage from './pages/security/SecurityPage';
 import AuditLogPage from './pages/audit-log/AuditLogPage';
 
-function AuthenticatedApp({ path, setPath, setLanguage, language}) {
+function AuthenticatedApp({ path, setPath, setLanguage, language }) {
   return (
     <Routes>
       <Route element={<ProtectedLayout setLanguage={setLanguage} language={language} />}>
-        <Route path='/' element={<Home path={path}/>}>
+        <Route path='/' element={<Home path={path} />}>
           <Route index element={<Navigate to="/spaces" replace />} />
-          <Route path='boards/:boardId' element={<KanbanBoard setPath={setPath}/>}/>
-          <Route path='spaces' element={<SpacesPage setPath={setPath}/>}/>
-          <Route path='whiteboard' element={<WhiteBoardPage/>}/>
-          <Route path='reports' element={<ReportsPage setPath={setPath}/>}/>
-          <Route path='settings' element={<SettingsPage setPath={setPath}/>}/>
-          <Route path='settings/members' element={<MembersPage setPath={setPath}/>}/>
-          <Route path='inbox' element={<InboxPage setPath={setPath}/>}/>
-          <Route path='search' element={<SearchPage/>}/>
-          <Route path='my-work' element={<MyWorkPage setPath={setPath}/>}/>
-          <Route path='audit-log' element={<AuditLogPage/>}/>
+          <Route path='boards/:boardId' element={<KanbanBoard setPath={setPath} />} />
+          <Route path='spaces' element={<SpacesPage setPath={setPath} />} />
+          <Route path='whiteboard' element={<WhiteBoardPage />} />
+          <Route path='reports' element={<ReportsPage setPath={setPath} />} />
+          <Route path='settings' element={<SettingsPage setPath={setPath} />} />
+          <Route path='settings/members' element={<MembersPage setPath={setPath} />} />
+          <Route path='inbox' element={<InboxPage setPath={setPath} />} />
+          <Route path='search' element={<SearchPage />} />
+          <Route path='my-work' element={<MyWorkPage setPath={setPath} />} />
+          <Route path='audit-log' element={<AuditLogPage />} />
           <Route path='dashboard' element={<Navigate to="/" replace />} />
           <Route path='calendar' element={<Navigate to="/" replace />} />
           <Route path='timeline' element={<Navigate to="/" replace />} />
-        </Route>
-      </Route>
-    </Routes>
+          <Route path='settings/security' element={<SecurityPage setPath={setPath} />} />
+          <Route path='audit-logs' element={<AuditLogPage setPath={setPath} />} />
+          <Route
+            path='/search'
+            element={<SearchPage />}
+          />
+          <Route
+            path='/mywork'
+            element={<MyWorkPage setPath={setPath} />}
+          />
+        </Route >
+      </Route >
+    </Routes >
   );
 }
 
 function PublicApp() {
   return (
     <Routes>
-      <Route path='/' element={<LandingPage />}/>
-      <Route path='/onboarding' element={<OnboardingPage />}/>
-      <Route path='/login' element={<LoginPage />}/>
+      <Route path='/' element={<LandingPage />} />
+      <Route path='/onboarding' element={<OnboardingPage />} />
+      <Route path='/login' element={<LoginPage />} />
       <Route path='/register' element={<RegisterPage />} />
     </Routes>
   );
@@ -60,14 +71,14 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const [path, setPath] = useState([]);
-   const [language, setLanguage] = useState("en");
+  const [language, setLanguage] = useState("en");
 
   const { i18n } = useTranslation();
 
-    useEffect(() => {
+  useEffect(() => {
     document.documentElement.dir =
       language === "ar" ? "rtl" : "ltr";
-      i18n.changeLanguage(language);
+    i18n.changeLanguage(language);
   }, [language]);
 
   useEffect(() => {
@@ -108,14 +119,14 @@ function AppContent() {
   }
 
   return isLoggedIn ? (
-    <AuthenticatedApp path={path} setPath={setPath} setLanguage={setLanguage} language={language}/>
+    <AuthenticatedApp path={path} setPath={setPath} setLanguage={setLanguage} language={language} />
   ) : (
     <PublicApp />
   );
 }
 
 function App() {
- 
+
 
   return (
     <BrowserRouter>

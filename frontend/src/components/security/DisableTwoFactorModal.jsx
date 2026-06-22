@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { disableTwoFactor } from "../../services/api/securityService";
+import { disable2FA } from "../../services/api/securityService";
 
 const DisableTwoFactorModal = ({ onClose, onSuccess }) => {
     const [code, setCode] = useState("");
@@ -18,7 +18,7 @@ const DisableTwoFactorModal = ({ onClose, onSuccess }) => {
         setLoading(true);
 
         try {
-            await disableTwoFactor(code.trim());
+            await disable2FA(code.trim());
             onSuccess();
         } catch (err) {
             console.error(err);

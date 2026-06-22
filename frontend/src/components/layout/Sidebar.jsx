@@ -10,21 +10,21 @@ import { logout } from '../../services/api/authService';
 import SpaceSwitcher from '../spaces/SpaceSwitcher';
 
 const OVERVIEW_LINKS = [
-  { href: "/my-work",     icon: "fa-circle-check",       label: "My Work",     badge: { label: "5", variant: "danger" } },
-  { href: "/inbox",        icon: "fa-inbox",              label: "Inbox",        badge: { label: "3", variant: "danger" } },
-  { href: "/dashboard",    icon: "fa-chart-pie",          label: "Dashboard" },
-  { href: "/search",       icon: "fa-magnifying-glass",   label: "Search",       kbd: "⌘K" },
-  { href: "/ai-assistant", icon: "fa-sparkles",           label: "AI Assistant", iconColor: "/6366f1", aiBadge: true },
+  { href: "/my-work", icon: "fa-circle-check", label: "My Work", badge: { label: "5", variant: "danger" } },
+  { href: "/inbox", icon: "fa-inbox", label: "Inbox", badge: { label: "3", variant: "danger" } },
+  { href: "/dashboard", icon: "fa-chart-pie", label: "Dashboard" },
+  { href: "/search", icon: "fa-magnifying-glass", label: "Search", kbd: "⌘K" },
+  { href: "/ai-assistant", icon: "fa-sparkles", label: "AI Assistant", iconColor: "/6366f1", aiBadge: true },
 ];
 
 const VIEW_LINKS = [
   { href: "/calendar", icon: "fa-regular fa-calendar", label: "Calendar", badge: { label: "2 mtgs", variant: "neutral" } },
-  { href: "/timeline", icon: "fa-bars-staggered",       label: "Timeline" },
-  { href: "/whiteboard",icon: "fa-chalkboard",          label: "Whiteboard" },
-  { href: "/reports",  icon: "fa-chart-line",           label: "Reports" },
+  { href: "/timeline", icon: "fa-bars-staggered", label: "Timeline" },
+  { href: "/whiteboard", icon: "fa-chalkboard", label: "Whiteboard" },
+  { href: "/reports", icon: "fa-chart-line", label: "Reports" },
 ];
 
-const Sidebar = ({setLanguage, language}) => {
+const Sidebar = ({ setLanguage, language }) => {
   const { t } = useTranslation();
 
   const handleLogout = async () => {
@@ -40,26 +40,26 @@ const Sidebar = ({setLanguage, language}) => {
       {/* Brand */}
       <div className='flex justify-around'>
         <div className="flex items-center gap-2.5 px-2 py-1 mb-5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-sky-500 shrink-0">
-          <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <path d="M8 22V10l5 8 5-8v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="24" cy="10" r="2" fill="#a5b4fc" />
-          </svg>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-sky-500 shrink-0">
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <path d="M8 22V10l5 8 5-8v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="24" cy="10" r="2" fill="#a5b4fc" />
+            </svg>
+          </div>
+          <NavLink
+            to="/"
+            className={({ isActive }) => isActive ? "active-link" : ""}
+          >
+            <span className="text-[15px] font-bold tracking-tight text-slate-800 dark:text-slate-100">{t("mongez")}</span>
+          </NavLink>
+
+
+
+
         </div>
-        <NavLink 
-        to="/" 
-        className={({ isActive }) => isActive ? "active-link" : ""}
-      >
-        <span className="text-[15px] font-bold tracking-tight text-slate-800 dark:text-slate-100">{t("mongez")}</span>
-      </NavLink>
-      
-
-
-        
+        <ToggleLanguage setLanguage={setLanguage} language={language} />
       </div>
-          <ToggleLanguage setLanguage={setLanguage} language={language}/>
-      </div>
-      
+
       {/* Space Switcher */}
       <div className="mb-4">
         <SpaceSwitcher />
