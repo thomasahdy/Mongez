@@ -49,3 +49,13 @@ export const terminateAllSessions = async () => {
 
     return response.data;
 };
+
+export const getSessionSettings = async () => {
+    const response = await apiClient.get("/users/me/session-settings");
+    return response.data.data;
+};
+
+export const updateSessionSettings = async (settings) => {
+    const response = await apiClient.patch("/users/me/session-settings", settings);
+    return response.data.data;
+};
