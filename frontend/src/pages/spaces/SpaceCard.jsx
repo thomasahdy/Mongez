@@ -45,7 +45,7 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
         onToggle={() => setExpanded((v) => !v)}
         onInvite={() => setShowInviteModal(true)}
         onSettings={() => onEdit(space)}
-        onMore={() => onDelete(space.id)}
+        onDelete={() => onDelete(space.id)}
       />
 
       {/* Departments — animated collapse */}
