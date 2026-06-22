@@ -3,17 +3,52 @@
  * Handles all auth-related API calls
  */
 const API_BASE_URL = '/api/v1';
+let csrfTokenPromise = null;
+
+const ensureCsrfToken = async () => {
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = fetch(`${API_BASE_URL}/auth/csrf-token`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+      .then(async (response) => {
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || data.error || 'Failed to initialize security token');
+        }
+
+        return data.data?.csrfToken || '';
+      })
+      .finally(() => {
+        csrfTokenPromise = null;
+      });
+  }
+
+  return csrfTokenPromise;
+};
+
+const buildSecureHeaders = async (headers = {}) => {
+  const csrfToken = await ensureCsrfToken();
+
+  return {
+    ...headers,
+    'X-CSRF-Token': csrfToken,
+  };
+};
 
 class AuthService {
   /**
    * Register a new user
    */
   async register(email, password, name) {
+    const headers = await buildSecureHeaders({
+      'Content-Type': 'application/json',
+    });
+
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       credentials: 'include',
       body: JSON.stringify({ email, password, name }),
     });
@@ -31,11 +66,13 @@ class AuthService {
    * Login with email and password
    */
   async login(email, password) {
+    const headers = await buildSecureHeaders({
+      'Content-Type': 'application/json',
+    });
+
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       credentials: 'include',
       body: JSON.stringify({ email, password }),
     });
@@ -54,8 +91,10 @@ class AuthService {
    */
   async logout() {
     try {
+      const headers = await buildSecureHeaders();
       await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
+        headers,
         credentials: 'include',
       });
     } catch (error) {
@@ -86,11 +125,13 @@ class AuthService {
    * Complete onboarding
    */
   async completeOnboarding(organization, template, invites) {
+    const headers = await buildSecureHeaders({
+      'Content-Type': 'application/json',
+    });
+
     const response = await fetch(`${API_BASE_URL}/auth/complete-onboarding`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       credentials: 'include',
       body: JSON.stringify({ organization, template, invites }),
     });
@@ -101,7 +142,7 @@ class AuthService {
       throw new Error(data.message || data.error || 'Failed to complete onboarding');
     }
 
-    return data;
+    return data.data || data;
   }
 
   /**
@@ -115,11 +156,14 @@ class AuthService {
    * Request password reset
    */
   async forgotPassword(email) {
+    const headers = await buildSecureHeaders({
+      'Content-Type': 'application/json',
+    });
+
     const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
+      credentials: 'include',
       body: JSON.stringify({ email }),
     });
 
@@ -136,11 +180,14 @@ class AuthService {
    * Reset password with token
    */
   async resetPassword(token, password, confirmPassword) {
+    const headers = await buildSecureHeaders({
+      'Content-Type': 'application/json',
+    });
+
     const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
+      credentials: 'include',
       body: JSON.stringify({ token, password, confirmPassword }),
     });
 
@@ -157,8 +204,11 @@ class AuthService {
    * Send email verification
    */
   async sendVerificationEmail() {
+    const headers = await buildSecureHeaders();
+
     const response = await fetch(`${API_BASE_URL}/auth/send-verification`, {
       method: 'POST',
+      headers,
       credentials: 'include',
     });
 
@@ -175,11 +225,14 @@ class AuthService {
    * Verify email with token
    */
   async verifyEmail(token) {
+    const headers = await buildSecureHeaders({
+      'Content-Type': 'application/json',
+    });
+
     const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
+      credentials: 'include',
       body: JSON.stringify({ token }),
     });
 
@@ -207,7 +260,28 @@ class AuthService {
       throw new Error(data.message || 'Failed to get verification status');
     }
 
-    return data.data;
+    return data.data || data;
+  }
+
+  async verifyResetToken(token) {
+    const headers = await buildSecureHeaders({
+      'Content-Type': 'application/json',
+    });
+
+    const response = await fetch(`${API_BASE_URL}/auth/verify-reset-token`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify({ token }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to verify reset token');
+    }
+
+    return data.data || data;
   }
 }
 

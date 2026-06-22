@@ -35,7 +35,7 @@ export const handleOAuthCallback = () => {
 /**
  * Redirect to OAuth login
  */
-export const loginWithOAuth = (provider: 'google') => {
+export const loginWithOAuth = (provider = 'google') => {
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
   window.location.href = `${baseUrl}/api/v1/auth/${provider}`;
 };

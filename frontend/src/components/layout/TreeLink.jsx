@@ -1,14 +1,16 @@
-import React from 'react'
+import { NavLink } from 'react-router'
 
-const TreeLink = ({ label, active, badge, hasAI, dotColor }) => {
+const TreeLink = ({ label, active, badge, hasAI, dotColor, to = "/spaces", onClick }) => {
   return (
-    <a
-      href="#"
-      className={`flex items-center text-[13px] px-2 py-1 rounded-lg mb-0.5 transition-all duration-150 relative
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={({ isActive }) => `flex items-center text-[13px] px-2 py-1 rounded-lg mb-0.5 transition-all duration-150 relative
         ${active
           ? "bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 font-semibold"
           : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-        }`}
+        }
+        ${isActive ? "bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 font-semibold" : ""}`}
     >
       {dotColor
         ? <i className="fa-solid fa-circle mr-2" style={{ fontSize: 5, color: dotColor }} />
@@ -21,7 +23,7 @@ const TreeLink = ({ label, active, badge, hasAI, dotColor }) => {
           {hasAI && <i className="fa-solid fa-bolt text-sky-400 text-[10px]" title="AI insight available" />}
         </span>
       )}
-    </a>
+    </NavLink>
   )
 }
 

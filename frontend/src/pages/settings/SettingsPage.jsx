@@ -16,13 +16,13 @@ import PreferencesSection from "./sections/PreferencesSection";
 
 
 const INITIAL_FORM = {
-  firstName: "Alsherif",
-  lastName:  "Ashraf",
-  jobTitle:  "Product Manager",
+  firstName: "",
+  lastName:  "",
+  jobTitle:  "",
   bio:       "",
-  email:     "Alsherif@mongez.com",
+  email:     "",
   phone:     "",
-  timezone:  "Central European Time (CET)",
+  timezone:  "",
 };
 
 const INITIAL_PREFS = {

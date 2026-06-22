@@ -1,29 +1,20 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { useAppContext } from '../AppContext';
-import {
-  getDashboardActivity,
-  getDashboardPriorityBreakdown,
-  getDashboardStats,
-  getDashboardTaskCompletion,
-  getDashboardTeamLoad,
-} from '../../lib/pageApi';
+import { useEffect, useMemo, useState } from "react";
+import { useOutletContext } from "react-router";
+import { useAppContext } from "../AppContext";
+import { useDashboardAnalyticsQuery } from "../../hooks/useDashboardQueries";
 
-const statCards = [
-  { key: 'totalTasks', label: 'Total tasks', icon: 'fa-list-check', fallback: 0 },
-  { key: 'completedTasks', label: 'Completed', icon: 'fa-circle-check', fallback: 0 },
-  { key: 'overdueTasks', label: 'Overdue', icon: 'fa-triangle-exclamation', fallback: 0 },
-  { key: 'activeMembers', label: 'Active members', icon: 'fa-users', fallback: 0 },
-];
+const CHART_COLORS = ["var(--primary)", "var(--success)", "var(--warning)", "var(--danger)"];
 
 function toNumber(value, fallback = 0) {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string' && value.trim() !== '') return Number(value);
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) {
+    return Number(value);
+  }
   return fallback;
 }
 
 function normalizeStats(payload) {
-  if (!payload || typeof payload !== 'object') return {};
+  if (!payload || typeof payload !== "object") return {};
   if (Array.isArray(payload)) return Object.assign({}, ...payload);
   if (Array.isArray(payload?.data)) return Object.assign({}, ...payload.data);
   return payload.data || payload;
@@ -39,20 +30,170 @@ function normalizeList(payload) {
   return [];
 }
 
-function DashboardStatCard({ stat, loading }) {
+function pickNumber(source, keys, fallback = 0) {
+  for (const key of keys) {
+    const value = key.split(".").reduce((current, part) => current?.[part], source);
+    if (value !== undefined && value !== null && value !== "") {
+      return toNumber(value, fallback);
+    }
+  }
+  return fallback;
+}
+
+function formatNumber(value) {
+  if (value === null || value === undefined) {
+    return "--";
+  }
+  return new Intl.NumberFormat("en", { notation: Math.abs(value) >= 10000 ? "compact" : "standard" }).format(value);
+}
+
+function formatPercent(value) {
+  if (value === null || value === undefined) {
+    return "--";
+  }
+  return `${Math.round(toNumber(value))}%`;
+}
+
+function formatCurrency(value) {
+  if (value === null || value === undefined) {
+    return "--";
+  }
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: "USD",
+    notation: Math.abs(value) >= 10000 ? "compact" : "standard",
+    maximumFractionDigits: Math.abs(value) >= 10000 ? 1 : 0,
+  }).format(value);
+}
+
+function itemLabel(item, fallback) {
+  return item.label || item.status || item.priority || item.name || item.title || fallback;
+}
+
+function itemValue(item) {
+  return toNumber(item.value ?? item.count ?? item.tasks ?? item.total ?? item.percentage);
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en", { month: "short", day: "numeric" });
+}
+
+function Sparkline({ color = "var(--primary)", direction = "up" }) {
+  const points =
+    direction === "down"
+      ? "0,4 15,6 30,8 45,10 60,14 75,16 90,18 100,20"
+      : "0,20 15,16 30,18 45,12 60,14 75,8 90,6 100,4";
+
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
-        <span className="rounded-2xl bg-sky-50 px-3 py-2 text-sky-600">
-          <i className={`fa-solid ${stat.icon}`} />
-        </span>
-        {loading && <span className="h-2 w-16 animate-pulse rounded-full bg-slate-200" />}
+    <svg className="kpi-sparkline" width="100%" height="24" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <polyline fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" points={points} />
+    </svg>
+  );
+}
+
+function KpiCard({ icon, iconClass, label, value, suffix = "", trend, trendDirection = "up", loading }) {
+  return (
+    <div className="kpi-card">
+      <div className="kpi-header">
+        <div className={`kpi-icon ${iconClass}`}>
+          <i className={`fa-solid ${icon}`} />
+        </div>
+        <div className={`kpi-trend ${trendDirection}`}>
+          {trend ? (
+            <>
+              <i className={`fa-solid ${trendDirection === "down" ? "fa-arrow-down" : "fa-arrow-up"}`} />
+              {trend}
+            </>
+          ) : (
+            "Live"
+          )}
+        </div>
       </div>
-      <div className="text-3xl font-black tracking-[-0.04em] text-slate-950">
-        {loading ? '—' : stat.value}
-      </div>
-      <div className="mt-1 text-sm font-medium text-slate-500">{stat.label}</div>
+      <div className="kpi-value">{loading ? "..." : `${value}${suffix}`}</div>
+      <div className="kpi-label">{label}</div>
+      <Sparkline color={iconClass.includes("success") ? "var(--success)" : iconClass.includes("warning") ? "var(--warning)" : iconClass.includes("accent") ? "var(--accent)" : "var(--primary)"} direction={trendDirection} />
     </div>
+  );
+}
+
+function InsightCard({ type, icon, color, text, action }) {
+  return (
+    <div className="insight-card">
+      <div className="insight-type" style={{ color }}>
+        <i className={`fa-solid ${icon}`} />
+        {type}
+      </div>
+      <div className="insight-text">{text}</div>
+      <div className="insight-action">
+        <i className="fa-solid fa-arrow-right" />
+        {action}
+      </div>
+    </div>
+  );
+}
+
+function BarChart({ items }) {
+  if (!items.length) {
+    return <div className="empty-state">No task completion data returned yet.</div>;
+  }
+
+  const maxValue = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <div className="bar-chart">
+      {items.slice(0, 7).map((item) => (
+        <div className="bar-item" key={item.label}>
+          <div className="bar-track" title={`${item.label}: ${item.value}`}>
+            <div className="bar-fill" style={{ height: `${Math.max(4, (item.value / maxValue) * 100)}%` }} />
+          </div>
+          <div className="bar-label">{item.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DistributionChart({ items }) {
+  if (!items.length) {
+    return <div className="empty-state">No priority or status distribution returned yet.</div>;
+  }
+
+  const total = items.reduce((sum, item) => sum + item.value, 0) || 1;
+  let cumulative = 0;
+  const angles = items.slice(0, 4).map((item) => {
+    cumulative += (item.value / total) * 360;
+    return `${Math.round(cumulative)}deg`;
+  });
+
+  return (
+    <>
+      <div className="donut-wrap">
+        <div
+          className="donut-chart"
+          style={{
+            "--donut-a": angles[0] || "0deg",
+            "--donut-b": angles[1] || angles[0] || "0deg",
+            "--donut-c": angles[2] || angles[1] || angles[0] || "0deg",
+          }}
+        >
+          <div className="donut-inner">{formatNumber(total)}</div>
+        </div>
+      </div>
+      <div className="donut-legend">
+        {items.slice(0, 4).map((item, index) => (
+          <div className="legend-item" key={item.label}>
+            <span className="legend-label">
+              <span className="legend-dot" style={{ background: CHART_COLORS[index] }} />
+              {item.label}
+            </span>
+            <strong>{formatNumber(item.value)}</strong>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -60,214 +201,312 @@ function DashboardPage() {
   const { setPath } = useOutletContext() || {};
   const { activeSpace, spaces } = useAppContext();
   const spaceId = activeSpace?.id || spaces[0]?.id;
-  const [stats, setStats] = useState({});
-  const [activity, setActivity] = useState([]);
-  const [completion, setCompletion] = useState([]);
-  const [priority, setPriority] = useState([]);
-  const [teamLoad, setTeamLoad] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const dashboardQuery = useDashboardAnalyticsQuery(spaceId);
+  const loading = dashboardQuery.isLoading || dashboardQuery.isFetching;
+  const stats = normalizeStats(dashboardQuery.data?.stats);
+  const activity = normalizeList(dashboardQuery.data?.activity);
+  const completion = normalizeList(dashboardQuery.data?.completion);
+  const priority = normalizeList(dashboardQuery.data?.priority);
+  const teamLoad = normalizeList(dashboardQuery.data?.teamLoad);
+  const executiveMetrics = normalizeStats(dashboardQuery.data?.executiveMetrics);
+  const slaMetrics = normalizeStats(dashboardQuery.data?.slaMetrics);
+  const workflowAnalytics = normalizeStats(dashboardQuery.data?.workflowAnalytics);
+  const approverPerformance = normalizeList(dashboardQuery.data?.approverPerformance);
 
   useEffect(() => {
     setPath?.([
-      { name: 'Workspace', color: 'text-slate-400', ref: '/spaces' },
-      { name: 'Dashboard', color: 'text-slate-800', ref: '' },
+      { name: activeSpace?.name || "Workspace", color: "text-slate-400", ref: "/dashboard" },
+      { name: "Dashboard", color: "text-slate-800", ref: "" },
     ]);
-  }, [setPath]);
+  }, [activeSpace?.name, setPath]);
 
-  const loadDashboard = useCallback(async () => {
+  useEffect(() => {
     if (!spaceId) {
-      setLoading(false);
-      setError('Select a workspace to load dashboard analytics.');
+      setError("Select a workspace to load dashboard analytics.");
       return;
     }
 
-    setLoading(true);
-    setError('');
-    try {
-      const [statsData, activityData, completionData, priorityData, teamLoadData] = await Promise.all([
-        getDashboardStats(spaceId),
-        getDashboardActivity(spaceId),
-        getDashboardTaskCompletion(spaceId),
-        getDashboardPriorityBreakdown(spaceId),
-        getDashboardTeamLoad(spaceId),
-      ]);
-      setStats(normalizeStats(statsData));
-      setActivity(normalizeList(activityData));
-      setCompletion(normalizeList(completionData));
-      setPriority(normalizeList(priorityData));
-      setTeamLoad(normalizeList(teamLoadData));
-    } catch (err) {
-      setError(err.message || 'Unable to load dashboard data.');
-    } finally {
-      setLoading(false);
+    if (dashboardQuery.isError) {
+      setError(dashboardQuery.error?.message || "Unable to load dashboard data.");
+      return;
     }
-  }, [spaceId]);
 
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+    setError("");
+  }, [dashboardQuery.error?.message, dashboardQuery.isError, spaceId]);
 
-  const cards = useMemo(() => statCards.map((item) => ({
-    ...item,
-    value: toNumber(stats[item.key] ?? stats[item.label?.toLowerCase?.()] ?? item.fallback),
-  })), [stats]);
+  const exportDashboard = async () => {
+    if (!spaceId) {
+      setError("Select a workspace before exporting dashboard data.");
+      return;
+    }
 
-  const maxLoad = Math.max(...teamLoad.map((item) => toNumber(item.load ?? item.tasks ?? item.count)), 1);
+    setExporting(true);
+    setError("");
+
+    try {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        space: { id: spaceId, name: activeSpace?.name || null },
+        stats,
+        activity,
+        completion,
+        priority,
+        teamLoad,
+        executiveMetrics,
+        slaMetrics,
+        workflowAnalytics,
+        approverPerformance,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `dashboard-${spaceId}-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (exportError) {
+      setError(exportError.message || "Unable to export dashboard data.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const dashboardMetrics = useMemo(() => {
+    const totalTasks = pickNumber(stats, ["activeTasks", "totalTasks", "tasks.total", "total"], null);
+    const completedTasks = pickNumber(stats, ["completedTasks", "tasks.completed", "completed"], null);
+    const overdueTasks = pickNumber(stats, ["overdueTasks", "tasks.overdue", "overdue"], null);
+    const activeMembers = pickNumber(stats, ["activeMembers", "memberCount", "members.total", "members"], null);
+    const deliveryRate = pickNumber(
+      executiveMetrics,
+      ["onTimeDeliveryRate", "deliveryRate", "slaCompliance"],
+      totalTasks && completedTasks !== null ? (completedTasks / totalTasks) * 100 : null,
+    );
+    const budgetRemaining = pickNumber(
+      executiveMetrics,
+      ["budgetRemaining", "budget.remaining", "remainingBudget"],
+      pickNumber(stats, ["budgetRemaining", "remainingBudget"], null),
+    );
+
+    return {
+      totalTasks,
+      completedTasks,
+      overdueTasks,
+      activeMembers,
+      deliveryRate,
+      budgetRemaining,
+      pendingApprovals: pickNumber(executiveMetrics, ["pendingApprovals", "approvals.pending"], null),
+      slaCompliance: pickNumber(
+        executiveMetrics,
+        ["slaCompliance", "compliance"],
+        pickNumber(slaMetrics, ["complianceRate", "slaCompliance"], null),
+      ),
+    };
+  }, [executiveMetrics, slaMetrics, stats]);
+
+  const chartItems = useMemo(() => {
+    const source = completion.length ? completion : priority;
+    return source
+      .map((item, index) => ({ label: itemLabel(item, `Item ${index + 1}`), value: itemValue(item) }))
+      .filter((item) => item.value > 0);
+  }, [completion, priority]);
+
+  const distributionItems = useMemo(() => {
+    const source = priority.length ? priority : completion;
+    return source
+      .map((item, index) => ({ label: itemLabel(item, `Segment ${index + 1}`), value: itemValue(item) }))
+      .filter((item) => item.value > 0);
+  }, [completion, priority]);
+
+  const upcomingItems = useMemo(() => {
+    return activity
+      .filter((item) => item.dueDate || item.deadline || item.endDate)
+      .map((item, index) => ({
+        id: item.id || index,
+        date: item.dueDate || item.deadline || item.endDate,
+        title: item.title || item.message || item.action || "Upcoming item",
+        status: item.status || item.priority || "Due",
+      }))
+      .slice(0, 5);
+  }, [activity]);
+
+  const insights = useMemo(() => {
+    const bottlenecks = pickNumber(workflowAnalytics, ["bottlenecks", "blockedItems", "blocked"], null);
+    const avgApproval = pickNumber(executiveMetrics, ["avgApprovalTime", "averageApprovalTime"], null);
+    return [
+      {
+        type: dashboardMetrics.overdueTasks > 0 ? "Risk Alert" : "Risk Check",
+        icon: dashboardMetrics.overdueTasks > 0 ? "fa-triangle-exclamation" : "fa-shield-check",
+        color: dashboardMetrics.overdueTasks > 0 ? "var(--danger)" : "var(--success)",
+        text:
+          dashboardMetrics.overdueTasks > 0
+            ? `${formatNumber(dashboardMetrics.overdueTasks)} overdue tasks are currently affecting the workspace.`
+            : dashboardMetrics.overdueTasks === null
+              ? "The backend did not return an overdue task count for this workspace yet."
+              : "No overdue task count was returned for this workspace.",
+        action: "Review workload",
+      },
+      {
+        type: "Performance",
+        icon: "fa-chart-line",
+        color: "var(--success)",
+        text: `Current on-time delivery is ${formatPercent(dashboardMetrics.deliveryRate)} based on available backend metrics.`,
+        action: "Open analytics",
+      },
+      {
+        type: "Workflow",
+        icon: "fa-route",
+        color: "var(--primary)",
+        text:
+          bottlenecks > 0
+            ? `${formatNumber(bottlenecks)} workflow bottlenecks are reported by the analytics API.`
+            : `Pending approvals: ${formatNumber(dashboardMetrics.pendingApprovals)}. Average approval time: ${formatNumber(avgApproval)}${avgApproval === null ? "" : "h"}.`,
+        action: "Inspect flow",
+      },
+    ];
+  }, [dashboardMetrics, executiveMetrics, workflowAnalytics]);
 
   return (
-    <div className="flex-1 overflow-auto bg-slate-50 p-5">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <div className="flex flex-col justify-between gap-4 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Workspace overview</p>
-            <h1 className="mt-2 text-3xl font-black tracking-[-0.05em] text-slate-950">Dashboard</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-500">
-              Live workspace metrics from analytics and space stats APIs.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={loadDashboard} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600">
-              <i className="fa-solid fa-rotate mr-2" /> Refresh
+    <div className="flex h-full min-h-0 flex-col bg-slate-50">
+      <div className="dashboard-content">
+        <div className="page-title">
+          <i className="fa-solid fa-chart-pie" />
+          Executive Dashboard
+          <div className="dashboard-page-actions">
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => {
+                setError("");
+                dashboardQuery.refetch();
+              }}
+            >
+              <i className="fa-solid fa-rotate" />
+              Refresh
             </button>
-            <button type="button" className="rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white">
-              <i className="fa-solid fa-download mr-2" /> Export
+            <button type="button" className="action-btn" onClick={exportDashboard} disabled={loading || exporting}>
+              <i className={`fa-solid ${exporting ? "fa-spinner fa-spin" : "fa-download"}`} />
+              {exporting ? "Exporting" : "Export"}
             </button>
           </div>
         </div>
 
         {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm font-semibold text-red-200">
             {error}
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {cards.map((card) => <DashboardStatCard key={card.key} stat={card} loading={loading} />)}
+        <div className="kpi-grid">
+          <KpiCard
+            icon="fa-list-check"
+            iconClass="bg-[var(--primary-light)] text-[var(--primary)]"
+            label="Active Tasks"
+            value={formatNumber(dashboardMetrics.totalTasks)}
+            trend={dashboardMetrics.completedTasks ? `${formatNumber(dashboardMetrics.completedTasks)} done` : ""}
+            loading={loading}
+          />
+          <KpiCard
+            icon="fa-bullseye"
+            iconClass="bg-[var(--success-light)] text-[var(--success)]"
+            label="On-Time Delivery Rate"
+            value={loading ? "" : formatPercent(dashboardMetrics.deliveryRate)}
+            trend={dashboardMetrics.slaCompliance ? `${formatPercent(dashboardMetrics.slaCompliance)} SLA` : ""}
+            loading={loading}
+          />
+          <KpiCard
+            icon="fa-coins"
+            iconClass="bg-[var(--warning-light)] text-[var(--warning)]"
+            label="Budget Remaining"
+            value={loading ? "" : formatCurrency(dashboardMetrics.budgetRemaining)}
+            trendDirection="down"
+            loading={loading}
+          />
+          <KpiCard
+            icon="fa-users"
+            iconClass="bg-[var(--accent-light)] text-[var(--accent)]"
+            label="Team Members"
+            value={formatNumber(dashboardMetrics.activeMembers)}
+            trend={teamLoad.length ? `${formatNumber(teamLoad.length)} active` : ""}
+            loading={loading}
+          />
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Task completion</p>
-                <h2 className="text-lg font-black text-slate-950">Progress by status</h2>
-              </div>
-              <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-600">
-                {completion.length || priority.length || teamLoad.length ? 'API' : 'No data'}
-              </span>
-            </div>
-
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, index) => (
-                  <div key={index} className="h-10 animate-pulse rounded-2xl bg-slate-100" />
-                ))}
-              </div>
-            ) : completion.length || priority.length ? (
-              <div className="space-y-4">
-                {[...completion, ...priority].slice(0, 6).map((item, index) => {
-                  const label = item.label || item.status || item.priority || item.name || `Item ${index + 1}`;
-                  const value = toNumber(item.value ?? item.count ?? item.tasks ?? item.percentage);
-                  const max = Math.max(...[...completion, ...priority].map((entry) => toNumber(entry.value ?? entry.count ?? entry.tasks ?? entry.percentage)), 1);
-                  return (
-                    <div key={`${label}-${index}`} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold text-slate-700">{label}</span>
-                        <span className="text-slate-500">{value}</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-sky-500" style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
-                No task completion data returned yet.
-              </div>
-            )}
+        <section className="insights-section">
+          <h3>
+            <i className="fa-solid fa-robot" />
+            AI Insights
+            <span className="ml-1 text-[11px] font-medium text-[var(--text-tertiary)]">Live from workspace metrics</span>
+          </h3>
+          <div className="insight-cards">
+            {insights.map((insight) => (
+              <InsightCard key={insight.type} {...insight} />
+            ))}
           </div>
+        </section>
 
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Team load</p>
-              <h2 className="text-lg font-black text-slate-950">Capacity</h2>
-            </div>
+        <div className="charts-row">
+          <section className="chart-card">
+            <h3 className="chart-title">
+              <i className="fa-solid fa-chart-column" />
+              Task Completion
+            </h3>
+            {loading ? <div className="empty-state">Loading task analytics...</div> : <BarChart items={chartItems} />}
+          </section>
 
-            {teamLoad.length ? (
-              <div className="space-y-4">
-                {teamLoad.slice(0, 6).map((member) => {
-                  const name = member.name || member.user?.name || member.email || 'Unnamed member';
-                  const load = toNumber(member.load ?? member.tasks ?? member.count);
-                  return (
-                    <div key={name} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold text-slate-700">{name}</span>
-                        <span className="text-slate-500">{load}</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.min(100, (load / maxLoad) * 100)}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
-                No team load data returned yet.
-              </div>
-            )}
-          </div>
+          <section className="chart-card">
+            <h3 className="chart-title">
+              <i className="fa-solid fa-chart-pie" />
+              Distribution
+            </h3>
+            {loading ? <div className="empty-state">Loading distribution...</div> : <DistributionChart items={distributionItems} />}
+          </section>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-2">
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Activity</p>
-                <h2 className="text-lg font-black text-slate-950">Recent events</h2>
-              </div>
-            </div>
-            <div className="space-y-4">
-              {activity.length ? activity.slice(0, 6).map((item, index) => (
-                <div key={`${item.id || index}`} className="flex gap-3 rounded-2xl bg-slate-50 p-4">
-                  <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sky-600 shadow-sm">
-                    <i className="fa-solid fa-bolt" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-800">{item.title || item.message || item.action || 'Workspace activity'}</p>
-                    <p className="mt-1 text-xs text-slate-500">{item.description || item.createdAt || 'Just now'}</p>
+        <div className="bottom-grid">
+          <section className="list-card">
+            <h3 className="list-title">
+              <i className="fa-solid fa-clock-rotate-left" />
+              Recent Activity
+            </h3>
+            {activity.length ? (
+              activity.slice(0, 6).map((item, index) => (
+                <div className="activity-item" key={item.id || index}>
+                  <div className="activity-avatar">{(item.actor?.name || item.user?.name || item.userName || "A").slice(0, 2).toUpperCase()}</div>
+                  <div>
+                    <div className="activity-text">
+                      <strong>{item.actor?.name || item.user?.name || item.userName || "Workspace"}</strong>{" "}
+                      {item.title || item.message || item.action || "updated the workspace"}
+                    </div>
+                    <div className="activity-time">{item.createdAt ? new Date(item.createdAt).toLocaleString() : item.time || "Recent"}</div>
                   </div>
                 </div>
-              )) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
-                  No activity returned yet.
-                </div>
-              )}
-            </div>
-          </div>
+              ))
+            ) : (
+              <div className="empty-state">No activity returned yet.</div>
+            )}
+          </section>
 
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Endpoints</p>
-              <h2 className="text-lg font-black text-slate-950">Connected API</h2>
-            </div>
-            <div className="space-y-3 text-sm">
-              {[
-                'GET /api/v1/analytics/overview',
-                'GET /api/v1/analytics/tasks',
-                'GET /api/v1/analytics/team',
-                'GET /api/v1/spaces/:id/stats',
-                'GET /api/v1/approvals/pending',
-              ].map((endpoint) => (
-                <div key={endpoint} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-xs text-slate-600">
-                  {endpoint}
+          <section className="list-card">
+            <h3 className="list-title">
+              <i className="fa-regular fa-calendar" />
+              Upcoming Deadlines
+            </h3>
+            {upcomingItems.length ? (
+              upcomingItems.map((item) => (
+                <div className="upcoming-item" key={item.id}>
+                  <div className="upcoming-date">{formatDate(item.date)}</div>
+                  <div className="upcoming-title">
+                    <strong>{item.title}</strong>
+                  </div>
+                  <span className="upcoming-badge">{item.status}</span>
                 </div>
-              ))}
-            </div>
-          </div>
+              ))
+            ) : (
+              <div className="empty-state">No deadline data returned yet.</div>
+            )}
+          </section>
         </div>
       </div>
     </div>

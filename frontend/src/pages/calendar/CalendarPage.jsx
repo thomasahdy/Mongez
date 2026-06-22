@@ -1,39 +1,39 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
-import { addNonWorkingDay, fetchCalendarEvents, fetchNonWorkingDays, removeNonWorkingDay } from "../../lib/calendarApi";
-
-const breadcrumbPath = [
-  { name: "Al-Noor Foundation", color: "text-slate-400", ref: "" },
-  { name: "Calendar", color: "text-slate-800", ref: "" },
-];
+import { useEffect, useMemo, useState } from "react";
+import { Link, useOutletContext } from "react-router";
+import { useAppContext } from "../AppContext";
+import {
+  useCalendarEventsQuery,
+  useCalendarPreferencesQuery,
+} from "../../hooks/useCalendarQueries";
 
 const STORAGE_KEY = "mongez.calendar.filters";
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const CALENDAR_VIEWS = ["month", "week", "day"];
-
-const buildViewTabs = (boardId) => [
-  { label: "Board", icon: "fa-table-columns", to: boardId ? `/board/${boardId}` : "/app" },
-  { label: "List", icon: "fa-list", to: boardId ? `/board/${boardId}/list` : "/app" },
-  { label: "Calendar", icon: "fa-regular fa-calendar", to: "/calendar", active: true },
-  { label: "Gantt", icon: "fa-bars-staggered", to: boardId ? `/board/${boardId}/timeline` : "/app" },
-  { label: "Table", icon: "fa-table-cells", to: boardId ? `/board/${boardId}/table` : "/app" },
-];
 
 const legendItems = [
   { label: "Task", className: "bg-sky-100 text-sky-700 border-sky-200" },
   { label: "Deadline", className: "bg-rose-100 text-rose-700 border-rose-200" },
   { label: "Meeting", className: "bg-violet-100 text-violet-700 border-violet-200" },
   { label: "Milestone", className: "bg-amber-100 text-amber-700 border-amber-200" },
-  { label: "Completed", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  { label: "Non-working", className: "bg-slate-200 text-slate-700 border-slate-300" },
+  { label: "Holiday", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  { label: "Weekend", className: "bg-slate-200 text-slate-700 border-slate-300" },
 ];
 
-function readFilters() {
+function readFilters(activeSpaceId, activeBoardId) {
   try {
     const rawValue = window.localStorage.getItem(STORAGE_KEY);
-    return rawValue ? JSON.parse(rawValue) : { spaceId: "", boardId: "" };
+    const parsed = rawValue ? JSON.parse(rawValue) : {};
+    return {
+      spaceId: parsed.spaceId || activeSpaceId || "",
+      boardId: parsed.boardId || activeBoardId || "",
+      holidayCountry: parsed.holidayCountry || "",
+    };
   } catch {
-    return { spaceId: "", boardId: "" };
+    return {
+      spaceId: activeSpaceId || "",
+      boardId: activeBoardId || "",
+      holidayCountry: "",
+    };
   }
 }
 
@@ -98,6 +98,10 @@ function isSameDay(left, right) {
   return formatDateKey(left) === formatDateKey(right);
 }
 
+function isWeekend(date) {
+  return date.getDay() === 0 || date.getDay() === 6;
+}
+
 function getVisibleRange(anchorDate, view) {
   if (view === "week") {
     return {
@@ -122,18 +126,37 @@ function getVisibleRange(anchorDate, view) {
   };
 }
 
-function getYearsInRange(start, end) {
-  const years = new Set();
-  let currentDate = new Date(start);
-
-  while (currentDate <= end) {
-    years.add(currentDate.getFullYear());
-    currentDate = addDays(currentDate, 32);
-    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+function getNavTargetDate(anchorDate, view, direction) {
+  if (view === "month") {
+    return addMonths(anchorDate, direction);
   }
 
-  years.add(end.getFullYear());
-  return [...years];
+  return addDays(anchorDate, direction * (view === "week" ? 7 : 1));
+}
+
+function eventClassName(type) {
+  switch (type) {
+    case "deadline":
+      return "border border-rose-200 bg-rose-50 text-rose-700";
+    case "meeting":
+      return "border border-violet-200 bg-violet-50 text-violet-700";
+    case "milestone":
+      return "border border-amber-200 bg-amber-50 text-amber-700";
+    case "holiday":
+      return "border border-emerald-200 bg-emerald-50 text-emerald-700";
+    default:
+      return "border border-sky-200 bg-sky-50 text-sky-700";
+  }
+}
+
+function buildViewTabs(boardId) {
+  return [
+    { label: "Board", icon: "fa-table-columns" },
+    { label: "List", icon: "fa-list" },
+    { label: "Calendar", icon: "fa-regular fa-calendar", to: "/calendar", active: true },
+    { label: "Gantt", icon: "fa-bars-staggered", to: boardId ? `/board/${boardId}/timeline` : "" },
+    { label: "Table", icon: "fa-table-cells", to: boardId ? `/board/${boardId}/table` : "" },
+  ];
 }
 
 function normalizeEvents(payload) {
@@ -159,16 +182,18 @@ function normalizeEvents(payload) {
       const startDate = startOfDay(new Date(startValue));
       const endDate = startOfDay(new Date(endValue));
       const title = event.title || event.name || event.taskTitle || event.taskName || `Event ${index + 1}`;
-      const rawType = `${event.type || ""} ${event.category || ""} ${event.status || ""} ${title}`.toLowerCase();
+      const source = `${event.source || ""} ${event.category || ""} ${event.type || ""} ${event.status || ""} ${title}`.toLowerCase();
 
       let type = "task";
-      if (rawType.includes("complete") || rawType.includes("done")) {
+      if (source.includes("holiday") || title.toLowerCase().includes("holiday")) {
+        type = "holiday";
+      } else if (source.includes("complete") || source.includes("done")) {
         type = "done";
-      } else if (rawType.includes("deadline") || rawType.includes("due")) {
+      } else if (source.includes("deadline") || source.includes("due")) {
         type = "deadline";
-      } else if (rawType.includes("meeting") || rawType.includes("call") || rawType.includes("standup")) {
+      } else if (source.includes("meeting") || source.includes("call") || source.includes("standup")) {
         type = "meeting";
-      } else if (rawType.includes("milestone")) {
+      } else if (source.includes("milestone")) {
         type = "milestone";
       }
 
@@ -185,70 +210,53 @@ function normalizeEvents(payload) {
     .filter(Boolean);
 }
 
-function normalizeNonWorkingDays(payload) {
-  const rawDays = Array.isArray(payload)
-    ? payload
-    : Array.isArray(payload?.data)
-      ? payload.data
-      : Array.isArray(payload?.days)
-        ? payload.days
-        : Array.isArray(payload?.nonWorkingDays)
-          ? payload.nonWorkingDays
-          : [];
-
-  return rawDays
-    .map((item) => {
-      if (typeof item === "string") {
-        return item;
-      }
-
-      return item?.date || item?.day || item?.value || "";
+function buildNonWorkingEntries(visibleDates, eventsByDate, selectedCountry) {
+  return visibleDates
+    .filter((date) => {
+      const key = formatDateKey(date);
+      const entries = eventsByDate.get(key) || [];
+      return isWeekend(date) || entries.some((event) => event.type === "holiday");
     })
-    .filter(Boolean);
+    .map((date) => {
+      const key = formatDateKey(date);
+      const entries = eventsByDate.get(key) || [];
+      const holiday = entries.find((event) => event.type === "holiday");
+
+      return {
+        dateKey: key,
+        label: holiday ? holiday.title : "Weekend",
+        source: holiday ? selectedCountry : "Weekend",
+      };
+    });
 }
 
-function eventClassName(type) {
-  switch (type) {
-    case "deadline":
-      return "border border-rose-200 bg-rose-50 text-rose-700";
-    case "meeting":
-      return "border border-violet-200 bg-violet-50 text-violet-700";
-    case "milestone":
-      return "border border-amber-200 bg-amber-50 text-amber-700";
-    case "done":
-      return "border border-emerald-200 bg-emerald-50 text-emerald-700";
-    default:
-      return "border border-sky-200 bg-sky-50 text-sky-700";
-  }
-}
-
-function getNavTargetDate(anchorDate, view, direction) {
-  if (view === "month") {
-    return addMonths(anchorDate, direction);
-  }
-
-  return addDays(anchorDate, direction * (view === "week" ? 7 : 1));
-}
-
-function CalendarPage() {
-  const { setPath, activeBoard } = useOutletContext();
-  const viewTabs = buildViewTabs(activeBoard?.id);
+export default function CalendarPage() {
+  const { setPath, activeBoard: outletBoard } = useOutletContext() || {};
+  const { activeSpace, activeSpaceId, activeBoard, activeBoardId, user } = useAppContext();
+  const resolvedBoard = outletBoard || activeBoard;
+  const viewTabs = buildViewTabs(resolvedBoard?.id || activeBoardId);
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [calendarView, setCalendarView] = useState("month");
-  const [draftFilters, setDraftFilters] = useState(readFilters);
-  const [appliedFilters, setAppliedFilters] = useState(readFilters);
-  const [events, setEvents] = useState([]);
-  const [nonWorkingDays, setNonWorkingDays] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [draftFilters, setDraftFilters] = useState(() => readFilters(activeSpaceId, activeBoardId));
+  const [appliedFilters, setAppliedFilters] = useState(() => readFilters(activeSpaceId, activeBoardId));
   const [pageError, setPageError] = useState("");
-  const [nonWorkingDateInput, setNonWorkingDateInput] = useState(() => formatDateKey(startOfDay(new Date())));
-  const [nonWorkingBusy, setNonWorkingBusy] = useState(false);
   const [selectedDayEventsExpanded, setSelectedDayEventsExpanded] = useState(false);
-  const requestAbortRef = useRef(null);
-  const hasInitializedRef = useRef(false);
+  const preferencesQuery = useCalendarPreferencesQuery();
 
   const visibleRange = useMemo(() => getVisibleRange(anchorDate, calendarView), [anchorDate, calendarView]);
+  const preferences = preferencesQuery.data || null;
+  const calendarEventsQuery = useCalendarEventsQuery({
+    from: formatDateKey(visibleRange.start),
+    to: formatDateKey(visibleRange.end),
+    spaceId: appliedFilters.spaceId.trim(),
+    boardId: appliedFilters.boardId.trim(),
+    holidayCountry: appliedFilters.holidayCountry.trim() || preferences?.holidayCountry || "",
+    enabled: Boolean(visibleRange.start && visibleRange.end),
+  });
+  const events = useMemo(() => normalizeEvents(calendarEventsQuery.data), [calendarEventsQuery.data]);
+  const loading = calendarEventsQuery.isLoading || calendarEventsQuery.isFetching;
+
   const visibleDates = useMemo(() => {
     const dates = [];
     let cursor = new Date(visibleRange.start);
@@ -274,14 +282,58 @@ function CalendarPage() {
     return groupedEvents;
   }, [events]);
 
-  const nonWorkingDaySet = useMemo(() => new Set(nonWorkingDays), [nonWorkingDays]);
-
   const selectedDateKey = formatDateKey(selectedDate);
   const selectedDayEvents = eventsByDate.get(selectedDateKey) || [];
+  const nonWorkingEntries = useMemo(
+    () => buildNonWorkingEntries(visibleDates, eventsByDate, appliedFilters.holidayCountry || preferences?.holidayCountry || ""),
+    [appliedFilters.holidayCountry, eventsByDate, preferences?.holidayCountry, visibleDates],
+  );
+  const nonWorkingDaySet = useMemo(() => new Set(nonWorkingEntries.map((entry) => entry.dateKey)), [nonWorkingEntries]);
 
   useEffect(() => {
-    setPath?.(breadcrumbPath);
-  }, [setPath]);
+    setPath?.([
+      { name: activeSpace?.name || "Workspace", color: "text-slate-400", ref: "/dashboard" },
+      { name: "Calendar", color: "text-slate-800", ref: "/calendar" },
+    ]);
+  }, [activeSpace?.name, setPath]);
+
+  useEffect(() => {
+    if (!preferences) {
+      return;
+    }
+
+    setDraftFilters((current) => ({
+      ...current,
+      holidayCountry: current.holidayCountry || preferences.holidayCountry || "",
+      spaceId: current.spaceId || activeSpaceId || "",
+      boardId: current.boardId || activeBoardId || "",
+    }));
+    setAppliedFilters((current) => ({
+      ...current,
+      holidayCountry: current.holidayCountry || preferences.holidayCountry || "",
+      spaceId: current.spaceId || activeSpaceId || "",
+      boardId: current.boardId || activeBoardId || "",
+    }));
+  }, [activeBoardId, activeSpaceId, preferences]);
+
+  useEffect(() => {
+    if (preferencesQuery.isError) {
+      setPageError(preferencesQuery.error?.message || "Unable to load calendar preferences.");
+      return;
+    }
+
+    if (calendarEventsQuery.isError) {
+      setPageError(calendarEventsQuery.error?.message || "Failed to load the calendar.");
+      return;
+    }
+
+    setPageError("");
+  }, [
+    calendarEventsQuery.error?.message,
+    calendarEventsQuery.isError,
+    preferencesQuery.error?.message,
+    preferencesQuery.isError,
+  ]);
 
   useEffect(() => {
     try {
@@ -291,171 +343,43 @@ function CalendarPage() {
     }
   }, [appliedFilters]);
 
-  const loadCalendarData = async ({ nextAnchorDate, nextView, nextFilters, nextSelectedDate }) => {
-    requestAbortRef.current?.abort();
-    const abortController = new AbortController();
-    requestAbortRef.current = abortController;
-
-    setLoading(true);
-    setPageError("");
-
-    const nextRange = getVisibleRange(nextAnchorDate, nextView);
-    const years = getYearsInRange(nextRange.start, nextRange.end);
-
-    try {
-      const [eventsPayload, ...nonWorkingPayloads] = await Promise.all([
-        fetchCalendarEvents({
-          from: formatDateKey(nextRange.start),
-          to: formatDateKey(nextRange.end),
-          spaceId: nextFilters.spaceId.trim(),
-          boardId: nextFilters.boardId.trim(),
-          signal: abortController.signal,
-        }),
-        ...years.map((year) => fetchNonWorkingDays({ year, signal: abortController.signal })),
-      ]);
-
-      if (abortController.signal.aborted) {
-        return;
-      }
-
-      const mergedNonWorkingDays = [...new Set(nonWorkingPayloads.flatMap((payload) => normalizeNonWorkingDays(payload)))];
-
-      setAnchorDate(nextAnchorDate);
-      setCalendarView(nextView);
-      setSelectedDate(nextSelectedDate);
-      setEvents(normalizeEvents(eventsPayload));
-      setNonWorkingDays(mergedNonWorkingDays);
-      setAppliedFilters(nextFilters);
-    } catch (error) {
-      if (!abortController.signal.aborted) {
-        setPageError(error.message || "Failed to load the calendar.");
-      }
-    } finally {
-      if (!abortController.signal.aborted) {
-        setLoading(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (hasInitializedRef.current) {
-      return undefined;
-    }
-
-    hasInitializedRef.current = true;
-    const timeoutId = window.setTimeout(() => {
-      void loadCalendarData({
-        nextAnchorDate: anchorDate,
-        nextView: calendarView,
-        nextFilters: appliedFilters,
-        nextSelectedDate: selectedDate,
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [anchorDate, appliedFilters, calendarView, selectedDate]);
-
-  useEffect(() => () => requestAbortRef.current?.abort(), []);
-
   const handleNavigate = (direction) => {
     const nextAnchorDate = getNavTargetDate(anchorDate, calendarView, direction);
     const nextSelectedDate = calendarView === "month" ? startOfMonth(nextAnchorDate) : startOfDay(nextAnchorDate);
-
-    void loadCalendarData({
-      nextAnchorDate,
-      nextView: calendarView,
-      nextFilters: appliedFilters,
-      nextSelectedDate,
-    });
+    setAnchorDate(nextAnchorDate);
+    setSelectedDate(nextSelectedDate);
   };
 
   const handleGoToToday = () => {
     const today = startOfDay(new Date());
-
-    void loadCalendarData({
-      nextAnchorDate: today,
-      nextView: calendarView,
-      nextFilters: appliedFilters,
-      nextSelectedDate: today,
-    });
+    setAnchorDate(today);
+    setSelectedDate(today);
   };
 
   const handleChangeView = (nextView) => {
     const normalizedView = CALENDAR_VIEWS.includes(nextView) ? nextView : "month";
     const nextSelectedDate = normalizedView === "month" ? startOfMonth(anchorDate) : startOfDay(anchorDate);
-
-    void loadCalendarData({
-      nextAnchorDate: anchorDate,
-      nextView: normalizedView,
-      nextFilters: appliedFilters,
-      nextSelectedDate,
-    });
+    setCalendarView(normalizedView);
+    setSelectedDate(nextSelectedDate);
   };
 
   const handleApplyFilters = () => {
-    void loadCalendarData({
-      nextAnchorDate: anchorDate,
-      nextView: calendarView,
-      nextFilters: draftFilters,
-      nextSelectedDate: selectedDate,
-    });
+    setAppliedFilters(draftFilters);
+    setSelectedDayEventsExpanded(false);
+  };
+
+  const handleUseActiveWorkspace = () => {
+    const nextFilters = {
+      ...draftFilters,
+      spaceId: activeSpaceId || "",
+      boardId: activeBoardId || "",
+    };
+    setDraftFilters(nextFilters);
   };
 
   const handleSelectDate = (date) => {
     setSelectedDate(startOfDay(date));
-    setNonWorkingDateInput(formatDateKey(date));
     setSelectedDayEventsExpanded(false);
-  };
-
-  const handleRefresh = () => {
-    void loadCalendarData({
-      nextAnchorDate: anchorDate,
-      nextView: calendarView,
-      nextFilters: appliedFilters,
-      nextSelectedDate: selectedDate,
-    });
-  };
-
-  const handleAddNonWorkingDay = async () => {
-    if (!nonWorkingDateInput) {
-      return;
-    }
-
-    setNonWorkingBusy(true);
-    setPageError("");
-
-    try {
-      await addNonWorkingDay({ date: nonWorkingDateInput });
-      await loadCalendarData({
-        nextAnchorDate: anchorDate,
-        nextView: calendarView,
-        nextFilters: appliedFilters,
-        nextSelectedDate: selectedDate,
-      });
-    } catch (error) {
-      setPageError(error.message || "Failed to add the non-working day.");
-    } finally {
-      setNonWorkingBusy(false);
-    }
-  };
-
-  const handleRemoveNonWorkingDay = async (date) => {
-    setNonWorkingBusy(true);
-    setPageError("");
-
-    try {
-      await removeNonWorkingDay({ date });
-      await loadCalendarData({
-        nextAnchorDate: anchorDate,
-        nextView: calendarView,
-        nextFilters: appliedFilters,
-        nextSelectedDate: selectedDate,
-      });
-    } catch (error) {
-      setPageError(error.message || "Failed to remove the non-working day.");
-    } finally {
-      setNonWorkingBusy(false);
-    }
   };
 
   const renderMonthView = () => (
@@ -482,9 +406,9 @@ function CalendarPage() {
               key={dateKey}
               type="button"
               onClick={() => handleSelectDate(date)}
-              className={`min-h-[138px] border-b border-r border-slate-200 p-2.5 text-left align-top transition-colors last:border-r-0 hover:bg-slate-50 ${
+              className={`min-h-[138px] border-b border-r border-slate-200 p-2.5 text-left transition-colors last:border-r-0 hover:bg-slate-50 ${
                 isOtherMonth ? "bg-slate-50/60 text-slate-300" : "bg-white"
-              } ${isSelected ? "bg-sky-50/70" : ""} ${isNonWorkingDay ? "bg-slate-100/80" : ""}`}
+              } ${isSelected ? "bg-sky-50/70" : ""} ${isNonWorkingDay ? "bg-slate-100/75" : ""}`}
             >
               <div className="mb-2 flex items-center justify-between">
                 <span
@@ -494,19 +418,22 @@ function CalendarPage() {
                 >
                   {date.getDate()}
                 </span>
-                {isNonWorkingDay && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">Off</span>}
+                {isNonWorkingDay ? (
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">
+                    Off
+                  </span>
+                ) : null}
               </div>
 
               <div className="space-y-1.5">
                 {dateEvents.slice(0, 3).map((event) => (
                   <div key={event.id} className={`truncate rounded-lg px-2 py-1 text-[11px] font-medium ${eventClassName(event.type)}`}>
-                    {event.type === "done" ? "[Done] " : event.type === "deadline" ? "[Due] " : event.type === "milestone" ? "[Milestone] " : ""}
                     {event.title}
                   </div>
                 ))}
-                {dateEvents.length > 3 && (
+                {dateEvents.length > 3 ? (
                   <div className="px-1 text-[10px] font-semibold text-slate-400">+{dateEvents.length - 3} more</div>
-                )}
+                ) : null}
               </div>
             </button>
           );
@@ -520,7 +447,7 @@ function CalendarPage() {
       {visibleDates.map((date) => {
         const dateKey = formatDateKey(date);
         const dateEvents = eventsByDate.get(dateKey) || [];
-        const isToday = isSameDay(date, new Date());
+        const today = isSameDay(date, new Date());
         const isNonWorkingDay = nonWorkingDaySet.has(dateKey);
 
         return (
@@ -529,23 +456,27 @@ function CalendarPage() {
             type="button"
             onClick={() => handleSelectDate(date)}
             className={`min-h-[340px] rounded-[24px] border p-4 text-left shadow-[0_16px_35px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 ${
-              isToday ? "border-sky-200 bg-sky-50/60" : "border-slate-200 bg-white"
-            } ${isNonWorkingDay ? "bg-slate-100/80" : ""}`}
+              today ? "border-sky-200 bg-sky-50/60" : "border-slate-200 bg-white"
+            } ${isNonWorkingDay ? "bg-slate-100/75" : ""}`}
           >
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{WEEKDAY_LABELS[date.getDay()]}</div>
                 <div className="mt-1 text-[22px] font-black tracking-[-0.05em] text-slate-900">{date.getDate()}</div>
               </div>
-              {isNonWorkingDay && <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">Non-working</span>}
+              {isNonWorkingDay ? (
+                <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">
+                  Non-working
+                </span>
+              ) : null}
             </div>
 
             <div className="space-y-2">
-              {dateEvents.length === 0 && <div className="rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-[12px] text-slate-400">No events</div>}
+              {dateEvents.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-[12px] text-slate-400">No events</div> : null}
               {dateEvents.map((event) => (
                 <div key={event.id} className={`rounded-2xl px-3 py-2.5 text-[12px] font-medium leading-5 ${eventClassName(event.type)}`}>
                   <div>{event.title}</div>
-                  {event.detail && <div className="mt-1 text-[11px] opacity-80">{event.detail}</div>}
+                  {event.detail ? <div className="mt-1 text-[11px] opacity-80">{event.detail}</div> : null}
                 </div>
               ))}
             </div>
@@ -566,15 +497,15 @@ function CalendarPage() {
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Day View</div>
             <h2 className="mt-1 text-[26px] font-black tracking-[-0.05em] text-slate-900">{formatLongDayLabel(selectedDate)}</h2>
           </div>
-          {isNonWorkingDay && <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700">Non-working day</span>}
+          {isNonWorkingDay ? <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700">Non-working day</span> : null}
         </div>
 
         <div className="space-y-3">
-          {dayEvents.length === 0 && <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-4 text-[13px] text-slate-500">No events for this day.</div>}
+          {dayEvents.length === 0 ? <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-4 text-[13px] text-slate-500">No events for this day.</div> : null}
           {dayEvents.map((event) => (
             <article key={event.id} className={`rounded-[22px] px-4 py-4 ${eventClassName(event.type)}`}>
               <div className="text-[13px] font-semibold">{event.title}</div>
-              {event.detail && <div className="mt-1 text-[12px] opacity-80">{event.detail}</div>}
+              {event.detail ? <div className="mt-1 text-[12px] opacity-80">{event.detail}</div> : null}
             </article>
           ))}
         </div>
@@ -652,7 +583,7 @@ function CalendarPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={handleRefresh}
+                  onClick={() => handleApplyFilters()}
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
                 >
                   <i className={`fa-solid ${loading ? "fa-spinner fa-spin" : "fa-rotate-right"} mr-2`} />
@@ -679,46 +610,66 @@ function CalendarPage() {
             </div>
           </section>
 
-          {pageError && (
+          {pageError ? (
             <div className="rounded-[24px] border border-rose-100 bg-rose-50 px-4 py-3 text-[13px] text-rose-600">{pageError}</div>
-          )}
+          ) : null}
 
           <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
             <div className="space-y-5">
               <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                <div className="mb-4 flex flex-col gap-4 lg:flex-row">
-                  <div className="flex-1">
+                <div className="mb-4 grid gap-4 lg:grid-cols-[1fr_1fr_180px_auto]">
+                  <div>
                     <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Space ID</label>
                     <input
                       value={draftFilters.spaceId}
                       onChange={(event) => setDraftFilters((current) => ({ ...current, spaceId: event.target.value }))}
-                      placeholder="Optional filter for /events"
+                      placeholder="Workspace scope"
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
                     />
                   </div>
-                  <div className="flex-1">
+                  <div>
                     <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Board ID</label>
                     <input
                       value={draftFilters.boardId}
                       onChange={(event) => setDraftFilters((current) => ({ ...current, boardId: event.target.value }))}
-                      placeholder="Optional filter for /events"
+                      placeholder="Optional board scope"
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
                     />
                   </div>
-                  <div className="flex items-end">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Holiday country</label>
+                    <input
+                      value={draftFilters.holidayCountry}
+                      onChange={(event) => setDraftFilters((current) => ({ ...current, holidayCountry: event.target.value.toUpperCase() }))}
+                      placeholder={preferences?.holidayCountry || ""}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] uppercase text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
                     <button
                       type="button"
                       onClick={handleApplyFilters}
                       className="rounded-2xl bg-sky-500 px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-sky-600"
                     >
-                      Apply Filters
+                      Apply
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUseActiveWorkspace}
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
+                    >
+                      Use active
                     </button>
                   </div>
                 </div>
 
-                {calendarView === "month" && renderMonthView()}
-                {calendarView === "week" && renderWeekView()}
-                {calendarView === "day" && renderDayView()}
+                <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] text-slate-500">
+                  Non-working days are now derived from the backend calendar feed plus visible weekends. No frontend-only add/remove stubs are used here anymore.
+                </div>
+
+                {calendarView === "month" ? renderMonthView() : null}
+                {calendarView === "week" ? renderWeekView() : null}
+                {calendarView === "day" ? renderDayView() : null}
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -736,18 +687,18 @@ function CalendarPage() {
                 <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Selected Day</div>
                 <h2 className="text-[22px] font-black tracking-[-0.04em] text-slate-900">{formatLongDayLabel(selectedDate)}</h2>
                 <div className="mt-4 space-y-2">
-                  {selectedDayEvents.length === 0 && (
+                  {selectedDayEvents.length === 0 ? (
                     <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-3 text-[12px] leading-5 text-slate-500">No events on this day.</div>
-                  )}
+                  ) : null}
 
                   {(selectedDayEventsExpanded ? selectedDayEvents : selectedDayEvents.slice(0, 4)).map((event) => (
                     <article key={event.id} className={`rounded-[22px] px-3.5 py-3 ${eventClassName(event.type)}`}>
                       <div className="text-[12px] font-semibold">{event.title}</div>
-                      {event.detail && <div className="mt-1 text-[11px] opacity-80">{event.detail}</div>}
+                      {event.detail ? <div className="mt-1 text-[11px] opacity-80">{event.detail}</div> : null}
                     </article>
                   ))}
 
-                  {selectedDayEvents.length > 4 && (
+                  {selectedDayEvents.length > 4 ? (
                     <button
                       type="button"
                       onClick={() => setSelectedDayEventsExpanded((value) => !value)}
@@ -755,53 +706,53 @@ function CalendarPage() {
                     >
                       {selectedDayEventsExpanded ? "Show less" : `Show all ${selectedDayEvents.length} events`}
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </section>
 
               <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Non-Working Days</div>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={nonWorkingDateInput}
-                    onChange={(event) => setNonWorkingDateInput(event.target.value)}
-                    className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddNonWorkingDay}
-                    disabled={nonWorkingBusy}
-                    className="rounded-2xl bg-slate-900 px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Add
-                  </button>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Non-Working Days</div>
+                    <div className="mt-1 text-sm text-slate-500">
+                      {(draftFilters.holidayCountry || preferences?.holidayCountry || "No country")} holidays and visible weekends
+                    </div>
+                  </div>
+                  <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">
+                    {nonWorkingEntries.length} in range
+                  </div>
                 </div>
 
-                <div className="mt-4 space-y-2">
-                  {nonWorkingDays.length === 0 && (
+                <div className="space-y-2">
+                  {nonWorkingEntries.length === 0 ? (
                     <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-3 text-[12px] leading-5 text-slate-500">
-                      No non-working days returned for the visible year range.
+                      No non-working days were returned for the current visible range.
                     </div>
-                  )}
+                  ) : null}
 
-                  {nonWorkingDays
-                    .slice()
-                    .sort()
-                    .map((date) => (
-                      <div key={date} className="flex items-center gap-2 rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2.5">
-                        <span className="flex-1 text-[12px] font-medium text-slate-700">{date}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveNonWorkingDay(date)}
-                          disabled={nonWorkingBusy}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white text-rose-500 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                          aria-label={`Remove non-working day ${date}`}
-                        >
-                          <i className="fa-solid fa-trash-can" />
-                        </button>
+                  {nonWorkingEntries.map((entry) => (
+                    <div key={`${entry.dateKey}-${entry.label}`} className="rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <div className="text-[12px] font-semibold text-slate-700">{entry.dateKey}</div>
+                      <div className="mt-1 text-[11px] text-slate-500">
+                        {entry.label} | {entry.source}
                       </div>
-                    ))}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Calendar Scope</div>
+                <div className="mt-3 space-y-2 text-[13px] text-slate-500">
+                  <div>
+                    Workspace: <span className="font-semibold text-slate-700">{activeSpace?.name || draftFilters.spaceId || "Not selected"}</span>
+                  </div>
+                  <div>
+                    Board: <span className="font-semibold text-slate-700">{resolvedBoard?.name || draftFilters.boardId || "All boards"}</span>
+                  </div>
+                  <div>
+                    Viewer: <span className="font-semibold text-slate-700">{user?.email || user?.name || "Current user"}</span>
+                  </div>
                 </div>
               </section>
             </aside>
@@ -811,5 +762,3 @@ function CalendarPage() {
     </div>
   );
 }
-
-export default CalendarPage;

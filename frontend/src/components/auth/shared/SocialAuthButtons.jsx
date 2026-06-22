@@ -10,7 +10,7 @@ const providerConfig = {
   microsoft: {
     label: "Microsoft",
     icon: FaMicrosoft,
-    iconColor: "#00a4ef",
+    iconColor: "#00a8e8",
     oauthUrl: "/api/v1/auth/google", // Use Google for now, add Microsoft later
   },
   whatsapp: {

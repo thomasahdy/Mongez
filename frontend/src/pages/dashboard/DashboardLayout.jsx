@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useCallback, useState } from 'react';
+import { Outlet } from 'react-router';
 import Sidebar from '../../components/layout/Sidebar';
 import Navbar from '../../components/layout/Navbar';
 import AISidebar from '../../components/ai/AISidebar';
@@ -16,11 +16,7 @@ const DashboardLayout = () => {
   const [aiOpen, setAiOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [breadcrumbPath, setBreadcrumbPath] = useState(DEFAULT_BREADCRUMB_PATH);
-  const { user, activeBoard, fetchSpaces } = useAppContext();
-
-  useEffect(() => {
-    fetchSpaces();
-  }, [fetchSpaces]);
+  const { user, activeBoard } = useAppContext();
 
   const toggleAI = useCallback(() => setAiOpen((value) => !value), []);
   const toggleSidebar = useCallback(() => setSidebarOpen((value) => !value), []);
@@ -29,7 +25,7 @@ const DashboardLayout = () => {
   }, []);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans">
+    <div className="workspace-shell flex h-screen w-full overflow-hidden bg-slate-50 font-sans">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex w-[260px] shrink-0 flex-col">
         <Sidebar />
@@ -47,7 +43,7 @@ const DashboardLayout = () => {
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-50">
         <Navbar onToggleAI={toggleAI} onToggleSidebar={toggleSidebar} path={breadcrumbPath} />
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="workspace-scroll-area">
           <Outlet context={{ setPath: onSetPath, user, activeBoard }} />
         </div>
       </main>

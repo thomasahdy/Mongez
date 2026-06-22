@@ -1,163 +1,103 @@
-import { useEffect} from "react";
-import SpaceCard from "./SpaceCard";
-import SpacesHeader from "./SpacesHeader";
-import CreateSpaceCard from "./CreateSpaceCard";
-import QuotaBanner from "./QuotaBanner";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchSpaces } from "../../store/spaces/spacesThunks";
- 
-const SPACES_DATA = [
-  {
-    id: "upper-egypt-edu",
-    initials: "UE",
-    gradient: "from-indigo-500 to-indigo-400",
-    name: "Upper Egypt Education",
-    isOwner: true,
-    stats: { departments: 3, boards: 7, members: 12 },
-    departments: [
-      {
-        id: "design-ux",
-        icon: "fa-palette",
-        iconBg: "bg-sky-100 dark:bg-sky-900/30",
-        iconColor: "text-sky-500",
-        name: "Design & UX",
-        lead: "Sarah Miller",
-        memberCount: 4,
-        stats: { boards: 3, tasks: 45 },
-        boards: [
-          { id: "lp-redesign",   icon: "fa-table-columns", label: "Landing Page Redesign", archived: false },
-          { id: "design-system", icon: "fa-list",           label: "Design System",         archived: false },
-          { id: "old-branding",  icon: "fa-box-archive",    label: "Old Branding",           archived: true  },
-        ],
-      },
-      {
-        id: "engineering",
-        icon: "fa-code",
-        iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
-        iconColor: "text-emerald-500",
-        name: "Engineering",
-        lead: "Marcus Reed",
-        memberCount: 6,
-        stats: { boards: 2, tasks: 89 },
-        boards: [
-          { id: "backend-api",     icon: "fa-table-columns", label: "Backend API v2",  archived: false },
-          { id: "student-portal",  icon: "fa-list",           label: "Student Portal",  archived: false },
-        ],
-      },
-      {
-        id: "marketing",
-        icon: "fa-bullhorn",
-        iconBg: "bg-amber-100 dark:bg-amber-900/30",
-        iconColor: "text-amber-500",
-        name: "Marketing",
-        lead: "Emma Davis",
-        memberCount: 2,
-        stats: { boards: 2, tasks: 23 },
-        boards: [
-          { id: "social-media",    icon: "fa-table-columns", label: "Social Media Campaign", archived: false },
-          { id: "content-cal",     icon: "fa-list",           label: "Content Calendar",       archived: false },
-        ],
-      },
-    ],
-  },
-  {
-    id: "al-noor-foundation",
-    initials: "AN",
-    gradient: "from-emerald-500 to-emerald-400",
-    name: "Al-Noor Foundation",
-    isOwner: false,
-    stats: { departments: 2, boards: 4, members: 8 },
-    departments: [
-      {
-        id: "programs-impact",
-        icon: "fa-heart-pulse",
-        iconBg: "bg-red-100 dark:bg-red-900/30",
-        iconColor: "text-red-500",
-        name: "Programs & Impact",
-        lead: "Fatma Ali",
-        memberCount: 5,
-        stats: { boards: 2, tasks: 34 },
-        boards: [],
-      },
-      {
-        id: "finance-ops",
-        icon: "fa-coins",
-        iconBg: "bg-indigo-100 dark:bg-indigo-900/30",
-        iconColor: "text-indigo-500",
-        name: "Finance & Operations",
-        lead: "Ahmed Hassan",
-        memberCount: 3,
-        stats: { boards: 2, tasks: 18 },
-        boards: [],
-      },
-    ],
-  },
-];
- 
-const QUOTA = { used: 2, total: 5 };
+import { useEffect } from "react";
+import { useOutletContext } from "react-router";
+import { useAppContext } from "../AppContext";
 
- let path=[
-  {
-    name:"Al-Noor Foundation",
-    color:"text-slate-400",
-    ref:""
-  },
-  {
-    name:"Spaces & Structure",
-    color:"text-slate-800",
-    ref:""
-  },
-  
-]
- 
-export default function SpacesPage({setPath}) {
-  const dispatch = useDispatch();
-  const { items: spaces, loading, error } = useSelector((s) => s.spaces);
+export default function SpacesPage() {
+  const { setPath } = useOutletContext() || {};
+  const {
+    spaces,
+    activeSpaceId,
+    activeBoards,
+    activeSpace,
+    setActiveSpace,
+    setActiveBoard,
+  } = useAppContext();
 
-  useEffect(() => { dispatch(fetchSpaces()); }, [dispatch]);
-  const remaining = QUOTA.total - QUOTA.used;
-  useEffect(()=>{
-      setPath(path)
-    }, [path]);
- 
+  useEffect(() => {
+    setPath?.([
+      { name: "Workspace", color: "text-slate-400", ref: "/dashboard" },
+      { name: "Spaces", color: "text-slate-800", ref: "" },
+    ]);
+  }, [setPath]);
+
   return (
-    <>
-      {/* Font Awesome — load via <link> in index.html in production */}
-      
- 
- 
-        {/* Main */}
-        <div className="flex-1 flex flex-col overflow-hidden">
- 
-          {/* Scrollable content area */}
-          <main className="flex-1 overflow-y-auto px-8 py-8" aria-label="Spaces and structure">
-            <div className="max-w-[1100px] mx-auto">
- 
-              <SpacesHeader onNewSpace={() => console.info("New space")} />
- 
-              <QuotaBanner
-                used={QUOTA.used}
-                total={QUOTA.total}
-                onUpgrade={() => console.info("Upgrade")}
-              />
- 
-              {/* Space cards */}
-              <div className="flex flex-col gap-6" role="list" aria-label="Spaces">
-                {SPACES_DATA.map((space) => (
-                  <div key={space.id} role="listitem">
-                    <SpaceCard space={space} />
-                  </div>
-                ))}
- 
-                {/* Create new */}
-                <CreateSpaceCard
-                  remaining={remaining}
-                  onClick={() => console.info("Create space")}
-                />
-              </div>
-            </div>
-          </main>
+    <div className="flex-1 overflow-auto bg-slate-50 p-5">
+      <div className="mx-auto max-w-6xl space-y-5">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Workspace Directory</p>
+          <h1 className="mt-2 text-3xl font-black tracking-[-0.05em] text-slate-950">Spaces</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Live spaces, departments, and boards loaded from the backend.
+          </p>
         </div>
-    </>
+
+        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">All spaces</div>
+            <div className="space-y-3">
+              {spaces.map((space) => {
+                const selected = space.id === activeSpaceId;
+                return (
+                  <button
+                    key={space.id}
+                    type="button"
+                    onClick={() => setActiveSpace(space.id)}
+                    className={`w-full rounded-2xl border p-4 text-left transition ${
+                      selected
+                        ? "border-sky-400 bg-sky-50"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="text-sm font-semibold text-slate-900">{space.name}</div>
+                    <div className="mt-1 text-xs text-slate-500">{space.description || "No description available."}</div>
+                    <div className="mt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                      Prefix: {space.prefix || "N/A"}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Active space</div>
+            {activeSpace ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <div className="text-lg font-black text-slate-950">{activeSpace.name}</div>
+                  <div className="mt-1 text-sm text-slate-500">{activeSpace.description || "No description provided."}</div>
+                </div>
+
+                <div>
+                  <div className="mb-3 text-sm font-semibold text-slate-700">Boards</div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {activeBoards.map((board) => (
+                      <button
+                        key={board.id}
+                        type="button"
+                        onClick={() => setActiveBoard(board.id)}
+                        className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-sky-300 hover:bg-sky-50"
+                      >
+                        <div className="text-sm font-semibold text-slate-900">{board.name}</div>
+                        <div className="mt-1 text-xs text-slate-500">{board.description || "No description provided."}</div>
+                      </button>
+                    ))}
+                    {!activeBoards.length && (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                        No boards returned for this space yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                No spaces are available for the current user.
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
   );
 }

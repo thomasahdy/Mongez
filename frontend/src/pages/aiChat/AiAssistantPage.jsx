@@ -1,57 +1,62 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router";
 import {
-  analyzeRisk,
   extractTextFromPayload,
-  fetchPendingAiActions,
-  generateAiReport,
-  sendAiChat,
-  streamAiChat,
 } from "../../lib/aiApi";
 import { useAppContext } from "../AppContext";
-
-const breadcrumbPath = [
-  { name: "Al-Noor Foundation", color: "text-slate-400", ref: "" },
-  { name: "AI Assistant", color: "text-slate-800", ref: "" },
-];
+import {
+  useAiActionReviewMutation,
+  useAiChatMutation,
+  useAiContextQuery,
+  useAiFeedQuery,
+  useAiFeedbackMutation,
+  useAiReportMutation,
+  useAiRiskMutation,
+  useAiStreamingMutation,
+} from "../../hooks/useAiQueries";
 
 const STORAGE_KEYS = {
   context: "mongez.ai.context",
   sessions: "mongez.ai.sessions",
 };
 
-const quickPrompts = [
-  {
-    label: "Sprint summary",
-    icon: "fa-chart-bar",
-    accentClassName: "text-sky-500",
-    prompt: "Summarize the current sprint and highlight the deadlines most likely to slip.",
-  },
-  {
-    label: "Overdue tasks",
-    icon: "fa-triangle-exclamation",
-    accentClassName: "text-amber-500",
-    prompt: "List overdue tasks, grouped by urgency, and tell me which ones need escalation first.",
-  },
-  {
-    label: "Create tasks from brief",
-    icon: "fa-clipboard-list",
-    accentClassName: "text-cyan-500",
-    prompt: "Turn this brief into a prioritized task list with owners, dependencies, and deadlines.",
-  },
-  {
-    label: "Team workload",
-    icon: "fa-users",
-    accentClassName: "text-indigo-500",
-    prompt: "Analyze team workload and suggest where blocked work can be reassigned safely.",
-  },
-  {
-    label: "Risk assessment",
-    icon: "fa-shield-halved",
-    accentClassName: "text-rose-500",
-    prompt: "Give me a risk assessment for the active workspace with the biggest blockers and the fastest mitigation steps.",
-  },
-];
+function buildQuickPrompts(spaceName, boardName) {
+  const workspaceLabel = spaceName || "the active workspace";
+  const boardLabel = boardName || "the current board";
+
+  return [
+    {
+      label: "Workspace brief",
+      icon: "fa-chart-bar",
+      accentClassName: "text-sky-500",
+      prompt: `Summarize ${workspaceLabel} and highlight the deadlines most likely to slip.`,
+    },
+    {
+      label: "Board blockers",
+      icon: "fa-triangle-exclamation",
+      accentClassName: "text-amber-500",
+      prompt: `Review ${boardLabel} and tell me which blocked or overdue tasks need escalation first.`,
+    },
+    {
+      label: "Turn brief into tasks",
+      icon: "fa-clipboard-list",
+      accentClassName: "text-cyan-500",
+      prompt: `Turn this brief into a prioritized task list for ${workspaceLabel}, including owners, dependencies, and deadlines.`,
+    },
+    {
+      label: "Team workload",
+      icon: "fa-users",
+      accentClassName: "text-indigo-500",
+      prompt: `Analyze workload across ${workspaceLabel} and suggest the safest reassignments for blocked work.`,
+    },
+    {
+      label: "Risk assessment",
+      icon: "fa-shield-halved",
+      accentClassName: "text-rose-500",
+      prompt: `Give me a risk assessment for ${workspaceLabel} with the biggest blockers and the fastest mitigation steps.`,
+    },
+  ];
+}
 
 const endpointActions = [
   { key: "board", label: "Risk Scan (Board)", icon: "fa-chalkboard", helper: "POST /api/v1/ai/risk/analyze" },
@@ -96,7 +101,28 @@ function truncateText(text, maxLength = 72) {
     return trimmed;
   }
 
-  return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`;
+  return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function extractTraceId(payload) {
+  return payload?.traceId || payload?.data?.traceId || payload?.meta?.traceId || payload?.result?.traceId || "";
+}
+
+function normalizeContextOptions(payload) {
+  const rawItems = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.context)
+      ? payload.context
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
+
+  return rawItems
+    .map((item, index) => ({
+      id: item.id || item.key || item.slug || `context-${index}`,
+      label: item.name || item.label || item.title || `Context ${index + 1}`,
+    }))
+    .filter((item) => item.id);
 }
 
 function normalizeFeedItems(payload) {
@@ -110,23 +136,22 @@ function normalizeFeedItems(payload) {
           ? payload.insights
           : [];
 
-  return rawItems.map((item, index) => ({
-    id: item.id || item._id || item.uuid || `feed-${index}`,
-    title: item.title || item.name || item.headline || item.type || `Insight ${index + 1}`,
-    summary: item.summary || item.message || item.description || extractTextFromPayload(item) || "No summary provided.",
-    severity: item.severity || item.priority || item.level || "info",
-    source: item.source || item.category || "AI Feed",
-    timestamp: item.createdAt || item.timestamp || item.generatedAt || item.date || "",
-  }));
-}
+  return rawItems.map((item, index) => {
+    const serverId = item.id || item._id || item.uuid || "";
+    const id = serverId || `feed-${index}`;
+    const status = String(item.status || item.state || item.reviewStatus || "").toLowerCase();
 
-function toChatPayloadMessages(messages) {
-  return messages
-    .filter((message) => message.kind === "text" && (message.role === "user" || message.role === "assistant"))
-    .map((message) => ({
-      role: message.role,
-      content: message.text,
-    }));
+    return {
+      id,
+      raw: item,
+      title: item.title || item.name || item.headline || item.type || `Insight ${index + 1}`,
+      summary: item.summary || item.message || item.description || extractTextFromPayload(item) || "No summary provided.",
+      severity: item.severity || item.priority || item.level || "info",
+      source: item.source || item.category || "AI Feed",
+      timestamp: item.createdAt || item.timestamp || item.generatedAt || item.date || "",
+      actionable: Boolean(serverId) && (!status || status.includes("pending")),
+    };
+  });
 }
 
 function formatApiResult(payload) {
@@ -166,6 +191,12 @@ function ContextPanelContent({
   feedLoading,
   feedError,
   onRefreshFeed,
+  onReviewAction,
+  reviewingActionId,
+  availableContext,
+  selectedContext,
+  onToggleContext,
+  contextLoadError,
   sectionRef,
   onCloseMobile,
 }) {
@@ -251,6 +282,41 @@ function ContextPanelContent({
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_35px_rgba(15,23,42,0.05)]">
+        <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">AI Knowledge Context</div>
+        {contextLoadError && (
+          <div className="rounded-2xl border border-rose-100 bg-rose-50 px-3.5 py-3 text-[12px] leading-5 text-rose-600">
+            {contextLoadError}
+          </div>
+        )}
+        {!contextLoadError && !availableContext.length && (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3.5 py-3 text-[12px] leading-5 text-slate-500">
+            No reusable AI context was returned for the current workspace.
+          </div>
+        )}
+        {availableContext.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {availableContext.map((item) => {
+              const selected = selectedContext.includes(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onToggleContext(item.id)}
+                  className={`rounded-full px-3 py-2 text-[12px] font-medium transition-colors ${
+                    selected
+                      ? "bg-sky-500 text-white"
+                      : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_35px_rgba(15,23,42,0.05)]">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Pending AI Actions</div>
           <button
@@ -294,6 +360,29 @@ function ContextPanelContent({
                 <h3 className="mt-2 text-[13px] font-semibold text-slate-900">{item.title}</h3>
                 <p className="mt-1 text-[12px] leading-5 text-slate-600">{item.summary}</p>
                 {item.timestamp && <p className="mt-2 text-[10px] text-slate-400">{item.timestamp}</p>}
+
+                {item.actionable && (
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={reviewingActionId === item.id}
+                      onClick={() => onReviewAction(item.id, "approve")}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <i className={`fa-solid ${reviewingActionId === item.id ? "fa-spinner fa-spin" : "fa-check"}`} />
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      disabled={reviewingActionId === item.id}
+                      onClick={() => onReviewAction(item.id, "reject")}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <i className="fa-solid fa-xmark" />
+                      Reject
+                    </button>
+                  </div>
+                )}
               </article>
             ))}
           </div>
@@ -326,7 +415,7 @@ function ContextPanelContent({
   );
 }
 
-function ChatBubble({ message }) {
+function ChatBubble({ message, feedbackState, onFeedback }) {
   if (message.kind === "welcome") {
     return (
       <div className="rounded-3xl rounded-tl-md border border-slate-200 bg-white px-5 py-4 text-[13px] leading-6 text-slate-600 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
@@ -353,10 +442,67 @@ function ChatBubble({ message }) {
       )}
 
       <div className="text-[13px] leading-6 whitespace-pre-wrap text-slate-700">
-        {message.text || (message.loading ? "Thinking…" : "")}
+        {message.text || (message.loading ? "Thinking..." : "")}
       </div>
 
+      {Array.isArray(message.sources) && message.sources.length > 0 && (
+        <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Sources</div>
+          <div className="mt-2 space-y-2">
+            {message.sources.map((source, index) => {
+              const label = source?.title || source?.name || source?.label || source?.url || `Source ${index + 1}`;
+              return source?.url ? (
+                <a
+                  key={`${label}-${index}`}
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block text-[12px] font-medium text-sky-700 underline-offset-2 hover:underline"
+                >
+                  {label}
+                </a>
+              ) : (
+                <div key={`${label}-${index}`} className="text-[12px] font-medium text-slate-600">
+                  {label}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {message.error && <div className="mt-3 rounded-2xl bg-rose-50 px-3 py-2 text-[12px] text-rose-600">{message.error}</div>}
+
+      {message.traceId && !message.loading && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={feedbackState?.submitting}
+            onClick={() => onFeedback(message.traceId, "positive")}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+              feedbackState?.rating === "positive"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            }`}
+          >
+            <i className={`fa-solid ${feedbackState?.submitting ? "fa-spinner fa-spin" : "fa-thumbs-up"}`} />
+            Helpful
+          </button>
+          <button
+            type="button"
+            disabled={feedbackState?.submitting}
+            onClick={() => onFeedback(message.traceId, "negative")}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+              feedbackState?.rating === "negative"
+                ? "border-amber-200 bg-amber-50 text-amber-700"
+                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            }`}
+          >
+            <i className="fa-solid fa-thumbs-down" />
+            Needs work
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -379,12 +525,12 @@ function AiAssistantPage() {
   const [recentSessions, setRecentSessions] = useState(() => readJsonStorage(STORAGE_KEYS.sessions, []));
   const [currentSessionId, setCurrentSessionId] = useState(() => makeId("session"));
   const [messages, setMessages] = useState([welcomeMessage]);
-  const [feedItems, setFeedItems] = useState([]);
-  const [feedLoading, setFeedLoading] = useState(false);
-  const [feedError, setFeedError] = useState("");
   const [pageError, setPageError] = useState("");
   const [activeActionKey, setActiveActionKey] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [reviewingActionId, setReviewingActionId] = useState("");
+  const [messageFeedback, setMessageFeedback] = useState({});
+  const [selectedContext, setSelectedContext] = useState([]);
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const mobileHistoryRef = useRef(null);
@@ -399,18 +545,48 @@ function AiAssistantPage() {
     }),
     [contextValues.boardId, contextValues.spaceId, contextValues.taskId],
   );
+  const quickPromptItems = useMemo(
+    () => buildQuickPrompts(activeSpace?.name, activeBoard?.name),
+    [activeBoard?.name, activeSpace?.name],
+  );
+  const feedQuery = useAiFeedQuery(contextValues.spaceId.trim());
+  const contextQuery = useAiContextQuery({
+    spaceId: contextValues.spaceId.trim(),
+    boardId: contextValues.boardId.trim(),
+    taskId: contextValues.taskId.trim(),
+  });
+  const fallbackChatMutation = useAiChatMutation();
+  const streamingChatMutation = useAiStreamingMutation();
+  const riskMutation = useAiRiskMutation();
+  const reportMutation = useAiReportMutation();
+  const feedbackMutation = useAiFeedbackMutation();
+  const reviewActionMutation = useAiActionReviewMutation(contextValues.spaceId.trim());
+  const feedItems = useMemo(() => normalizeFeedItems(feedQuery.data), [feedQuery.data]);
+  const feedLoading = feedQuery.isLoading || feedQuery.isFetching;
+  const feedError = feedQuery.isError ? (feedQuery.error?.message || "Failed to load the AI feed.") : "";
+  const availableContext = useMemo(() => normalizeContextOptions(contextQuery.data), [contextQuery.data]);
+  const contextLoadError = contextQuery.isError ? (contextQuery.error?.message || "Unable to load AI context.") : "";
 
   useEffect(() => {
-    setContextValues((current) => ({
-      ...current,
-      spaceId: current.spaceId || activeSpace?.id || spaces[0]?.id || "",
-      boardId: current.boardId || activeBoard?.id || "",
-    }));
+    setContextValues((current) => {
+      const nextSpaceId = current.spaceId || activeSpace?.id || spaces[0]?.id || "";
+      const nextBoardId = current.boardId || activeBoard?.id || "";
+
+      if (nextSpaceId === current.spaceId && nextBoardId === current.boardId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        spaceId: nextSpaceId,
+        boardId: nextBoardId,
+      };
+    });
   }, [activeSpace?.id, activeBoard?.id, spaces]);
 
   useEffect(() => {
     setPath?.([
-      { name: activeSpace?.name || "Workspace", color: "text-slate-400", ref: "/spaces" },
+      { name: activeSpace?.name || "Workspace", color: "text-slate-400", ref: "/dashboard" },
       { name: "AI Assistant", color: "text-slate-800", ref: "" },
     ]);
   }, [setPath, activeSpace?.name]);
@@ -464,27 +640,6 @@ function AiAssistantPage() {
     }));
   };
 
-  const loadFeed = async () => {
-    if (!contextValues.spaceId.trim()) {
-      setFeedItems([]);
-      setFeedError("");
-      return;
-    }
-
-    setFeedLoading(true);
-    setFeedError("");
-
-    try {
-      const payload = await fetchPendingAiActions(contextValues.spaceId.trim());
-      setFeedItems(normalizeFeedItems(payload));
-    } catch (error) {
-      setFeedItems([]);
-      setFeedError(error.message || "Failed to load the AI feed.");
-    } finally {
-      setFeedLoading(false);
-    }
-  };
-
   const appendAssistantResult = (label, text, options = {}) => {
     const assistantMessage = {
       id: makeId("assistant"),
@@ -494,12 +649,45 @@ function AiAssistantPage() {
       label,
       icon: options.icon,
       error: options.error || "",
+      traceId: options.traceId || "",
+      sources: options.sources || [],
     };
 
     setMessages((currentMessages) => {
       const nextMessages = [...currentMessages, assistantMessage];
       persistCurrentSession(nextMessages);
       return nextMessages;
+    });
+  };
+
+  const finalizeFallbackMessage = async (assistantMessageId, prompt) => {
+    const payload = await fallbackChatMutation.mutateAsync({
+      message: prompt,
+      spaceId: chatContext.spaceId,
+      boardId: chatContext.boardId,
+      taskId: chatContext.taskId,
+      commentTone: contextValues.commentTone,
+      context: selectedContext,
+    });
+    const fallbackText = formatApiResult(payload);
+    const traceId = extractTraceId(payload);
+
+    setMessages((currentMessages) => {
+      const finalizedMessages = currentMessages.map((message) =>
+        message.id === assistantMessageId
+          ? {
+              ...message,
+              text: fallbackText || "The assistant finished without returning any text.",
+              label: "Chat Response",
+              loading: false,
+              error: "",
+              traceId,
+              sources: Array.isArray(payload?.sources) ? payload.sources : payload?.data?.sources || [],
+            }
+          : message,
+      );
+      persistCurrentSession(finalizedMessages);
+      return finalizedMessages;
     });
   };
 
@@ -526,6 +714,7 @@ function AiAssistantPage() {
       icon: "fa-sparkles",
       loading: true,
       error: "",
+      traceId: "",
     };
 
     const baseMessages = [...messages, userMessage];
@@ -539,11 +728,13 @@ function AiAssistantPage() {
     chatAbortRef.current = abortController;
 
     try {
-      const { text } = await streamAiChat({
+      const { text, traceId } = await streamingChatMutation.mutateAsync({
         message: trimmedPrompt,
         spaceId: chatContext.spaceId,
         boardId: chatContext.boardId,
         taskId: chatContext.taskId,
+        commentTone: contextValues.commentTone,
+        context: selectedContext,
         signal: abortController.signal,
         onToken: (deltaText) => {
           setMessages((currentMessages) =>
@@ -566,6 +757,7 @@ function AiAssistantPage() {
                 ...message,
                 text: message.text || text || "The assistant finished without returning any text.",
                 loading: false,
+                traceId: message.traceId || traceId || "",
               }
             : message,
         );
@@ -588,22 +780,26 @@ function AiAssistantPage() {
           return abortedMessages;
         });
       } else {
-        const errorMessage = error.message || "The AI chat request failed.";
-        setPageError(errorMessage);
-        setMessages((currentMessages) => {
-          const failedMessages = currentMessages.map((message) =>
-            message.id === assistantMessageId
-              ? {
-                  ...message,
-                  loading: false,
-                  error: errorMessage,
-                  text: message.text || "",
-                }
-              : message,
-          );
-          persistCurrentSession(failedMessages);
-          return failedMessages;
-        });
+        try {
+          await finalizeFallbackMessage(assistantMessageId, trimmedPrompt);
+        } catch (fallbackError) {
+          const errorMessage = fallbackError.message || error.message || "The AI chat request failed.";
+          setPageError(errorMessage);
+          setMessages((currentMessages) => {
+            const failedMessages = currentMessages.map((message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    loading: false,
+                    error: errorMessage,
+                    text: message.text || "",
+                  }
+                : message,
+            );
+            persistCurrentSession(failedMessages);
+            return failedMessages;
+          });
+        }
       }
     } finally {
       chatAbortRef.current = null;
@@ -621,11 +817,15 @@ function AiAssistantPage() {
           throw new Error("Add a space ID before requesting board risk analysis.");
         }
 
-        const payload = await analyzeRisk({
+        const payload = await riskMutation.mutateAsync({
           spaceId: contextValues.spaceId.trim(),
           boardId: contextValues.boardId.trim() || undefined,
         });
-        appendAssistantResult("Board Risk Scan", formatApiResult(payload), { icon: "fa-chalkboard" });
+        appendAssistantResult("Board Risk Scan", formatApiResult(payload), {
+          icon: "fa-chalkboard",
+          traceId: extractTraceId(payload),
+          sources: Array.isArray(payload?.sources) ? payload.sources : payload?.data?.sources || [],
+        });
       }
 
       if (actionKey === "task") {
@@ -633,12 +833,16 @@ function AiAssistantPage() {
           throw new Error("Add a task ID before requesting task risk analysis.");
         }
 
-        const payload = await analyzeRisk({
+        const payload = await riskMutation.mutateAsync({
           spaceId: contextValues.spaceId.trim() || undefined,
           boardId: contextValues.boardId.trim() || undefined,
           taskId: contextValues.taskId.trim(),
         });
-        appendAssistantResult("Task Risk Scan", formatApiResult(payload), { icon: "fa-list-check" });
+        appendAssistantResult("Task Risk Scan", formatApiResult(payload), {
+          icon: "fa-list-check",
+          traceId: extractTraceId(payload),
+          sources: Array.isArray(payload?.sources) ? payload.sources : payload?.data?.sources || [],
+        });
       }
 
       if (actionKey === "report") {
@@ -646,17 +850,76 @@ function AiAssistantPage() {
           throw new Error("Add a space ID before generating a report.");
         }
 
-        const payload = await generateAiReport({
+        const payload = await reportMutation.mutateAsync({
           spaceId: contextValues.spaceId.trim(),
           boardId: contextValues.boardId.trim() || undefined,
           reportType: "weekly",
         });
-        appendAssistantResult("AI Report", formatApiResult(payload), { icon: "fa-file-lines" });
+        appendAssistantResult("AI Report", formatApiResult(payload), {
+          icon: "fa-file-lines",
+          traceId: extractTraceId(payload),
+          sources: Array.isArray(payload?.sources) ? payload.sources : payload?.data?.sources || [],
+        });
       }
     } catch (error) {
       setPageError(error.message || "The AI action failed.");
     } finally {
       setActiveActionKey("");
+    }
+  };
+
+  const handleMessageFeedback = async (traceId, rating) => {
+    setMessageFeedback((current) => ({
+      ...current,
+      [traceId]: {
+        ...current[traceId],
+        submitting: true,
+      },
+    }));
+
+    try {
+      await feedbackMutation.mutateAsync({ traceId, rating });
+      setMessageFeedback((current) => ({
+        ...current,
+        [traceId]: {
+          rating,
+          submitting: false,
+        },
+      }));
+    } catch (error) {
+      setPageError(error.message || "Unable to submit AI feedback.");
+      setMessageFeedback((current) => ({
+        ...current,
+        [traceId]: {
+          ...current[traceId],
+          submitting: false,
+        },
+      }));
+    }
+  };
+
+  const reviewFeedAction = async (actionId, decision) => {
+    setReviewingActionId(actionId);
+    setPageError("");
+
+    try {
+      if (decision === "approve") {
+        await reviewActionMutation.mutateAsync({ actionId, decision });
+        appendAssistantResult("AI Action Approved", `Approved AI action ${actionId}.`, {
+          icon: "fa-check",
+        });
+      } else {
+        await reviewActionMutation.mutateAsync({ actionId, decision });
+        appendAssistantResult("AI Action Rejected", `Rejected AI action ${actionId}.`, {
+          icon: "fa-xmark",
+        });
+      }
+
+      await feedQuery.refetch();
+    } catch (error) {
+      setPageError(error.message || "Unable to review the AI action.");
+    } finally {
+      setReviewingActionId("");
     }
   };
 
@@ -688,6 +951,14 @@ function AiAssistantPage() {
     setMobileContextOpen(false);
   };
 
+  const toggleSelectedContext = (contextId) => {
+    setSelectedContext((current) =>
+      current.includes(contextId)
+        ? current.filter((item) => item !== contextId)
+        : [...current, contextId],
+    );
+  };
+
   const handleHistoryClick = () => {
     setDesktopContextCollapsed(false);
     setMobileContextOpen(true);
@@ -717,7 +988,7 @@ function AiAssistantPage() {
         <ContextPanelContent
           contextValues={contextValues}
           onContextChange={setContextValue}
-          quickPromptItems={quickPrompts}
+          quickPromptItems={quickPromptItems}
           recentSessions={recentSessions}
           onQuickPrompt={(prompt) => {
             void runChat(prompt);
@@ -727,7 +998,15 @@ function AiAssistantPage() {
           feedItems={feedItems}
           feedLoading={feedLoading}
           feedError={feedError}
-          onRefreshFeed={() => void loadFeed()}
+          onRefreshFeed={() => {
+            void feedQuery.refetch();
+          }}
+          onReviewAction={(actionId, decision) => void reviewFeedAction(actionId, decision)}
+          reviewingActionId={reviewingActionId}
+          availableContext={availableContext}
+          selectedContext={selectedContext}
+          onToggleContext={toggleSelectedContext}
+          contextLoadError={contextLoadError}
           sectionRef={mobileHistoryRef}
           onCloseMobile={() => setMobileContextOpen(false)}
         />
@@ -742,14 +1021,22 @@ function AiAssistantPage() {
           <ContextPanelContent
             contextValues={contextValues}
             onContextChange={setContextValue}
-            quickPromptItems={quickPrompts}
+            quickPromptItems={quickPromptItems}
             recentSessions={recentSessions}
             onQuickPrompt={(prompt) => void runChat(prompt)}
             onLoadSession={loadSession}
             feedItems={feedItems}
             feedLoading={feedLoading}
             feedError={feedError}
-            onRefreshFeed={() => void loadFeed()}
+            onRefreshFeed={() => {
+              void feedQuery.refetch();
+            }}
+            onReviewAction={(actionId, decision) => void reviewFeedAction(actionId, decision)}
+            reviewingActionId={reviewingActionId}
+            availableContext={availableContext}
+            selectedContext={selectedContext}
+            onToggleContext={toggleSelectedContext}
+            contextLoadError={contextLoadError}
             sectionRef={desktopHistoryRef}
             onCloseMobile={() => {}}
           />
@@ -760,7 +1047,7 @@ function AiAssistantPage() {
         <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[radial-gradient(circle_at_top,#eef2ff,#e0f2fe)] text-indigo-500 shadow-[0_14px_35px_rgba(99,102,241,0.12)]">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[radial-gradient(circle_at_top,#eef0ff,#e8f7fd)] text-indigo-500 shadow-[0_14px_35px_rgba(99,102,241,0.12)]">
                 <i className="fa-solid fa-sparkles text-lg" />
               </div>
               <div className="min-w-0">
@@ -838,13 +1125,17 @@ function AiAssistantPage() {
                 return (
                   <div key={message.id} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
                     {!isUser && (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle_at_top,#eef2ff,#dbeafe)] text-indigo-500 shadow-[0_12px_30px_rgba(99,102,241,0.14)]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[radial-gradient(circle_at_top,#eef0ff,#e8f7fd)] text-indigo-500 shadow-[0_12px_30px_rgba(99,102,241,0.14)]">
                         <i className={`fa-solid ${message.kind === "welcome" ? "fa-sparkles" : "fa-robot"} text-[13px]`} />
                       </div>
                     )}
 
                     <div className={`max-w-195 ${isUser ? "order-first" : ""}`}>
-                      <ChatBubble message={message} />
+                      <ChatBubble
+                        message={message}
+                        feedbackState={message.traceId ? messageFeedback[message.traceId] : null}
+                        onFeedback={(traceId, rating) => void handleMessageFeedback(traceId, rating)}
+                      />
                     </div>
 
                     {isUser && (
@@ -908,13 +1199,13 @@ function AiAssistantPage() {
 
                 <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
                   <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500">
-                    `spaceId`: {contextValues.spaceId || "not set"}
+                    spaceId: {contextValues.spaceId || "not set"}
                   </span>
                   <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500">
-                    `boardId`: {contextValues.boardId || "not set"}
+                    boardId: {contextValues.boardId || "not set"}
                   </span>
                   <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500">
-                    `taskId`: {contextValues.taskId || "not set"}
+                    taskId: {contextValues.taskId || "not set"}
                   </span>
                   <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500">
                     Tone: {contextValues.commentTone}

@@ -120,14 +120,6 @@ const STREAK_DAYS = [true, true, true, false, true, true, true]; // true = compl
  
 const CALENDAR_TASK_DAYS = new Set([3, 5, 10, 19]); // days with tasks (demo)
  
-const VIEW_TABS_DATA = [
-  { id: "board",    href: "#board",    icon: "fa-table-columns", label: "Board" },
-  { id: "list",     href: "#list",     icon: "fa-list",           label: "List" },
-  { id: "calendar", href: "#calendar", icon: "fa-calendar",       label: "Calendar" },
-  { id: "gantt",    href: "#gantt",    icon: "fa-bars-staggered", label: "Gantt" },
-  { id: "table",    href: "#table",    icon: "fa-table-cells",    label: "Table" },
-];
- 
  
 let path=[
   {
@@ -171,7 +163,7 @@ export default function MyWorkPage({ userName = "Basmala" , setPath}) {
  
   return (
     <>
-    <ViewTabs />
+  
       
         
           {/* Scrollable content */}

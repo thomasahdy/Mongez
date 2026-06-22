@@ -1,14 +1,14 @@
-import { useParams } from 'react-router-dom';
+import { useCallback } from 'react';
+import { useNavigate, useOutletContext, useParams } from 'react-router';
 import { ReferencePage } from '../reference/ReferencePage';
+import { useAppContext } from '../AppContext';
 import {
-  createTaskComment,
-  getTask,
-  getTaskComments,
-  getTaskFiles,
-  getTaskTimeLogs,
-  updateTask,
-} from '../../lib/pageApi';
-import { analyzeRisk } from '../../lib/aiApi';
+  useTaskCommentMutation,
+  useTaskDeleteMutation,
+  useTaskDetailsQuery,
+  useTaskUpdateMutation,
+  useTaskUploadMutation,
+} from '../../hooks/useTaskDetailsQueries';
 
 function asArray(payload) {
   if (Array.isArray(payload)) return payload;
@@ -194,38 +194,183 @@ function hydrateTime(root, logs, summary) {
   if (fill) fill.style.width = summary?.percent ? `${summary.percent}%` : '0%';
 }
 
+function buildActionBar(spaceMembers) {
+  const assigneeOptions = [
+    '<option value="">Unassigned</option>',
+    ...spaceMembers.map((member) => {
+      const memberId = member.id || member.userId || member.email || '';
+      const memberName = member.name || member.fullName || member.email || 'Member';
+      return `<option value="${memberId}">${memberName}</option>`;
+    }),
+  ].join('');
+
+  return `
+    <div class="mongez-live-task-controls" style="margin:0 24px 20px;border:1px solid var(--border);background:white;border-radius:18px;padding:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:end;">
+      <div style="min-width:160px;display:flex;flex-direction:column;gap:6px;">
+        <label style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);">Status</label>
+        <select data-task-control="status" style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:white;color:var(--text-primary);">
+          <option value="TODO">TODO</option>
+          <option value="IN_PROGRESS">IN_PROGRESS</option>
+          <option value="WAITING">WAITING</option>
+          <option value="DONE">DONE</option>
+        </select>
+      </div>
+      <div style="min-width:160px;display:flex;flex-direction:column;gap:6px;">
+        <label style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);">Priority</label>
+        <select data-task-control="priority" style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:white;color:var(--text-primary);">
+          <option value="LOW">LOW</option>
+          <option value="MEDIUM">MEDIUM</option>
+          <option value="HIGH">HIGH</option>
+          <option value="URGENT">URGENT</option>
+        </select>
+      </div>
+      <div style="min-width:220px;display:flex;flex-direction:column;gap:6px;">
+        <label style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);">Assignee</label>
+        <select data-task-control="assignee" disabled style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#f8fafc;color:var(--text-secondary);cursor:not-allowed;">
+          ${assigneeOptions}
+        </select>
+      </div>
+      <button type="button" data-task-action="rename" style="border:none;border-radius:999px;background:#0ea5e9;color:white;padding:11px 16px;font-weight:600;cursor:pointer;">Rename</button>
+      <button type="button" data-task-action="upload" style="border:1px solid var(--border);border-radius:999px;background:white;color:var(--text-primary);padding:11px 16px;font-weight:600;cursor:pointer;">Upload File</button>
+      <button type="button" data-task-action="delete" style="border:none;border-radius:999px;background:#ef4444;color:white;padding:11px 16px;font-weight:600;cursor:pointer;">Delete Task</button>
+      <input type="file" data-task-action="file-input" style="display:none;" />
+      <div data-task-action="feedback" style="width:100%;font-size:12px;color:var(--text-secondary);"></div>
+    </div>
+  `;
+}
+
+function syncActionBar(root, task) {
+  const statusSelect = root.querySelector('[data-task-control="status"]');
+  const prioritySelect = root.querySelector('[data-task-control="priority"]');
+  const assigneeSelect = root.querySelector('[data-task-control="assignee"]');
+
+  if (statusSelect) {
+    statusSelect.value = String(task.status || 'TODO').toUpperCase();
+  }
+
+  if (prioritySelect) {
+    prioritySelect.value = String(task.priority || 'MEDIUM').toUpperCase();
+  }
+
+  if (assigneeSelect) {
+    assigneeSelect.value = task.assignee?.id || task.assigneeId || '';
+  }
+}
+
 function TaskDetailsPage() {
   const { taskId } = useParams();
+  const navigate = useNavigate();
+  const { setPath } = useOutletContext() || {};
+  const { spaceMembers } = useAppContext();
+  const taskDetailsQuery = useTaskDetailsQuery(taskId);
+  const updateTaskMutation = useTaskUpdateMutation(taskId);
+  const commentMutation = useTaskCommentMutation(taskId);
+  const uploadMutation = useTaskUploadMutation(taskId);
+  const deleteTaskMutation = useTaskDeleteMutation(taskId);
 
-  const loadTaskDetails = async (root) => {
+  const loadTaskDetails = useCallback(async (root) => {
     if (!taskId) return;
+
+    if (taskDetailsQuery.isError) {
+      const note = document.createElement('div');
+      note.className = 'rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700';
+      note.textContent = taskDetailsQuery.error?.message || 'Unable to load task details.';
+      root.querySelector('.task-detail-container')?.prepend(note);
+      return;
+    }
+
+    if (!taskDetailsQuery.data) {
+      const note = document.createElement('div');
+      note.className = 'rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600';
+      note.textContent = 'Loading task details...';
+      root.querySelector('.task-detail-container')?.prepend(note);
+      return;
+    }
+
     try {
-      const [task, comments, files, timeLogs, risk] = await Promise.all([
-        getTask(taskId),
-        getTaskComments(taskId).catch(() => []),
-        getTaskFiles(taskId).catch(() => []),
-        getTaskTimeLogs(taskId).catch(() => []),
-        analyzeRisk({ taskId }).catch(() => null),
+      let task = taskDetailsQuery.data.task;
+      let comments = asArray(taskDetailsQuery.data.comments);
+      let files = asArray(taskDetailsQuery.data.files);
+      let timeLogs = asArray(taskDetailsQuery.data.timeLogs);
+      let risk = taskDetailsQuery.data.risk;
+
+      setPath?.([
+        { name: 'Workspace', color: 'text-slate-400', ref: '/dashboard' },
+        { name: task.title || task.name || 'Task Details', color: 'text-slate-800', ref: '' },
       ]);
 
-      hydrateTask(root, task);
-      hydrateSubtasks(root, task.subtasks || task.checklist || []);
-      hydrateRelations(root, task.relations || []);
+      const container = root.querySelector('.task-detail-container');
+      if (container && !container.querySelector('.mongez-live-task-controls')) {
+        container.insertAdjacentHTML('afterbegin', buildActionBar(spaceMembers));
+      }
+
+      const renderFiles = (nextFiles) => {
+        hydrateAttachments(root, nextFiles);
+        const fileNodes = root.querySelectorAll('.attachment-item');
+        nextFiles.forEach((file, index) => {
+          const node = fileNodes[index]?.querySelector('.file-name');
+          const url = file?.url || file?.downloadUrl || file?.fileUrl;
+          if (node && url) {
+            node.innerHTML = `<a href="${url}" target="_blank" rel="noreferrer" style="color:var(--primary);text-decoration:none;">${file.name || file.fileName || 'Attachment'}</a>`;
+          }
+        });
+      };
+
+      const renderTask = () => {
+        hydrateTask(root, task);
+        hydrateSubtasks(root, task.subtasks || task.checklist || []);
+        hydrateRelations(root, task.relations || []);
+        hydrateWatchers(root, task.watchers || task.assignees || []);
+        hydrateTime(root, timeLogs, { totalSeconds: timeLogs?.reduce((t, l) => t + (Number(l.durationMinutes) || 0) * 60, 0) });
+        renderFiles(files);
+        syncActionBar(root, task);
+      };
+
+      renderTask();
       hydrateComments(root, comments);
-      hydrateAttachments(root, files);
-      hydrateWatchers(root, task.watchers || task.assignees || []);
-      hydrateTime(root, timeLogs, { totalSeconds: timeLogs?.reduce((t, l) => t + (Number(l.durationMinutes) || 0) * 60, 0) });
+
+      const feedbackNode = root.querySelector('[data-task-action="feedback"]');
+      const setFeedback = (message, tone = 'neutral') => {
+        if (!feedbackNode) return;
+        feedbackNode.textContent = message;
+        feedbackNode.style.color =
+          tone === 'error'
+            ? '#dc2626'
+            : tone === 'success'
+              ? '#059669'
+              : 'var(--text-secondary)';
+      };
+
+      const applyTaskUpdate = async (updates) => {
+        task = await updateTaskMutation.mutateAsync(updates);
+        const refreshed = await taskDetailsQuery.refetch();
+        comments = asArray(refreshed.data?.comments || comments);
+        files = asArray(refreshed.data?.files || files);
+        timeLogs = asArray(refreshed.data?.timeLogs || timeLogs);
+        risk = refreshed.data?.risk ?? risk;
+        renderTask();
+        hydrateComments(root, comments);
+        setPath?.([
+          { name: 'Workspace', color: 'text-slate-400', ref: '/dashboard' },
+          { name: task.title || task.name || 'Task Details', color: 'text-slate-800', ref: '' },
+        ]);
+      };
 
       const commentButton = root.querySelector('.comment-actions button[style*="background:var(--primary)"]');
       const commentInput = root.querySelector('.comment-textarea');
       if (commentButton && commentInput) {
         commentButton.onclick = async () => {
           if (!commentInput.value.trim()) return;
-          const created = await createTaskComment(taskId, { content: commentInput.value.trim() });
-          const updatedComments = asArray(comments);
-          if (created) updatedComments.unshift(created);
-          hydrateComments(root, updatedComments);
-          commentInput.value = '';
+          try {
+            await commentMutation.mutateAsync({ content: commentInput.value.trim() });
+            const refreshed = await taskDetailsQuery.refetch();
+            comments = asArray(refreshed.data?.comments || comments);
+            hydrateComments(root, comments);
+            commentInput.value = '';
+            setFeedback('Comment saved.', 'success');
+          } catch (commentError) {
+            setFeedback(commentError.message || 'Unable to save this comment.', 'error');
+          }
         };
       }
 
@@ -236,12 +381,106 @@ function TaskDetailsPage() {
         root.querySelector('.task-description')?.appendChild(insightNote);
       }
 
-      root.querySelector('.task-title')?.addEventListener('dblclick', async () => {
+      const renameTask = async () => {
         const nextTitle = window.prompt('Update task title', root.querySelector('.task-title').textContent);
         if (nextTitle && nextTitle !== root.querySelector('.task-title').textContent) {
-          const updated = await updateTask(taskId, { title: nextTitle });
-          hydrateTask(root, updated || { ...task, title: nextTitle });
+          await applyTaskUpdate({ title: nextTitle });
+          setFeedback('Task title updated.', 'success');
         }
+      };
+
+      root.querySelector('.task-title')?.addEventListener('dblclick', () => {
+        void renameTask();
+      });
+
+      const renameButton = root.querySelector('[data-task-action="rename"]');
+      if (renameButton) {
+        renameButton.onclick = () => {
+          void renameTask();
+        };
+      }
+
+      const statusSelect = root.querySelector('[data-task-control="status"]');
+      if (statusSelect) {
+        statusSelect.onchange = async (event) => {
+          try {
+            await applyTaskUpdate({ status: event.target.value });
+            setFeedback('Task status updated.', 'success');
+          } catch (error) {
+            setFeedback(error.message || 'Unable to update task status.', 'error');
+          }
+        };
+      }
+
+      const prioritySelect = root.querySelector('[data-task-control="priority"]');
+      if (prioritySelect) {
+        prioritySelect.onchange = async (event) => {
+          try {
+            await applyTaskUpdate({ priority: event.target.value });
+            setFeedback('Task priority updated.', 'success');
+          } catch (error) {
+            setFeedback(error.message || 'Unable to update task priority.', 'error');
+          }
+        };
+      }
+
+      const assigneeSelect = root.querySelector('[data-task-control="assignee"]');
+      if (assigneeSelect) {
+        assigneeSelect.onchange = () => {
+          setFeedback('Assignee changes are not exposed by the current backend task API.', 'error');
+        };
+      }
+
+      const fileInput = root.querySelector('[data-task-action="file-input"]');
+      const uploadButton = root.querySelector('[data-task-action="upload"]');
+      if (uploadButton && fileInput) {
+        uploadButton.onclick = () => fileInput.click();
+        fileInput.onchange = async (event) => {
+          const [file] = event.target.files || [];
+          if (!file) return;
+
+          try {
+            setFeedback(`Uploading ${file.name}...`);
+            await uploadMutation.mutateAsync(file);
+            const refreshed = await taskDetailsQuery.refetch();
+            files = asArray(refreshed.data?.files || files);
+            renderFiles(files);
+            setFeedback('Attachment uploaded.', 'success');
+          } catch (error) {
+            setFeedback(error.message || 'Unable to upload attachment.', 'error');
+          } finally {
+            event.target.value = '';
+          }
+        };
+      }
+
+      const deleteButton = root.querySelector('[data-task-action="delete"]');
+      if (deleteButton) {
+        deleteButton.onclick = async () => {
+          if (!window.confirm('Delete this task? This action cannot be undone.')) return;
+
+          try {
+            await deleteTaskMutation.mutateAsync();
+            navigate(task.boardId ? `/board/${task.boardId}/table` : '/dashboard', { replace: true });
+          } catch (error) {
+            setFeedback(error.message || 'Unable to delete task.', 'error');
+          }
+        };
+      }
+
+      root.querySelectorAll('a[href="settings"]').forEach((link) => {
+        link.setAttribute('href', '/settings');
+      });
+      root.querySelectorAll('a[href="inbox"]').forEach((link) => {
+        link.setAttribute('href', '/inbox');
+      });
+      root.querySelectorAll('a[href="list-view"], a[data-task-board-link]').forEach((link) => {
+        link.setAttribute('href', task.boardId ? `/board/${task.boardId}/list` : '/dashboard');
+      });
+      root.querySelectorAll('a[href="#"]').forEach((link) => {
+        link.removeAttribute('href');
+        link.setAttribute('role', 'text');
+        link.style.cursor = 'default';
       });
     } catch (error) {
       const note = document.createElement('div');
@@ -249,7 +488,17 @@ function TaskDetailsPage() {
       note.textContent = error.message || 'Unable to load task details.';
       root.querySelector('.task-detail-container')?.prepend(note);
     }
-  };
+  }, [
+    commentMutation,
+    deleteTaskMutation,
+    navigate,
+    setPath,
+    spaceMembers,
+    taskDetailsQuery,
+    taskId,
+    updateTaskMutation,
+    uploadMutation,
+  ]);
 
   return <ReferencePage html={html} page="task-detail" onReady={loadTaskDetails} />;
 }
@@ -291,10 +540,10 @@ const html = `
                                 class="badge-new">New</span></button>
                     </div>
                     <div class="toolbar-divider"></div>
-                    <a href="inbox" style="position:relative"><i class="fa-regular fa-bell bell-icon"
+                    <a href="/inbox" style="position:relative"><i class="fa-regular fa-bell bell-icon"
                             style="font-size:17px;color:var(--text-secondary);cursor:pointer"></i><span
                             class="notification-dot"></span></a>
-                    <a href="settings" class="avatar"
+                    <a href="/settings" class="avatar"
                         style="background:var(--primary);width:30px;height:30px;font-weight:600;text-decoration:none;font-size:11px">TA</a>
                     <button class="toolbar-btn" title="More"><i class="fa-solid fa-ellipsis"></i></button>
                 </div>
@@ -304,9 +553,9 @@ const html = `
                 <!-- ═══ LEFT: Main Content ═══ -->
                 <div class="task-main-content">
                     <div class="task-breadcrumbs">
-                        <a href="list-view"><i class="fa-solid fa-table-list"></i> Curriculum Board</a>
-                        / <a href="#">Sprint 4</a>
-                        / <a href="#">Design</a>
+                        <a href="/dashboard" data-task-board-link><i class="fa-solid fa-table-list"></i> Curriculum Board</a>
+                        / <span>Sprint 4</span>
+                        / <span>Design</span>
                     </div>
 
                     <div class="task-id-badge"><i class="fa-solid fa-hashtag"></i> EDU-420</div>

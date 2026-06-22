@@ -1,234 +1,336 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams, useOutletContext } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useOutletContext, useParams } from 'react-router';
 import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
-import { fetchCalendarEvents } from '../../lib/calendarApi';
-import { getBoardTasks } from '../../lib/pageApi';
-import { normalizeTaskList } from '../../lib/taskMappers';
 import { useAppContext } from '../AppContext';
+import { useTimelineQuery } from '../../hooks/useDashboardQueries';
+
+const CELL_WIDTH = {
+  days: 40,
+  weeks: 88,
+  months: 112,
+};
+
+function startOfDay(date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function startOfWeek(date) {
+  const next = startOfDay(date);
+  const day = next.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  next.setDate(next.getDate() + diff);
+  return next;
+}
+
+function startOfMonth(date) {
+  const next = startOfDay(date);
+  next.setDate(1);
+  return next;
+}
+
+function addPeriod(date, scale, amount) {
+  const next = new Date(date);
+
+  if (scale === 'days') {
+    next.setDate(next.getDate() + amount);
+    return next;
+  }
+
+  if (scale === 'weeks') {
+    next.setDate(next.getDate() + amount * 7);
+    return next;
+  }
+
+  next.setMonth(next.getMonth() + amount);
+  return next;
+}
+
+function getPeriodStart(date, scale) {
+  if (scale === 'weeks') {
+    return startOfWeek(date);
+  }
+
+  if (scale === 'months') {
+    return startOfMonth(date);
+  }
+
+  return startOfDay(date);
+}
+
+function buildTimelineDates(scale) {
+  const today = new Date();
+  const base = getPeriodStart(today, scale);
+  const totalCells = scale === 'days' ? 30 : 12;
+  const startOffset = scale === 'days' ? -7 : -2;
+
+  return Array.from({ length: totalCells }, (_, index) => addPeriod(base, scale, startOffset + index));
+}
+
+function formatHeaderPrimary(date, scale) {
+  if (scale === 'months') {
+    return date.toLocaleDateString('en-US', { month: 'short' });
+  }
+
+  if (scale === 'weeks') {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  return String(date.getDate());
+}
+
+function formatHeaderSecondary(date, scale) {
+  if (scale === 'months') {
+    return String(date.getFullYear());
+  }
+
+  if (scale === 'weeks') {
+    return `W${Math.ceil(date.getDate() / 7)}`;
+  }
+
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()].slice(0, 1);
+}
+
+function getPeriodValue(date, scale) {
+  return getPeriodStart(date, scale).getTime();
+}
+
+function getTaskDate(task, key) {
+  if (key === 'startDate') {
+    return task.startDate || task.createdAt || task.dueDate || task.updatedAt;
+  }
+
+  return task.endDate || task.dueDate || task.updatedAt || task.startDate || task.createdAt;
+}
+
+function getTaskBarStyle(task, dates, scale) {
+  const rawStart = getTaskDate(task, 'startDate') || task.dueDate;
+  const rawEnd = getTaskDate(task, 'endDate') || task.dueDate || rawStart;
+
+  if (!rawStart || !rawEnd) {
+    return { display: 'none' };
+  }
+
+  try {
+    const axis = dates.map((date) => getPeriodValue(date, scale));
+    const startDate = new Date(rawStart);
+    const endDate = new Date(rawEnd);
+    const normalizedStart = startDate <= endDate ? startDate : endDate;
+    const normalizedEnd = endDate >= startDate ? endDate : startDate;
+    const startValue = getPeriodValue(normalizedStart, scale);
+    const endValue = getPeriodValue(normalizedEnd, scale);
+    const firstValue = axis[0];
+    const lastValue = axis[axis.length - 1];
+
+    if (endValue < firstValue || startValue > lastValue) {
+      return { display: 'none' };
+    }
+
+    let startIndex = 0;
+    let endIndex = axis.length - 1;
+
+    for (let index = 0; index < axis.length; index += 1) {
+      if (axis[index] >= startValue) {
+        startIndex = index;
+        break;
+      }
+    }
+
+    for (let index = axis.length - 1; index >= 0; index -= 1) {
+      if (axis[index] <= endValue) {
+        endIndex = index;
+        break;
+      }
+    }
+
+    if (startValue <= firstValue) {
+      startIndex = 0;
+    }
+
+    if (endValue >= lastValue) {
+      endIndex = axis.length - 1;
+    }
+
+    if (endIndex < startIndex) {
+      return { display: 'none' };
+    }
+
+    const cellWidth = CELL_WIDTH[scale];
+    return {
+      left: `${startIndex * cellWidth}px`,
+      width: `${Math.max(cellWidth, (endIndex - startIndex + 1) * cellWidth)}px`,
+    };
+  } catch {
+    return { display: 'none' };
+  }
+}
+
+function getStatusColor(status) {
+  const colors = {
+    TODO: '#ef4444',
+    IN_PROGRESS: '#00a8e8',
+    WAITING: '#ea580c',
+    DONE: '#10b981',
+  };
+  return colors[String(status || '').toUpperCase()] || '#00a8e8';
+}
 
 export default function TimelineView() {
   const { boardId } = useParams();
   const { setPath, activeBoard } = useOutletContext() || {};
   const { activeSpace, spaces } = useAppContext();
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [scale, setScale] = useState('days');
-  const [groupedTasks, setGroupedTasks] = useState({});
-  const [calendarEvents, setCalendarEvents] = useState([]);
+  const boardIdValue = boardId || activeBoard?.id;
+  const spaceId = activeSpace?.id || spaces[0]?.id;
+
+  const dates = useMemo(() => buildTimelineDates(scale), [scale]);
+  const timelineQuery = useTimelineQuery({
+    boardId: boardIdValue,
+    spaceId,
+    startDate: dates[0]?.toISOString(),
+    endDate: dates[dates.length - 1]?.toISOString(),
+  });
+  const tasks = timelineQuery.data?.tasks || [];
+  const calendarEvents = timelineQuery.data?.calendarEvents || [];
+  const loading = timelineQuery.isLoading || timelineQuery.isFetching;
+
+  const groupedTasks = useMemo(() => {
+    const grouped = {
+      TODO: [],
+      IN_PROGRESS: [],
+      WAITING: [],
+      DONE: [],
+    };
+
+    tasks.forEach((task) => {
+      const status = String(task.status || task.statusId || 'TODO').toUpperCase();
+      if (grouped[status]) {
+        grouped[status].push(task);
+      } else {
+        grouped.TODO.push(task);
+      }
+    });
+
+    return grouped;
+  }, [tasks]);
+
+  const eventCountsByPeriod = useMemo(
+    () =>
+      calendarEvents.reduce((accumulator, event) => {
+        const rawDate =
+          event.startDate || event.start || event.date || event.startsAt || event.startAt || event.createdAt;
+
+        if (!rawDate) {
+          return accumulator;
+        }
+
+        const key = String(getPeriodValue(new Date(rawDate), scale));
+        accumulator[key] = (accumulator[key] || 0) + 1;
+        return accumulator;
+      }, {}),
+    [calendarEvents, scale],
+  );
 
   useEffect(() => {
     if (!boardId && activeBoard?.id) {
       navigate(`/board/${activeBoard.id}/timeline`, { replace: true });
-      return;
     }
   }, [boardId, activeBoard?.id, navigate]);
 
   useEffect(() => {
     setPath?.([
-      { name: 'Workspace', color: 'text-slate-400', ref: '/spaces' },
-      { name: 'Timeline', color: 'text-slate-800', ref: '' },
+      { name: 'Workspace', color: 'text-slate-400', ref: '/dashboard' },
+      { name: activeBoard?.name || 'Timeline', color: 'text-slate-800', ref: '' },
     ]);
-  }, [setPath]);
+  }, [setPath, activeBoard?.name]);
 
   useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const boardIdValue = boardId || activeBoard?.id;
-        
-        if (!boardIdValue) {
-          setTasks([]);
-          setGroupedTasks({});
-          setLoading(false);
-          return;
-        }
-        
-        const data = await getBoardTasks(boardIdValue);
-        const tasksList = normalizeTaskList(data);
-        const range = getDateRange();
-        const spaceId = activeSpace?.id || spaces[0]?.id;
-        const calendarData = spaceId
-          ? await fetchCalendarEvents({
-              spaceId,
-              startDate: range[0].toISOString(),
-              endDate: range[range.length - 1].toISOString(),
-              sources: ['tasks', 'events'],
-            }).catch(() => [])
-          : [];
-        setCalendarEvents(Array.isArray(calendarData) ? calendarData : calendarData?.items || []);
-        setTasks(tasksList);
-        groupTasksByStatus(tasksList);
-      } catch (err) {
-        setError(err.message);
-        console.error('Error fetching tasks:', err);
-        setTasks([]);
-        setGroupedTasks({});
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTasks();
-  }, [boardId, activeBoard?.id, activeSpace?.id, spaces]);
-
-  const groupTasksByStatus = (taskList) => {
-    const grouped = {
-      'TODO': [],
-      'IN_PROGRESS': [],
-      'WAITING': [],
-      'DONE': []
-    };
-    
-    taskList.forEach(task => {
-      const status = task.status?.toUpperCase() || task.statusId?.toUpperCase() || 'TODO';
-      if (grouped[status]) {
-        grouped[status].push(task);
-      } else {
-        grouped['TODO'].push(task);
-      }
-    });
-    
-    setGroupedTasks(grouped);
-  };
-
-  const getDateRange = () => {
-    const today = new Date();
-    const dates = [];
-    
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() + i - 7);
-      dates.push(date);
+    if (!boardIdValue) {
+      setError(null);
+      return;
     }
-    return dates;
-  };
 
-  const getTaskBarStyle = (task) => {
-    if (!task.startDate || !task.endDate) return { display: 'none' };
-    
-    try {
-      const dates = getDateRange();
-      const startDate = new Date(task.startDate);
-      const endDate = new Date(task.endDate);
-      
-      const startIndex = dates.findIndex(d => 
-        d.toDateString() === startDate.toDateString()
-      );
-      const endIndex = dates.findIndex(d => 
-        d.toDateString() === endDate.toDateString()
-      );
-      
-      if (startIndex === -1 || endIndex === -1) return { display: 'none' };
-      
-      const leftOffset = (startIndex * 40) + 40;
-      const width = ((endIndex - startIndex + 1) * 40);
-      
-      return {
-        left: `${leftOffset}px`,
-        width: `${width}px`
-      };
-    } catch {
-      return { display: 'none' };
+    if (timelineQuery.isError) {
+      setError(timelineQuery.error?.message || 'Unable to load timeline data.');
+      return;
     }
-  };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      'TODO': '#ef4444',
-      'IN_PROGRESS': '#00a8e8',
-      'WAITING': '#ea580c',
-      'DONE': '#10b981'
-    };
-    return colors[status?.toUpperCase()] || '#00a8e8';
-  };
+    setError(null);
+  }, [boardIdValue, timelineQuery.error?.message, timelineQuery.isError]);
 
-  const dates = getDateRange();
-  const isToday = (date) => date.toDateString() === new Date().toDateString();
+  const isToday = (date) => startOfDay(date).getTime() === startOfDay(new Date()).getTime();
   const isWeekend = (date) => date.getDay() === 0 || date.getDay() === 6;
+  const chartWidth = dates.length * CELL_WIDTH[scale];
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-slate-50">
-      <ViewTabs/>
-      <Toolbar/>
-      
+    <div className="flex h-full flex-col overflow-hidden bg-slate-50">
+      <ViewTabs />
+      <Toolbar />
+
       {error && (
-        <div className="px-5 py-2 text-sm text-red-500 bg-red-50 border-b border-red-100">
+        <div className="border-b border-red-100 bg-red-50 px-5 py-2 text-sm text-red-500">
           {error}
         </div>
       )}
 
       <div className="flex h-full flex-col overflow-hidden">
-        {/* Scale Buttons */}
-        <div className="flex gap-2 border-b border-slate-200 bg-white px-4 py-2">
-          <button
-            onClick={() => setScale('days')}
-            className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
-              scale === 'days'
-                ? 'bg-sky-500 text-white'
-                : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            Days
-          </button>
-          <button
-            onClick={() => setScale('weeks')}
-            className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
-              scale === 'weeks'
-                ? 'bg-sky-500 text-white'
-                : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            Weeks
-          </button>
-          <button
-            onClick={() => setScale('months')}
-            className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
-              scale === 'months'
-                ? 'bg-sky-500 text-white'
-                : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            Months
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Timeline</h2>
+            <p className="text-xs text-slate-500">
+              {activeBoard?.name || 'Board timeline'} synced with GET /api/v1/boards/:boardId/tasks and GET /api/v1/calendar/events
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {['days', 'weeks', 'months'].map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setScale(option)}
+                className={`rounded px-3 py-1 text-xs font-semibold transition-all ${
+                  scale === option
+                    ? 'bg-sky-500 text-white'
+                    : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {option[0].toUpperCase() + option.slice(1)}
+              </button>
+            ))}
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">
+              {calendarEvents.length} synced events
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Task Panel */}
-          <div className="w-64 border-r border-slate-200 overflow-y-auto bg-white">
-            <div className="sticky top-0 bg-white px-4 py-3 border-b border-slate-200 text-sm font-semibold text-slate-900">
-              Tasks <span className="text-xs text-slate-400 font-normal">({tasks.length})</span>
+          <div className="w-64 overflow-y-auto border-r border-slate-200 bg-white">
+            <div className="sticky top-0 border-b border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900">
+              Tasks <span className="text-xs font-normal text-slate-400">({tasks.length})</span>
             </div>
             <div className="divide-y divide-slate-100">
-              {Object.entries(groupedTasks).map(([status, statusTasks]) => (
-                statusTasks.length > 0 && (
+              {Object.entries(groupedTasks).map(([status, statusTasks]) =>
+                statusTasks.length > 0 ? (
                   <div key={status}>
-                    <div className="px-4 py-2 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                      <span 
-                        className="w-2 h-2 rounded-full" 
-                        style={{ backgroundColor: getStatusColor(status) }}
-                      ></span>
+                    <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getStatusColor(status) }} />
                       {status.replace('_', ' ')}
                     </div>
-                    {statusTasks.map(task => (
+                    {statusTasks.map((task) => (
                       <div
                         key={task.id}
-                        className="px-4 py-3 hover:bg-sky-50 cursor-pointer transition-colors border-b border-slate-100 flex items-center gap-2"
+                        className="flex cursor-pointer items-center gap-2 border-b border-slate-100 px-4 py-3 transition-colors hover:bg-sky-50"
+                        onClick={() => navigate(`/tasks/${task.id}`)}
                       >
-                        <div 
-                          className="w-2 h-2 rounded-full flex-shrink-0" 
-                          style={{ backgroundColor: getStatusColor(status) }}
-                        />
-                        <span className="text-xs font-medium text-slate-700 flex-1 truncate">
+                        <div className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: getStatusColor(status) }} />
+                        <span className="flex-1 truncate text-xs font-medium text-slate-700">
                           {task.title || task.name || 'Untitled'}
                         </span>
                         {task.assignee && (
-                          <div 
-                            className="w-6 h-6 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 font-bold"
-                          >
+                          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-blue-500 text-xs font-bold text-white">
                             {(typeof task.assignee === 'string' ? task.assignee : task.assignee?.name || task.assigneeId)
                               ?.substring(0, 2)
                               .toUpperCase() || 'A'}
@@ -237,67 +339,68 @@ export default function TimelineView() {
                       </div>
                     ))}
                   </div>
-                )
-              ))}
+                ) : null,
+              )}
               {tasks.length === 0 && !loading && (
-                <div className="p-4 text-center text-slate-500 text-xs">No tasks found</div>
+                <div className="p-4 text-center text-xs text-slate-500">No tasks found</div>
               )}
             </div>
           </div>
 
-          {/* Chart Panel */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Date Header */}
-            <div className="flex bg-slate-50 border-b border-slate-200 overflow-x-auto sticky top-0 z-10">
-              {dates.map((date, i) => {
-                const todayClass = isToday(date) ? 'bg-sky-100 border-r-2 border-sky-500' : '';
-                const weekendClass = isWeekend(date) ? 'bg-slate-100' : '';
-                
-                return (
-                  <div
-                    key={i}
-                    className={`w-10 flex-shrink-0 text-center py-2 border-r border-slate-200 text-xs ${todayClass} ${weekendClass}`}
-                  >
-                    <div className="font-bold text-slate-700">{date.getDate()}</div>
-                    <div className="text-slate-400 text-xs">
-                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()].substring(0, 1)}
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="sticky top-0 z-10 overflow-x-auto border-b border-slate-200 bg-slate-50">
+              <div className="flex" style={{ width: `${chartWidth}px` }}>
+                {dates.map((date, index) => {
+                  const todayClass = scale === 'days' && isToday(date) ? 'bg-sky-100 border-r-2 border-sky-500' : '';
+                  const weekendClass = scale === 'days' && isWeekend(date) ? 'bg-slate-100' : '';
+                  const eventCount = eventCountsByPeriod[String(getPeriodValue(date, scale))] || 0;
+
+                  return (
+                    <div
+                      key={index}
+                      className={`flex-shrink-0 border-r border-slate-200 py-2 text-center text-xs ${todayClass} ${weekendClass}`}
+                      style={{ width: `${CELL_WIDTH[scale]}px` }}
+                    >
+                      <div className="font-bold text-slate-700">{formatHeaderPrimary(date, scale)}</div>
+                      <div className="text-xs text-slate-400">{formatHeaderSecondary(date, scale)}</div>
+                      {eventCount > 0 && (
+                        <div className="mt-1 text-[10px] font-semibold text-indigo-500">{eventCount} evt</div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Task Rows */}
             <div className="flex-1 overflow-auto relative">
               {tasks.length > 0 ? (
-                tasks.map(task => (
-                  <div
-                    key={task.id}
-                    className="flex h-10 border-b border-slate-100 relative group"
-                  >
-                    {dates.map((date, i) => {
-                      const weekendClass = isWeekend(date) ? 'bg-slate-50' : 'bg-white';
-                      return (
-                        <div
-                          key={i}
-                          className={`w-10 flex-shrink-0 border-r border-slate-200 ${weekendClass}`}
-                        />
-                      );
-                    })}
-                    
-                    {/* Task Bar */}
-                    <div
-                      className="absolute top-2 h-6 rounded bg-gradient-to-r from-sky-500 to-sky-600 text-white text-xs font-semibold flex items-center px-2 shadow-sm hover:shadow-md transition-all hover:opacity-90 z-20"
-                      style={getTaskBarStyle(task)}
-                      title={task.title || task.name || 'Task'}
-                    >
-                      <span className="truncate text-xs">{task.title || task.name || 'Task'}</span>
+                <div style={{ width: `${chartWidth}px` }}>
+                  {tasks.map((task) => (
+                    <div key={task.id} className="relative flex h-10 border-b border-slate-100">
+                      {dates.map((date, index) => {
+                        const weekendClass = scale === 'days' && isWeekend(date) ? 'bg-slate-50' : 'bg-white';
+                        return (
+                          <div
+                            key={index}
+                            className={`flex-shrink-0 border-r border-slate-200 ${weekendClass}`}
+                            style={{ width: `${CELL_WIDTH[scale]}px` }}
+                          />
+                        );
+                      })}
+
+                      <div
+                        className="absolute top-2 z-20 flex h-6 items-center rounded bg-gradient-to-r from-sky-500 to-sky-600 px-2 text-xs font-semibold text-white shadow-sm transition-all hover:opacity-90"
+                        style={getTaskBarStyle(task, dates, scale)}
+                        title={task.title || task.name || 'Task'}
+                      >
+                        <span className="truncate text-xs">{task.title || task.name || 'Task'}</span>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-slate-400 text-sm">{loading ? 'Loading tasks...' : 'No tasks to display'}</p>
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-slate-400">{loading ? 'Loading tasks...' : 'No tasks to display'}</p>
                 </div>
               )}
             </div>

@@ -1,78 +1,49 @@
-import { useState, useEffect } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useOutletContext } from 'react-router';
 import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
-import * as appApi from '../../lib/appApi';
-import { normalizeTaskList } from '../../lib/taskMappers';
+import { useBoardTasksQuery } from '../../hooks/useTaskListQueries';
 
 export default function ListView() {
   const { boardId } = useParams();
   const { activeBoard } = useOutletContext() || {};
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [groupBy, setGroupBy] = useState('status');
-  const [groupedTasks, setGroupedTasks] = useState({});
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const boardIdValue = boardId || activeBoard?.id;
-        
-        if (!boardIdValue) {
-          setTasks([]);
-          setGroupedTasks({});
-          setLoading(false);
-          return;
-        }
-        
-        const data = await appApi.getTasksByBoard(boardIdValue);
-        const tasksList = normalizeTaskList(data);
-        setTasks(tasksList);
-        groupTasks(tasksList, 'status');
-      } catch (err) {
-        setError(err.message);
-        console.error('Error fetching tasks:', err);
-        setTasks([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const boardIdValue = boardId || activeBoard?.id;
+  const tasksQuery = useBoardTasksQuery(boardIdValue);
+  const tasks = tasksQuery.data || [];
+  const loading = tasksQuery.isLoading || tasksQuery.isFetching;
+  const error = tasksQuery.error?.message || null;
 
-    fetchTasks();
-  }, [boardId, activeBoard?.id]);
-
-  const groupTasks = (taskList, groupByKey) => {
+  const groupedTasks = useMemo(() => {
     const grouped = {};
-    
-    taskList.forEach(task => {
+
+    tasks.forEach((task) => {
       let key;
-      
-      if (groupByKey === 'status') {
+
+      if (groupBy === 'status') {
         key = task.status?.toUpperCase() || task.statusId?.toUpperCase() || 'TODO';
-      } else if (groupByKey === 'assignee') {
+      } else if (groupBy === 'assignee') {
         key = typeof task.assignee === 'string' ? task.assignee : task.assignee?.name || 'Unassigned';
-      } else if (groupByKey === 'priority') {
+      } else if (groupBy === 'priority') {
         key = task.priority || 'Normal';
       } else {
         key = 'All Tasks';
       }
-      
+
       if (!grouped[key]) {
         grouped[key] = [];
       }
       grouped[key].push(task);
     });
-    
-    setGroupedTasks(grouped);
-  };
+
+    return grouped;
+  }, [tasks, groupBy]);
 
   const handleGroupBy = (newGroupBy) => {
     setGroupBy(newGroupBy);
-    groupTasks(tasks, newGroupBy);
   };
+
 
   const getStatusColor = (status) => {
     const colors = {

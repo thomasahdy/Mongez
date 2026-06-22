@@ -7,7 +7,7 @@ const ProfileSection = ({ form, onChange }) => {
   return (
     <SettingsSection title="Public Profile" icon="fa-regular fa-id-badge" iconColor="text-sky-500">
       <AvatarUpload
-        initials="TH"
+        initials=""
         onFileSelect={(file) => console.info("Avatar file:", file.name)}
         onRemove={() => console.info("Remove avatar")}
       />
