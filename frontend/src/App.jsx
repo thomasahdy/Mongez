@@ -15,6 +15,8 @@ import SettingsPage from './pages/settings/SettingsPage';
 import InboxPage from './pages/Inbox/InboxPage';
 import SearchPage from './pages/search/SearchPage';
 import MyWorkPage from './pages/mywork/MyWorkPage';
+import SecurityPage from './pages/security/SecurityPage';
+import AuditLogsPage from './pages/audit-log/AuditLogPage';
 
 function AuthenticatedApp({ path, setPath, setLanguage, language}) {
   return (
@@ -28,6 +30,8 @@ function AuthenticatedApp({ path, setPath, setLanguage, language}) {
           <Route path='reports' element={<ReportsPage setPath={setPath}/>}/>
           <Route path='settings' element={<SettingsPage setPath={setPath}/>}/>
           <Route path='inbox' element={<InboxPage setPath={setPath}/>}/>
+          <Route path='settings/security' element={<SecurityPage setPath={setPath}/>}/>
+          <Route path='audit-logs' element={<AuditLogsPage setPath={setPath}/>}/>
           <Route
                 path='/search'
                 element={<SearchPage/>}
