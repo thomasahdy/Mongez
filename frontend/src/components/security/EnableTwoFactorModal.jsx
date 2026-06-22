@@ -81,9 +81,9 @@ const EnableTwoFactorModal = ({ onClose, onSuccess }) => {
                             Scan this QR code with your authenticator app (e.g. Google Authenticator, Authy), then enter the 6-digit code it generates.
                         </p>
 
-                        {qrCodeUrl && (
+                        {qrCode && (
                             <div className="flex justify-center">
-                                <img src={qrCodeUrl} alt="2FA QR Code" className="h-40 w-40 rounded-lg border border-gray-200" />
+                                <img src={qrCode} alt="2FA QR Code" className="h-40 w-40 rounded-lg border border-gray-200" />
                             </div>
                         )}
 

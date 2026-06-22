@@ -1,6 +1,6 @@
 import SessionTable from "./SessionTable";
 import React from "react";
-import useSecurity from "../../hooks/useSecurity";
+import useSecurity from "../../pages/security/useSecurity";
 
 const SessionsCard = () => {
     const {

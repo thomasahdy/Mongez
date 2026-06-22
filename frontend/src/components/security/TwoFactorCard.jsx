@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getTwoFactorStatus } from "../../services/api/securityService";
+import { get2FAStatus } from "../../services/api/securityService";
 import EnableTwoFactorModal from "./EnableTwoFactorModal";
 import DisableTwoFactorModal from "./DisableTwoFactorModal";
 
@@ -15,7 +15,7 @@ const loadStatus = async () => {
     setLoading(true);
     setError("");
     try {
-        const status = await getTwoFactorStatus();
+        const status = await get2FAStatus();
         setEnabled(Boolean(status?.enabled));
     } catch (err) {
         console.error(err);
@@ -31,7 +31,7 @@ useEffect(() => {
 
 const handleToggle2FA = async () => {
     if (enabled) {
-        showDisableModal(true);
+        setShowDisableModal(true);
     } else {
         setShowEnableModal(true);
     }
