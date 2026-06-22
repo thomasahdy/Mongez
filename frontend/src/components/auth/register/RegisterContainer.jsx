@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useDispatch } from "react-redux";
 import AuthFooterLink from "../shared/AuthFooterLink";
 import RegisterCard from "./RegisterCard";
 import RegisterStepper from "./RegisterStepper";
@@ -7,6 +6,7 @@ import AccountStep from "./steps/AccountStep";
 import InviteStep from "./steps/InviteStep";
 import OrganizationStep from "./steps/OrganizationStep";
 import TemplateStep from "./steps/TemplateStep";
+import authService from "../../../services/api/authService";
 
 const initialValues = {
   account: {
@@ -21,7 +21,7 @@ const initialValues = {
     size: "11-50",
     country: "Egypt",
   },
-  template: "project-board",
+  template: "software-dev",
   invites: [
     { email: "", role: "Member" },
     { email: "", role: "Member" },
@@ -29,7 +29,6 @@ const initialValues = {
 };
 
 const RegisterContainer = () => {
-  const dispatch = useDispatch();
   const [step, setStep] = useState(1);
 
   const [values, setValues] = useState(initialValues);
@@ -72,34 +71,14 @@ const RegisterContainer = () => {
       })
     );
 
-    // Auth endpoint contract: POST /api/v1/auth/register { name, email, password }
-    const payload = {
-      organization: values.organization,
-      template: values.template,
-      invites: skipInvites
-        ? []
-        : values.invites.filter((invite) => invite.email && invite.email.trim()),
-    };
-
     try {
-      const response = await fetch("/api/v1/auth/complete-onboarding", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(payload),
+      const fullName = [values.account.firstName, values.account.lastName].filter(Boolean).join(" ").trim();
+      await authService.register({
+        email: values.account.email.trim(),
+        password: values.account.password,
+        name: fullName,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorMessage = data?.message || data?.error || "Failed to complete onboarding";
-        setSubmitError(errorMessage);
-        return;
-      }
-
-      window.location.href = "/dashboard";
+      window.location.href = "/onboarding";
     } catch (error) {
       const errorMessage = error?.message || error?.toString?.() || "Something went wrong";
       setSubmitError(errorMessage);

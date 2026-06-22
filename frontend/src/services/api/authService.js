@@ -97,6 +97,14 @@ export const getGoogleAuthUrl = () => {
   return `${import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"}/auth/google`;
 };
 
+/**
+ * Verify reset password token
+ */
+export const verifyResetToken = async (token) => {
+  const response = await apiClient.post("/auth/verify-reset-token", { token });
+  return response.data;
+};
+
 // Export as a unified object default export for compatibility
 const authService = {
   login,
@@ -110,6 +118,7 @@ const authService = {
   verifyEmail,
   getVerificationStatus,
   getGoogleAuthUrl,
+  verifyResetToken,
 };
 
 export default authService;
