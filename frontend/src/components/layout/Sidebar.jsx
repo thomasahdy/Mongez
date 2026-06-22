@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Badge from '../ui/Badge';
 import NavItem from './NavItem';
 import NavSection from './NavSection';
@@ -8,6 +8,7 @@ import { NavLink } from 'react-router';
 import ToggleLanguage from './ToggleLanguage';
 import { logout } from '../../services/api/authService';
 import SpaceSwitcher from '../spaces/SpaceSwitcher';
+import { useSpaces } from '../../hooks/api/useSpaces';
 
 const OVERVIEW_LINKS = [
   { href: "/my-work", icon: "fa-circle-check", label: "My Work", badge: { label: "5", variant: "danger" } },
@@ -26,11 +27,29 @@ const VIEW_LINKS = [
 
 const Sidebar = ({ setLanguage, language }) => {
   const { t } = useTranslation();
-
+  const { data: spaces, isLoading, error } = useSpaces();
+  const isActive = (id)=>
+  {
+    return localStorage.getItem("activeSpaceId") == id;
+  }
   const handleLogout = async () => {
     await logout();
     window.location.href = '/';
   };
+
+  const rawSpacesList = Array.isArray(spaces) ? spaces : (spaces?.spaces || []);
+  const normalizedSpaces = rawSpacesList.map((space) => ({
+    ...space,
+    gradient: space.gradient || 'from-indigo-500 to-indigo-400',
+    initials: space.initials || (space.name ? space.name.charAt(0).toUpperCase() : 'S'),
+    isOwner: space.isOwner !== undefined ? space.isOwner : space.role === 'OWNER',
+    stats: {
+      departments: space.stats?.departments ?? space._count?.departments ?? 0,
+      boards: space.stats?.boards ?? space._count?.boards ?? 0,
+      members: space.stats?.members ?? space._count?.memberships ?? space.memberCount ?? 1,
+    },
+    departments: space.departments || [],
+  }));
 
   return (
     <aside
@@ -78,20 +97,40 @@ const Sidebar = ({ setLanguage, language }) => {
       {/* Spaces */}
       <NavSection label={t("spaces")} actionHref="#spaces">
         {/* Education dept */}
-        <div className="px-2 py-[7px] rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center gap-2 text-[13px] font-medium text-slate-800 dark:text-slate-200 mb-1">
-          <span className="w-5 flex justify-center"><i className="fa-solid fa-graduation-cap text-red-500" /></span>
-          <span>Education Dept</span>
-          <Badge variant="neutral" className="ml-auto">Head</Badge>
-        </div>
-        {/* Tree */}
-        <div className="pl-3 ml-2.5 border-l border-slate-200 dark:border-slate-700">
-          <TreeLink label="Upper Egypt Edu" active badge="3" hasAI />
-          <div className="pl-3 ml-2 border-l border-slate-200 dark:border-slate-700">
-            <TreeLink label="Curriculum Board" dotColor="#00a8e8" />
-            <TreeLink label="Procurement" />
-          </div>
-          <TreeLink label="Cairo Literacy Program" badge="1" />
-        </div>
+        {
+          normalizedSpaces?.map((space, ind)=>{
+            return(
+              <>
+                <div key={space.id} className={`px-2 py-[7px] rounded-lg ${isActive(space.id)? "bg-slate-100 dark:bg-slate-700 ":""}flex items-center gap-2 text-[13px] font-medium text-slate-800 dark:text-slate-200 mb-1`}>
+                  <span className="w-5 flex justify-center"><i className={`fa-brands fa-space-awesome ${isActive(space.id)? "text-red-600":""}`}></i></span>
+                  <span>{space.name}</span>
+                  <Badge variant="neutral" className="ml-auto"> {space.isOwner??"Head"}</Badge>
+                </div>
+                {/* Tree */}
+                {space.departments.map((dep, ind)=>{
+                  return (
+                    <div className="pl-3 ml-2.5 border-l border-slate-200 dark:border-slate-700">
+                      <TreeLink label={dep.name} active badge="3" hasAI />
+                      <div className="pl-3 ml-2 border-l border-slate-200 dark:border-slate-700">
+                        {
+                          dep.boards.map((board, ind)=>{
+                            <TreeLink label={board.name} dotColor="#00a8e8" />
+                          })
+                        }
+                        
+                        
+                      </div>
+                      <TreeLink label="Cairo Literacy Program" badge="1" />
+                    </div>
+                  )
+                  
+                })}
+                
+              </>
+            )
+          })
+        }
+        
 
         {/* Other depts */}
         <NavItem href="#health" icon="fa-hospital" iconColor="#3498db" label="Health Dept" badge={{ label: "2", variant: "neutral" }} />

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import SpaceCardHeader from './SpaceCardHeader';
 import DepartmentRow from './DepartmentRow';
+import InviteMemberModal from './InviteMemberModal';
+import { useInviteMember} from '../../hooks/api/useMembers';
 
 /**
  * Component: SpaceCard
@@ -16,10 +18,21 @@ import DepartmentRow from './DepartmentRow';
  */
 const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
   const [expanded, setExpanded] = useState(true);
-
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const inviteMember = useInviteMember()
   const handleAddBoard = (deptId) => {
     console.info("Add board to dept:", deptId);
   };
+
+  const handleInviteMember = async(data)=>{
+    try {
+      await inviteMember.mutateAsync({spaceId: space.id,data});
+      setShowInviteModal(false);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || "Failed to create space.");
+    }
+    
+  }
 
   return (
     <article
@@ -30,7 +43,7 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
         space={space}
         expanded={expanded}
         onToggle={() => setExpanded((v) => !v)}
-        onInvite={() => onInvite(space.id)}
+        onInvite={() => setShowInviteModal(true)}
         onSettings={() => onEdit(space)}
         onMore={() => onDelete(space.id)}
       />
@@ -52,6 +65,14 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
           )}
         </div>
       </div>
+      {showInviteModal && (
+              <InviteMemberModal
+                onSubmit={handleInviteMember}
+                onClose={() => setShowInviteModal(false)}
+                space={space}
+                
+              />
+            )}
     </article>
   );
 }
