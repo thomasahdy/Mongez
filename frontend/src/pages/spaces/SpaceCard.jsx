@@ -25,6 +25,7 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
   const [showCreateDepModal, setShowCreateDepModal] = useState(false);
   const inviteMember = useInviteMember()
   const createDepartment = useCreateDepartment();
+  
   const {data: departments, isLoading, error } = useSpaceDepartments(space.id);
 
   const rawDepartmentsList = Array.isArray(departments) ? departments : (departments?.departments || []);
@@ -46,9 +47,7 @@ const normalizedDepartments = rawDepartmentsList.map((dept) => ({
   boards: dept.boards || [],
   members: dept.members || [],
 }));
-  const handleAddBoard = (deptId) => {
-    console.info("Add board to dept:", deptId);
-  };
+  
 
   const handleInviteMember = async(data)=>{
     try {
@@ -63,8 +62,7 @@ const normalizedDepartments = rawDepartmentsList.map((dept) => ({
   const handleCreateDepartment = async(data)=>{
     try
     {
-      let res = await createDepartment.mutateAsync({spaceId: space.id, data:data});
-      console.log(res);
+      await createDepartment.mutateAsync({spaceId: space.id, data:data});
       
       setShowCreateDepModal(false);
       
@@ -112,7 +110,7 @@ const normalizedDepartments = rawDepartmentsList.map((dept) => ({
               )  : (
                 normalizedDepartments && normalizedDepartments.length > 0 ? (
             normalizedDepartments.map((dept) => (
-              <DepartmentRow key={dept.id} dept={dept} onAddBoard={handleAddBoard} />
+              <DepartmentRow key={dept.id} dept={dept}/>
             ))
           ) : (
             <p className="text-xs text-center text-slate-400 dark:text-slate-500 py-3 pl-2">

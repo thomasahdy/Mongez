@@ -9,7 +9,8 @@ import apiClient from "./apiClient";
  * Create a new board (backend auto-creates 4 default columns: To Do, Waiting, In Progress, Done)
  * @param {Object} data - Board creation payload
  * @param {string} data.name - Name of the board
- * @param {string} data.spaceId - Space ID that the board belongs to
+ * @param {string} data.departmentId - Department ID that the board belongs to
+ * @param {string} data.type
  * @param {string} [data.description] - Board description
  * @returns {Promise<Object>} Created board details
  */

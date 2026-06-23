@@ -99,3 +99,20 @@ export const createDepartmentSchema = z.object({
     .toUpperCase()
     .trim()
 });
+
+
+export const createBoardSchema = z.object({
+  name: z.string({
+    required_error: "Board name is required.",
+  }).min(1, "Board name cannot be empty."),
+  
+  departmentId: z.string({
+    required_error: "Department ID is required.",
+  }).min(1, "Department ID cannot be empty."),
+  
+  type: z.string({
+    required_error: "Board type is required.",
+  }).min(1, "Board type cannot be empty."),
+  
+  description: z.string().optional(),
+});

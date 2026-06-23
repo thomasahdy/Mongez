@@ -1,9 +1,29 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Button from '../../components/ui/Button';
 import StatItem from '../../components/ui/StatItem';
 import BoardChips from './BoardChips';
+import CreateBoardModal from './CreateBoardModal';
+import { useCreateBoard } from '../../hooks/api/useBoards';
 
-const DepartmentRow = ({ dept, onAddBoard }) => {
+const DepartmentRow = ({ dept}) => {
+  const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const createBoard = useCreateBoard();
+  const handleCreateBoard = async(data) => {
+    console.info("Add board to dept:", dept.id);
+    try{
+      console.log(data);
+      
+      console.log(await createBoard.mutateAsync({data:data}))
+      
+    }
+    catch (err) {
+      alert(err.response?.data?.message || err.message || "Failed to create a board.");
+    }
+  };
+
+  const onAddBoard = ()=>{
+
+  }
   return (
     <div>
       {/* Row */}
@@ -37,7 +57,7 @@ const DepartmentRow = ({ dept, onAddBoard }) => {
         <Button
           variant="outline"
           size="sm"
-          onClick={(e) => { e.stopPropagation(); onAddBoard(dept.id); }}
+          onClick={(e) => { e.stopPropagation(); setShowCreateBoardModal(true) }}
           className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
           aria-label={`Add board to ${dept.name}`}
         >
@@ -47,9 +67,20 @@ const DepartmentRow = ({ dept, onAddBoard }) => {
  
       {/* Board chips below the row */}
       {dept.boards.length > 0 && (
-        <BoardChips boards={dept.boards} onAddBoard={() => onAddBoard(dept.id)} />
+        <BoardChips boards={dept.boards} onAddBoard={() => onAddBoard()} />
       )}
+
+      {showCreateBoardModal && (
+              <CreateBoardModal
+                onSubmit={handleCreateBoard}
+                onClose={() => setShowCreateBoardModal(false)}
+                dept={dept}
+                
+                
+              />
+            )}
     </div>
+
   )
 }
 
