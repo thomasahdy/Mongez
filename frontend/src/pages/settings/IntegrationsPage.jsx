@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsSidebar from "./sections/SettingsSidebar";
 import { useAppContext } from "../AppContext";
-import { getGoogleDriveAuthUrl } from "../../lib/integrationsApi";
 import {
   useDisconnectGoogleDriveMutation,
+  useGoogleDriveConnectAction,
   useGoogleCalendarConnectMutation,
   useGoogleCalendarSyncMutation,
   useIntegrationStatusesQuery,
@@ -210,8 +210,10 @@ export default function IntegrationsPage({ setPath }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All Apps");
   const [busyAction, setBusyAction] = useState("");
+  const popupWatcherRef = useRef(null);
   const statusesQuery = useIntegrationStatusesQuery(activeSpaceId);
   const disconnectDriveMutation = useDisconnectGoogleDriveMutation(activeSpaceId);
+  const connectGoogleDrive = useGoogleDriveConnectAction();
   const connectCalendarMutation = useGoogleCalendarConnectMutation();
   const syncCalendarMutation = useGoogleCalendarSyncMutation(activeSpaceId);
   const statuses = statusesQuery.data || {
@@ -224,6 +226,14 @@ export default function IntegrationsPage({ setPath }) {
   useEffect(() => {
     setPath?.(integrationPath);
   }, [setPath]);
+
+  useEffect(() => {
+    return () => {
+      if (popupWatcherRef.current) {
+        window.clearInterval(popupWatcherRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (statusesQuery.isError) {
@@ -278,7 +288,7 @@ export default function IntegrationsPage({ setPath }) {
   }, [activeSpaceId, statuses]);
 
   const handleDriveConnect = () => {
-    window.location.href = getGoogleDriveAuthUrl();
+    connectGoogleDrive();
   };
 
   const handleDriveDisconnect = async () => {
@@ -320,12 +330,13 @@ export default function IntegrationsPage({ setPath }) {
 
       setSuccessMessage("Google Calendar authorization opened in a separate window.");
 
-      const popupWatcher = window.setInterval(() => {
+      popupWatcherRef.current = window.setInterval(() => {
         if (!popup.closed) {
           return;
         }
 
-        window.clearInterval(popupWatcher);
+        window.clearInterval(popupWatcherRef.current);
+        popupWatcherRef.current = null;
         setBusyAction("");
         setSuccessMessage("Google Calendar authorization window closed. Run a manual sync to confirm the connection.");
       }, 600);

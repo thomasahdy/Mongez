@@ -1,22 +1,14 @@
-import { useState,  useCallback } from "react";
+import { useCallback, useState } from "react";
 import Navbar from "../../components/layout/Navbar";
 import AISidebar from "../../components/ai/AISidebar";
 import AINudge from "../../components/ai/AINudge";
 import FAB from "../../components/ui/FAB";
 import { Outlet } from "react-router";
+import { useAppContext } from "../AppContext";
 
-const STATUS_COLORS = {
-  todo:     { dot: "#94a3b8", bg: "#f1f5f9", text: "#475569", label: "To Do" },
-  waiting:  { dot: "#ea580c", bg: "#fff7ed", text: "#ea580c", label: "Waiting" },
-  progress: { dot: "#00a8e8", bg: "#e8f7fd", text: "#0077b6", label: "In Progress" },
-  review:   { dot: "#6366f1", bg: "#eef0ff", text: "#6366f1", label: "In Review" },
-  done:     { dot: "#10b981", bg: "#ecfdf5", text: "#10b981", label: "Done & Signed" },
-};
-
-
-const Home = ({path}) => {
-  
+const Home = ({ path, setPath }) => {
   const [aiOpen, setAiOpen] = useState(false);
+  const { activeBoard } = useAppContext();
 
   const toggleAI = useCallback(() => setAiOpen((v) => !v), []);
 
@@ -24,9 +16,8 @@ const Home = ({path}) => {
     <>
         {/* Main */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          <Navbar onToggleAI={toggleAI} path={path}/>
-          <Outlet />
-          {/* <KanbanBoard columns={BOARD_COLUMNS} /> */}
+          <Navbar onToggleAI={toggleAI} path={path} />
+          <Outlet context={{ setPath, activeBoard }} />
         </main>
 
       {/* Portals / overlays */}
@@ -37,4 +28,4 @@ const Home = ({path}) => {
   );
 }
 
-export default Home
+export default Home;

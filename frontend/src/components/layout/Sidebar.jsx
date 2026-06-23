@@ -1,55 +1,38 @@
-import { useMemo } from "react";
-import { NavLink, useLocation } from "react-router";
+import { NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import Badge from "../ui/Badge";
 import NavItem from "./NavItem";
 import NavSection from "./NavSection";
-import TreeLink from "./TreeLink";
 import ToggleLanguage from "./ToggleLanguage";
+import TreeLink from "./TreeLink";
+import SpaceSwitcher from "../spaces/SpaceSwitcher";
+import { logout } from "../../services/api/authService";
 import { useAppContext } from "../../pages/AppContext";
-import { authService } from "../../services/auth.service";
-import mongezWordmark from "../../assets/Mongez.svg";
-import mongezMark from "../../assets/MongezMLogo.svg";
 
 const OVERVIEW_LINKS = [
-  { href: "/my-work", icon: "fa-circle-check", label: "My Work" },
-  { href: "/inbox", icon: "fa-inbox", label: "Inbox" },
+  { href: "/my-work", icon: "fa-circle-check", label: "My Work", badge: { label: "5", variant: "danger" } },
+  { href: "/inbox", icon: "fa-inbox", label: "Inbox", badge: { label: "3", variant: "danger" } },
   { href: "/dashboard", icon: "fa-chart-pie", label: "Dashboard" },
   { href: "/search", icon: "fa-magnifying-glass", label: "Search", kbd: "Ctrl K" },
-  { href: "/ai-assistant", icon: "fa-sparkles", label: "AI Assistant", iconColor: "#6366f1", aiBadge: true },
+  { href: "/ai-assistant", icon: "fa-sparkles", label: "AI Assistant", aiBadge: true },
 ];
 
-const Sidebar = ({ setLanguage, language, onCloseMobile }) => {
+const VIEW_LINKS = [
+  { href: "/calendar", icon: "fa-regular fa-calendar", label: "Calendar", badge: { label: "2 mtgs", variant: "neutral" } },
+  { href: "/timeline", icon: "fa-bars-staggered", label: "Timeline" },
+  { href: "/whiteboard", icon: "fa-chalkboard", label: "Whiteboard" },
+  { href: "/reports", icon: "fa-chart-line", label: "Reports" },
+];
+
+const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
   const { t } = useTranslation();
-  const location = useLocation();
-  const { activeSpace, activeDepartments, activeBoards, activeBoard } = useAppContext();
-
-  const closeMobile = () => {
-    onCloseMobile?.();
-  };
-
-  const boardsByDepartment = useMemo(() => {
-    return activeDepartments.map((department) => ({
-      ...department,
-      boards: activeBoards.filter((board) => board.departmentId === department.id),
-    }));
-  }, [activeBoards, activeDepartments]);
-
-  const routeBoardId = location.pathname.match(/^\/board\/([^/]+)/)?.[1] || "";
-  const currentBoardId = routeBoardId || activeBoard?.id || activeBoards[0]?.id || "";
-  const timelineRoute = currentBoardId ? `/board/${currentBoardId}/timeline` : "/spaces";
-  const activeBoardTableRoute = currentBoardId ? `/board/${currentBoardId}/table` : "";
-
-  const viewLinks = [
-    { href: "/calendar", icon: "fa-regular fa-calendar", label: "Calendar" },
-    { href: timelineRoute, icon: "fa-bars-staggered", label: "Timeline" },
-    { href: "/whiteboard", icon: "fa-chalkboard", label: "Whiteboard" },
-    { href: "/reports", icon: "fa-chart-line", label: "Reports" },
-  ];
+  const { activeSpace, activeBoard, boardsByDepartment } = useAppContext();
+  const closeMobile = () => onCloseMobile?.();
+  const activeBoardTableRoute = activeBoard?.id ? `/board/${activeBoard.id}/table` : "";
 
   const handleLogout = async () => {
-    await authService.logout();
-    window.location.href = "/login";
+    await logout();
+    window.location.href = "/";
   };
 
   return (
@@ -57,20 +40,23 @@ const Sidebar = ({ setLanguage, language, onCloseMobile }) => {
       className="workspace-sidebar flex h-screen w-[260px] flex-col overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 dark:border-slate-700 dark:bg-slate-800 [scrollbar-width:none]"
       aria-label="Sidebar navigation"
     >
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <NavLink
-          to="/dashboard"
-          onClick={closeMobile}
-          className="flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-1 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
-        >
-          <span className="flex items-center gap-0 text-slate-900">
-          <div className="grid h-10 w-10 place-items-center rounded-xl">
-            <img src={mongezMark} alt="Mongez mark" className="h-9 w-8 object-contain" />
+      <div className="flex justify-around">
+        <div className="flex items-center gap-2.5 px-2 py-1 mb-5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-sky-500 shrink-0">
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <path d="M8 22V10l5 8 5-8v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="24" cy="10" r="2" fill="#a5b4fc" />
+            </svg>
           </div>
-          <img src={mongezWordmark} alt="Mongez" className="h-11 w-auto object-contain" />
-          </span>
-        </NavLink>
-        <ToggleLanguage setLanguage={setLanguage} language={language} />
+          <NavLink to="/" className="text-[15px] font-bold tracking-tight text-slate-800 dark:text-slate-100">
+            {t("mongez")}
+          </NavLink>
+        </div>
+        {setLanguage ? <ToggleLanguage setLanguage={setLanguage} language={language} /> : null}
+      </div>
+
+      <div className="mb-4">
+        <SpaceSwitcher />
       </div>
 
       <NavSection label={t("overview")}>
@@ -80,7 +66,7 @@ const Sidebar = ({ setLanguage, language, onCloseMobile }) => {
       </NavSection>
 
       <NavSection label={t("views")}>
-        {viewLinks.map((item) => (
+        {VIEW_LINKS.map((item) => (
           <NavItem key={item.label} {...item} onClick={closeMobile} />
         ))}
       </NavSection>
@@ -95,11 +81,11 @@ const Sidebar = ({ setLanguage, language, onCloseMobile }) => {
             <i className="fa-solid fa-layer-group text-sky-500" />
           </span>
           <span className="min-w-0 flex-1 truncate">{activeSpace?.name || t("manage spaces")}</span>
-          {activeSpace?.role && (
+          {activeSpace?.role ? (
             <Badge variant="neutral" className="ml-auto">
               {activeSpace.role}
             </Badge>
-          )}
+          ) : null}
         </NavLink>
 
         <div className="ml-2.5 border-l border-slate-200 pl-3 dark:border-slate-700">
@@ -113,7 +99,7 @@ const Sidebar = ({ setLanguage, language, onCloseMobile }) => {
                   badge={department.boards.length ? String(department.boards.length) : ""}
                   onClick={closeMobile}
                 />
-                {department.boards.length > 0 && (
+                {department.boards.length > 0 ? (
                   <div className="ml-2 border-l border-slate-200 pl-3 dark:border-slate-700">
                     {department.boards.slice(0, 4).map((board) => (
                       <TreeLink
@@ -126,7 +112,7 @@ const Sidebar = ({ setLanguage, language, onCloseMobile }) => {
                       />
                     ))}
                   </div>
-                )}
+                ) : null}
               </div>
             ))
           ) : (
@@ -134,9 +120,9 @@ const Sidebar = ({ setLanguage, language, onCloseMobile }) => {
           )}
         </div>
 
-        {activeBoardTableRoute && (
+        {activeBoardTableRoute ? (
           <NavItem href={activeBoardTableRoute} icon="fa-table-cells" label="Active Board Table" onClick={closeMobile} />
-        )}
+        ) : null}
 
         <NavLink
           to="/spaces"
@@ -150,14 +136,13 @@ const Sidebar = ({ setLanguage, language, onCloseMobile }) => {
         </NavLink>
       </NavSection>
 
-      <div className="mt-auto border-t border-slate-200 pt-4 dark:border-slate-700">
-        <NavItem href="/settings" icon="fa-gear" label={t("settings")} onClick={closeMobile} />
+      <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
+        <NavItem href="/settings" icon="fa-gear" label={t("settings")} />
         <button
-          type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-lg px-2 py-[7px] text-[13px] font-medium text-red-400 transition-all duration-150 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+          className="w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-[13px] font-medium text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all duration-150 text-left cursor-pointer"
         >
-          <span className="flex w-5 justify-center">
+          <span className="w-5 flex justify-center">
             <i className="fa-solid fa-arrow-right-from-bracket" />
           </span>
           {t("logout")}

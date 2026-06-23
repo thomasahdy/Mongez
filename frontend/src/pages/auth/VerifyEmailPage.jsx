@@ -29,6 +29,7 @@ export default function VerifyEmailPage() {
   const token = useMemo(() => new URLSearchParams(window.location.search).get("token") || "", []);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   const verificationTokenQuery = useVerifyEmailTokenQuery(token);
   const verificationStatusQuery = useVerificationStatusQuery(!token);
   const sendVerificationMutation = useSendVerificationEmailMutation();
@@ -38,6 +39,18 @@ export default function VerifyEmailPage() {
   const isOAuthUser = Boolean(data?.isOAuthUser);
   const isAuthenticated = Boolean(data?.isAuthenticated);
   const sending = sendVerificationMutation.isPending;
+
+  useEffect(() => {
+    if (resendCooldown <= 0) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setResendCooldown((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   useEffect(() => {
     if (token && verificationTokenQuery.isError) {
@@ -80,6 +93,7 @@ export default function VerifyEmailPage() {
     try {
       const result = await sendVerificationMutation.mutateAsync();
       setMessage(result.message || "Verification email sent.");
+      setResendCooldown(45);
     } catch (sendError) {
       setError(sendError.message || "Unable to send a new verification email.");
     }
@@ -137,14 +151,25 @@ export default function VerifyEmailPage() {
           {error && <p className="text-sm text-rose-600">{error}</p>}
 
           {showResend ? (
-            <button
-              type="button"
-              className="auth-primary-button verify-button"
-              onClick={handleResend}
-              disabled={sending}
-            >
-              {sending ? "Sending..." : "Send verification email"}
-            </button>
+            <div className="grid gap-2">
+              <button
+                type="button"
+                className="auth-primary-button verify-button"
+                onClick={handleResend}
+                disabled={sending || resendCooldown > 0}
+              >
+                {sending ? "Sending..." : resendCooldown > 0 ? `Resend available in ${resendCooldown}s` : "Send verification email"}
+              </button>
+              <p className="text-xs text-slate-500">
+                Request a new email only if the latest verification link is missing, expired, or blocked by inbox filters.
+              </p>
+            </div>
+          ) : null}
+
+          {!token && !loading && !verified && !isAuthenticated ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-[13px] leading-6 text-slate-500">
+              Sign in first if you want Mongez to send another verification email to the current account.
+            </div>
           ) : null}
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-[13px] leading-6 text-slate-500">

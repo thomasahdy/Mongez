@@ -68,6 +68,10 @@ function formatDate(dateValue) {
   });
 }
 
+function isValidInviteEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
+}
+
 function SummaryCard({ label, value, hint }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -96,6 +100,9 @@ export default function SettingsMembersPage({ setPath }) {
   const canViewInvitations = invitationsQuery.data?.canViewInvitations ?? true;
   const loading = membersQuery.isLoading || membersQuery.isFetching;
   const loadingInvitations = invitationsQuery.isLoading || invitationsQuery.isFetching;
+  const normalizedInviteEmail = inviteForm.email.trim().toLowerCase();
+  const inviteMatchesExistingMember = spaceMembers.some((member) => getMemberEmail(member).toLowerCase() === normalizedInviteEmail);
+  const inviteMatchesPending = invitations.some((invite) => String(invite.email || "").toLowerCase() === normalizedInviteEmail);
 
   useEffect(() => {
     setPath?.(membersPath);
@@ -139,6 +146,26 @@ export default function SettingsMembersPage({ setPath }) {
     event.preventDefault();
 
     if (!activeSpaceId || !inviteForm.email.trim()) {
+      return;
+    }
+
+    if (!isValidInviteEmail(inviteForm.email)) {
+      setPageError("Enter a valid teammate email address before sending the invite.");
+      return;
+    }
+
+    if (String(user?.email || "").toLowerCase() === normalizedInviteEmail) {
+      setPageError("You are already a member of this workspace.");
+      return;
+    }
+
+    if (inviteMatchesExistingMember) {
+      setPageError("That email already belongs to a workspace member.");
+      return;
+    }
+
+    if (inviteMatchesPending) {
+      setPageError("A pending invitation already exists for that email.");
       return;
     }
 
@@ -188,6 +215,10 @@ export default function SettingsMembersPage({ setPath }) {
       return;
     }
 
+    if (!window.confirm(`Remove ${getMemberName(member)} from ${activeSpace?.name || "this workspace"}?`)) {
+      return;
+    }
+
     setBusyAction(`remove-${member.user.id}`);
     setPageError("");
     setSuccessMessage("");
@@ -208,6 +239,10 @@ export default function SettingsMembersPage({ setPath }) {
       return;
     }
 
+    if (!window.confirm("Revoke this pending workspace invitation?")) {
+      return;
+    }
+
     setBusyAction(`invite-${inviteId}`);
     setPageError("");
     setSuccessMessage("");
@@ -224,6 +259,10 @@ export default function SettingsMembersPage({ setPath }) {
 
   const handleLeaveWorkspace = async () => {
     if (!activeSpaceId) {
+      return;
+    }
+
+    if (!window.confirm(`Leave ${activeSpace?.name || "this workspace"}? You may need a new invitation to rejoin.`)) {
       return;
     }
 
@@ -440,6 +479,9 @@ export default function SettingsMembersPage({ setPath }) {
                     >
                       {busyAction === "invite" ? "Sending invite..." : "Send invite"}
                     </button>
+                    {normalizedInviteEmail && !isValidInviteEmail(inviteForm.email) ? (
+                      <p className="text-xs text-rose-600">Enter a valid email address.</p>
+                    ) : null}
                   </form>
                 </section>
               ) : null}

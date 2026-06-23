@@ -116,6 +116,7 @@ export function useWhiteboardScene(boardId) {
     storageKey,
     loadedScene: loadedScene.scene,
     lastSavedAt,
+    setLastSavedAt,
     statusMessage,
     setStatusMessage,
     latestSceneRef,

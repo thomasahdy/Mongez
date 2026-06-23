@@ -366,6 +366,14 @@ function DashboardPage() {
       },
     ];
   }, [dashboardMetrics, executiveMetrics, workflowAnalytics]);
+  const hasAnalyticsData = Boolean(
+    activity.length ||
+      completion.length ||
+      priority.length ||
+      teamLoad.length ||
+      Object.keys(stats || {}).length ||
+      Object.keys(executiveMetrics || {}).length,
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-slate-50">
@@ -397,6 +405,12 @@ function DashboardPage() {
             {error}
           </div>
         )}
+
+        {!error && !loading && !hasAnalyticsData ? (
+          <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+            Analytics endpoints are reachable, but no dashboard metrics were returned for this workspace yet.
+          </div>
+        ) : null}
 
         <div className="kpi-grid">
           <KpiCard

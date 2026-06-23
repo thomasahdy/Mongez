@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchCalendarEvents, fetchCalendarPreferences } from "../lib/calendarApi";
+import calendarService from "../services/api/calendarService";
 
 export function useCalendarPreferencesQuery() {
   return useQuery({
     queryKey: ["calendar", "preferences"],
-    queryFn: () => fetchCalendarPreferences(),
+    queryFn: () => calendarService.fetchCalendarPreferences(),
   });
 }
 
@@ -12,7 +12,7 @@ export function useCalendarEventsQuery({ from, to, spaceId, boardId, holidayCoun
   return useQuery({
     queryKey: ["calendar", "events", from, to, spaceId, boardId, holidayCountry],
     queryFn: () =>
-      fetchCalendarEvents({
+      calendarService.fetchCalendarEvents({
         from,
         to,
         spaceId,

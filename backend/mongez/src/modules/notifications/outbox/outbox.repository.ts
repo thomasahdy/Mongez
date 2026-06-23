@@ -20,25 +20,57 @@ export class OutboxRepository {
         aggregateId: data.aggregateId,
         eventType: data.eventType,
         payload: data.payload,
+        status: 'PENDING',
       },
     });
   }
 
   /**
    * Used by the Relay Worker to fetch pending events.
+   * Employs "FOR UPDATE SKIP LOCKED" and atomically transitions status to "PROCESSING"
+   * to guarantee horizontal scaling safety across multiple API servers.
    */
-  async getUnprocessedEvents(limit: number = 100) {
-    return this.prisma.outboxEvent.findMany({
-      where: { processedAt: null },
-      orderBy: { createdAt: 'asc' },
-      take: limit,
-    });
+  async getUnprocessedEvents(limit: number = 100): Promise<any[]> {
+    return this.prisma.$queryRawUnsafe(
+      `UPDATE "outbox_events"
+       SET "status" = 'PROCESSING'::"OutboxStatus"
+       WHERE "id" IN (
+         SELECT "id" FROM "outbox_events"
+         WHERE "status" = 'PENDING'::"OutboxStatus"
+         ORDER BY "createdAt" ASC
+         LIMIT $1
+         FOR UPDATE SKIP LOCKED
+       )
+       RETURNING *;`,
+      limit,
+    ) as Promise<any[]>;
   }
 
   async markAsProcessed(id: string) {
     return this.prisma.outboxEvent.update({
       where: { id },
-      data: { processedAt: new Date() },
+      data: {
+        status: 'COMPLETED',
+        processedAt: new Date(),
+      },
+    });
+  }
+
+  async markAsFailed(id: string) {
+    return this.prisma.outboxEvent.update({
+      where: { id },
+      data: {
+        status: 'FAILED',
+      },
+    });
+  }
+
+  async revertToPending(id: string) {
+    return this.prisma.outboxEvent.update({
+      where: { id },
+      data: {
+        status: 'PENDING',
+      },
     });
   }
 }

@@ -7,6 +7,32 @@ import {
   useResetTokenVerificationQuery,
 } from "../../hooks/useAuthQueries";
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
+}
+
+function getPasswordIssues(password, confirmPassword) {
+  const issues = [];
+
+  if (password.length < 8) {
+    issues.push("Use at least 8 characters.");
+  }
+
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password)) {
+    issues.push("Use both uppercase and lowercase letters.");
+  }
+
+  if (!/\d/.test(password)) {
+    issues.push("Include at least one number.");
+  }
+
+  if (confirmPassword && password !== confirmPassword) {
+    issues.push("Passwords do not match.");
+  }
+
+  return issues;
+}
+
 function StrengthHint({ password }) {
   const checks = [
     { label: "8+ characters", valid: password.length >= 8 },
@@ -47,6 +73,8 @@ export default function ResetPasswordPage() {
   const submitting = forgotPasswordMutation.isPending || resetPasswordMutation.isPending;
   const tokenChecking = mode === "reset" ? tokenVerificationQuery.isLoading : false;
   const tokenValid = mode === "request" || tokenVerificationQuery.isSuccess;
+  const passwordIssues = getPasswordIssues(password, confirmPassword);
+  const trimmedEmail = email.trim();
 
   useEffect(() => {
     if (tokenVerificationQuery.isError) {
@@ -68,11 +96,17 @@ export default function ResetPasswordPage() {
 
   const handleRequestReset = async (event) => {
     event.preventDefault();
+
+    if (!isValidEmail(trimmedEmail)) {
+      setError("Enter a valid email address to receive a reset link.");
+      return;
+    }
+
     setError("");
     setSuccess("");
 
     try {
-      const result = await forgotPasswordMutation.mutateAsync(email.trim());
+      const result = await forgotPasswordMutation.mutateAsync(trimmedEmail);
       setSuccess(result.message || "If the account exists, a reset link has been sent.");
     } catch (requestError) {
       setError(requestError.message || "Unable to send the reset email.");
@@ -82,8 +116,8 @@ export default function ResetPasswordPage() {
   const handleResetPassword = async (event) => {
     event.preventDefault();
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+    if (passwordIssues.length > 0) {
+      setError(passwordIssues[0]);
       return;
     }
 
@@ -104,7 +138,8 @@ export default function ResetPasswordPage() {
     }
   };
 
-  const canSubmitReset = tokenValid && !tokenChecking && password && confirmPassword;
+  const canSubmitRequest = !submitting && isValidEmail(trimmedEmail);
+  const canSubmitReset = tokenValid && !tokenChecking && password && confirmPassword && passwordIssues.length === 0;
 
   return (
     <div className="auth-page">
@@ -162,9 +197,12 @@ export default function ResetPasswordPage() {
                 </span>
               </label>
 
-              <button type="submit" className="auth-primary-button" disabled={submitting}>
+              <button type="submit" className="auth-primary-button" disabled={!canSubmitRequest}>
                 <span>{submitting ? "Sending..." : "Send reset link"}</span>
               </button>
+              {!trimmedEmail || canSubmitRequest ? null : (
+                <p className="text-xs text-rose-600">Enter a valid work email before sending the reset link.</p>
+              )}
             </form>
           )}
 
@@ -207,12 +245,29 @@ export default function ResetPasswordPage() {
                   </label>
 
                   <StrengthHint password={password} />
+                  {passwordIssues.length > 0 ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                      {passwordIssues[0]}
+                    </div>
+                  ) : null}
 
                   <button type="submit" className="auth-primary-button" disabled={submitting || !canSubmitReset}>
                     <span>{submitting ? "Updating..." : "Update password"}</span>
                   </button>
                 </form>
-              ) : null}
+              ) : (
+                <div className="grid gap-3">
+                  <NavLink
+                    to="/reset-password"
+                    className="auth-primary-button text-center"
+                  >
+                    Request a new reset link
+                  </NavLink>
+                  <p className="text-xs text-slate-500">
+                    Reset links can expire or become invalid after use. Requesting a fresh email is the safest recovery path.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -230,7 +285,7 @@ export default function ResetPasswordPage() {
             </p>
             {mode === "reset" ? (
               <p>
-                Need a fresh link? <NavLink to="/forgot-password">Request another reset email</NavLink>
+                Need a fresh link? <NavLink to="/reset-password">Request another reset email</NavLink>
               </p>
             ) : null}
           </div>

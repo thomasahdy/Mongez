@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
-import {
-  extractTextFromPayload,
-} from "../../lib/aiApi";
 import { useAppContext } from "../AppContext";
 import {
   useAiActionReviewMutation,
@@ -14,11 +11,13 @@ import {
   useAiRiskMutation,
   useAiStreamingMutation,
 } from "../../hooks/useAiQueries";
+import { extractTextFromPayload } from "../../utils/extractTextFromPayload";
 
 const STORAGE_KEYS = {
   context: "mongez.ai.context",
   sessions: "mongez.ai.sessions",
 };
+const MAX_COMPOSER_LENGTH = 4000;
 
 function buildQuickPrompts(spaceName, boardName) {
   const workspaceLabel = spaceName || "the active workspace";
@@ -75,6 +74,18 @@ const welcomeMessage = {
 
 function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function canRunEndpointAction(actionKey, contextValues) {
+  if (actionKey === "task") {
+    return Boolean(contextValues.spaceId.trim() && contextValues.taskId.trim());
+  }
+
+  if (actionKey === "board" || actionKey === "report") {
+    return Boolean(contextValues.spaceId.trim());
+  }
+
+  return true;
 }
 
 function readJsonStorage(key, fallbackValue) {
@@ -566,6 +577,7 @@ function AiAssistantPage() {
   const feedError = feedQuery.isError ? (feedQuery.error?.message || "Failed to load the AI feed.") : "";
   const availableContext = useMemo(() => normalizeContextOptions(contextQuery.data), [contextQuery.data]);
   const contextLoadError = contextQuery.isError ? (contextQuery.error?.message || "Unable to load AI context.") : "";
+  const composerRemaining = MAX_COMPOSER_LENGTH - composer.length;
 
   useEffect(() => {
     setContextValues((current) => {
@@ -583,6 +595,10 @@ function AiAssistantPage() {
       };
     });
   }, [activeSpace?.id, activeBoard?.id, spaces]);
+
+  useEffect(() => {
+    setSelectedContext((current) => current.filter((item) => availableContext.some((contextItem) => contextItem.id === item)));
+  }, [availableContext]);
 
   useEffect(() => {
     setPath?.([
@@ -695,6 +711,11 @@ function AiAssistantPage() {
     const trimmedPrompt = prompt.trim();
 
     if (!trimmedPrompt || isStreaming) {
+      return;
+    }
+
+    if (trimmedPrompt.length > MAX_COMPOSER_LENGTH) {
+      setPageError(`Messages are limited to ${MAX_COMPOSER_LENGTH} characters.`);
       return;
     }
 
@@ -1106,7 +1127,7 @@ function AiAssistantPage() {
                   key={action.key}
                   type="button"
                   onClick={() => void runAction(action.key)}
-                  disabled={Boolean(activeActionKey) || isStreaming}
+                  disabled={Boolean(activeActionKey) || isStreaming || !canRunEndpointAction(action.key, contextValues)}
                   className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-[12px] font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                   title={action.helper}
                 >
@@ -1140,7 +1161,7 @@ function AiAssistantPage() {
 
                     {isUser && (
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-500 text-[12px] font-bold text-white shadow-[0_12px_30px_rgba(14,165,233,0.18)]">
-                        {(user?.name || user?.email || "U").slice(0, 2).toUpperCase()}
+                        {(user?.name || user?.fullName || user?.email || "U").slice(0, 2).toUpperCase()}
                       </div>
                     )}
                   </div>
@@ -1165,7 +1186,10 @@ function AiAssistantPage() {
                     ref={textareaRef}
                     rows={1}
                     value={composer}
-                    onChange={(event) => setComposer(event.target.value)}
+                    onChange={(event) => {
+                      setComposer(event.target.value.slice(0, MAX_COMPOSER_LENGTH));
+                      setPageError("");
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
@@ -1189,6 +1213,7 @@ function AiAssistantPage() {
                     <button
                       type="button"
                       onClick={handleSubmit}
+                      disabled={!composer.trim()}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-500 text-white transition-colors hover:bg-sky-600"
                       aria-label="Send message"
                     >
@@ -1198,6 +1223,9 @@ function AiAssistantPage() {
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
+                  <span className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ${composerRemaining < 300 ? "bg-amber-100 text-amber-700" : "bg-white text-slate-500"}`}>
+                    {composer.length}/{MAX_COMPOSER_LENGTH}
+                  </span>
                   <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500">
                     spaceId: {contextValues.spaceId || "not set"}
                   </span>

@@ -28,6 +28,8 @@ export default function TableView() {
   const [statusFilter, setStatusFilter] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'title', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
+  const [createError, setCreateError] = useState('');
+  const [createSuccess, setCreateSuccess] = useState('');
   const itemsPerPage = 10;
   const boardIdValue = boardId || activeBoard?.id;
   const filters = useMemo(
@@ -78,6 +80,12 @@ export default function TableView() {
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedTasks = sortedTasks;
 
+  useEffect(() => {
+    if (safeCurrentPage !== currentPage) {
+      setCurrentPage(safeCurrentPage);
+    }
+  }, [currentPage, safeCurrentPage]);
+
   const handleSort = (key) => {
     setSortConfig({
       key,
@@ -87,10 +95,13 @@ export default function TableView() {
 
   const createTask = async () => {
     if (!boardIdValue || !newTaskTitle.trim()) {
+      setCreateError('Select a board and enter a task title before creating a task.');
       return;
     }
 
     try {
+      setCreateError('');
+      setCreateSuccess('');
       const boardContext = board;
       if (!boardContext) {
         throw new Error('Board details are still loading.');
@@ -103,9 +114,9 @@ export default function TableView() {
       await tableQuery.refetch();
       setCurrentPage(1);
       setNewTaskTitle('');
+      setCreateSuccess('Task created successfully.');
     } catch (createError) {
-      // The page already renders query errors, so we keep creation failures lightweight here.
-      console.error(createError);
+      setCreateError(createError.message || 'Unable to create the task.');
     }
   };
 
@@ -147,6 +158,18 @@ export default function TableView() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setCreateError('');
+                setCreateSuccess('');
+                void tableQuery.refetch();
+              }}
+              disabled={loading || !boardIdValue}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
             <input
               value={search}
               onChange={(event) => {
@@ -184,13 +207,15 @@ export default function TableView() {
             <button
               type="button"
               onClick={() => void createTask()}
-              disabled={creating || !newTaskTitle.trim()}
+              disabled={creating || !newTaskTitle.trim() || !boardIdValue}
               className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {creating ? 'Creating...' : 'Create Task'}
             </button>
           </div>
         </div>
+        {createError ? <p className="mt-3 text-xs font-medium text-rose-600">{createError}</p> : null}
+        {createSuccess ? <p className="mt-3 text-xs font-medium text-emerald-600">{createSuccess}</p> : null}
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -294,7 +319,9 @@ export default function TableView() {
 
               {tasks.length === 0 && !loading && (
                 <div className="flex h-full items-center justify-center">
-                  <p className="text-slate-400">No tasks found</p>
+                  <p className="text-slate-400">
+                    {search || statusFilter ? 'No tasks matched the current search or status filter.' : 'No tasks found'}
+                  </p>
                 </div>
               )}
             </div>

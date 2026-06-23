@@ -13,6 +13,13 @@ export default function BillingPage() {
   const billingQuery = useBillingQuery(spaceId);
   const billingInfo = billingQuery.data || null;
   const loading = billingQuery.isLoading || billingQuery.isFetching;
+  const hasBillingSections = Boolean(
+    billingInfo &&
+      (Object.keys(billingInfo.usageStats || {}).length ||
+        Object.keys(billingInfo.aiUsage || {}).length ||
+        Object.keys(billingInfo.currentPlan?.limits || {}).length ||
+        billingInfo.currentPlan?.features?.length),
+  );
 
   useEffect(() => {
     setPath?.([
@@ -71,11 +78,24 @@ export default function BillingPage() {
     <div className="h-full overflow-y-auto bg-slate-50 p-5">
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Subscription</p>
-          <h1 className="mt-2 text-3xl font-black tracking-[-0.05em] text-slate-950">Billing</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            This page only shows data exposed by the current backend billing and analytics APIs.
-          </p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Subscription</p>
+              <h1 className="mt-2 text-3xl font-black tracking-[-0.05em] text-slate-950">Billing</h1>
+              <p className="mt-2 text-sm text-slate-500">
+                This page only shows data exposed by the current backend billing and analytics APIs.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => billingQuery.refetch()}
+              disabled={loading || !spaceId}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:border-sky-200 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Refreshing..." : "Refresh billing"}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -83,6 +103,12 @@ export default function BillingPage() {
             {error}
           </div>
         )}
+
+        {!error && spaceId && !loading && billingInfo && !hasBillingSections ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-5 text-sm text-slate-500">
+            Billing endpoints responded, but this workspace does not have plan, usage, or AI billing metadata yet.
+          </div>
+        ) : null}
 
         {billingInfo && (
           <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">

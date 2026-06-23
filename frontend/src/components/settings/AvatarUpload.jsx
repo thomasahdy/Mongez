@@ -43,7 +43,12 @@ const AvatarUpload = ({ initials = "TH", src, onFileSelect, onRemove }) => {
         <Button variant="outline" size="md" onClick={() => fileRef.current?.click()}>
           Upload Avatar
         </Button>
-        <Button variant="danger-ghost" size="md" onClick={onRemove}>
+        <Button
+          variant="ghost"
+          size="md"
+          onClick={onRemove}
+          className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20"
+        >
           Remove
         </Button>
       </div>

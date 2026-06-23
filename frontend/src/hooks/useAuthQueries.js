@@ -1,8 +1,12 @@
+import { useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import authService from "../services/auth.service";
+import { useDispatch } from "react-redux";
+import authService from "../services/api/authService";
+import { clearAuthState, setAuthSession } from "../store/auth/authSlice";
 
 export function useAuthSessionQuery({ bypassAuth = false } = {}) {
-  return useQuery({
+  const dispatch = useDispatch();
+  const query = useQuery({
     queryKey: ["auth", "session", bypassAuth],
     queryFn: async () => {
       if (bypassAuth) {
@@ -27,6 +31,24 @@ export function useAuthSessionQuery({ bypassAuth = false } = {}) {
     },
     staleTime: 60 * 1000,
   });
+
+  useEffect(() => {
+    if (query.data) {
+      dispatch(
+        setAuthSession({
+          user: query.data.profile,
+          isAuthenticated: query.data.isAuthenticated,
+        }),
+      );
+      return;
+    }
+
+    if (query.isError) {
+      dispatch(clearAuthState());
+    }
+  }, [dispatch, query.data, query.isError]);
+
+  return query;
 }
 
 export function useResetTokenVerificationQuery(token) {
@@ -46,8 +68,7 @@ export function useForgotPasswordMutation() {
 
 export function useResetPasswordMutation() {
   return useMutation({
-    mutationFn: ({ token, password, confirmPassword }) =>
-      authService.resetPassword(token, password, confirmPassword),
+    mutationFn: (payload) => authService.resetPassword(payload),
   });
 }
 

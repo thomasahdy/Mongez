@@ -1,22 +1,9 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { getSpaceBilling } from "../lib/billingApi";
-import { fetchCalendarEvents } from "../lib/calendarApi";
-import {
-  createBoardTask,
-  getApproverPerformance,
-  getBoard,
-  getBoardTasks,
-  getBoardTasksPage,
-  getDashboardActivity,
-  getDashboardPriorityBreakdown,
-  getDashboardStats,
-  getDashboardTaskCompletion,
-  getDashboardTeamLoad,
-  getExecutiveMetrics,
-  getSlaMetrics,
-  getWorkflowAnalytics,
-} from "../lib/pageApi";
-import { normalizeTaskList } from "../lib/taskMappers";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import billingService from "../services/api/billingService";
+import calendarService from "../services/api/calendarService";
+import analyticsService from "../services/api/analyticsService";
+import boardsService from "../services/api/boardsService";
+import tasksService from "../services/api/tasksService";
 
 function normalizeCalendarItems(payload) {
   if (Array.isArray(payload)) {
@@ -41,7 +28,7 @@ function normalizeCalendarItems(payload) {
 export function useBillingQuery(spaceId) {
   return useQuery({
     queryKey: ["dashboard", "billing", spaceId],
-    queryFn: () => getSpaceBilling(spaceId),
+    queryFn: () => billingService.getSpaceBilling(spaceId),
     enabled: Boolean(spaceId),
   });
 }
@@ -61,15 +48,15 @@ export function useDashboardAnalyticsQuery(spaceId) {
         workflowAnalytics,
         approverPerformance,
       ] = await Promise.all([
-        getDashboardStats(spaceId),
-        getDashboardActivity(spaceId),
-        getDashboardTaskCompletion(spaceId),
-        getDashboardPriorityBreakdown(spaceId),
-        getDashboardTeamLoad(spaceId),
-        getExecutiveMetrics(spaceId).catch(() => ({})),
-        getSlaMetrics(spaceId).catch(() => ({})),
-        getWorkflowAnalytics(spaceId).catch(() => ({})),
-        getApproverPerformance(spaceId).catch(() => []),
+        analyticsService.getDashboardStats(spaceId),
+        analyticsService.getDashboardActivity(spaceId),
+        analyticsService.getDashboardTaskCompletion(spaceId),
+        analyticsService.getDashboardPriorityBreakdown(spaceId),
+        analyticsService.getDashboardTeamLoad(spaceId),
+        analyticsService.getExecutiveMetrics(spaceId).catch(() => ({})),
+        analyticsService.getSlaMetrics(spaceId).catch(() => ({})),
+        analyticsService.getWorkflowAnalytics(spaceId).catch(() => ({})),
+        analyticsService.getApproverPerformance(spaceId).catch(() => []),
       ]);
 
       return {
@@ -93,8 +80,8 @@ export function useBoardTableQuery(boardId, filters) {
     queryKey: ["board", "table", boardId, filters],
     queryFn: async () => {
       const [board, pagedTasks] = await Promise.all([
-        getBoard(boardId),
-        getBoardTasksPage(boardId, filters),
+        boardsService.getBoard(boardId),
+        tasksService.getBoardTasksPage(boardId, filters),
       ]);
 
       return {
@@ -107,8 +94,15 @@ export function useBoardTableQuery(boardId, filters) {
 }
 
 export function useCreateBoardTaskMutation() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ board, taskData }) => createBoardTask(board, taskData),
+    mutationFn: ({ board, taskData }) => tasksService.createBoardTask(board, taskData),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["board", "table", variables.board?.id] });
+      queryClient.invalidateQueries({ queryKey: ["board", "tasks", variables.board?.id] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
   });
 }
 
@@ -117,9 +111,9 @@ export function useTimelineQuery({ boardId, spaceId, startDate, endDate }) {
     queryKey: ["board", "timeline", boardId, spaceId, startDate, endDate],
     queryFn: async () => {
       const [taskPayload, calendarPayload] = await Promise.all([
-        getBoardTasks(boardId),
+        tasksService.getBoardTasks(boardId),
         spaceId
-          ? fetchCalendarEvents({
+          ? calendarService.fetchCalendarEvents({
               spaceId,
               startDate,
               endDate,
@@ -129,7 +123,7 @@ export function useTimelineQuery({ boardId, spaceId, startDate, endDate }) {
       ]);
 
       return {
-        tasks: Array.isArray(taskPayload) ? taskPayload : normalizeTaskList(taskPayload),
+        tasks: Array.isArray(taskPayload) ? taskPayload : [],
         calendarEvents: normalizeCalendarItems(calendarPayload),
       };
     },

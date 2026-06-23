@@ -71,6 +71,9 @@ describe('NotificationProcessor', () => {
       userPreference: {
         findUnique: jest.fn().mockResolvedValue({ language: 'en' }),
       },
+      user: {
+        findUnique: jest.fn().mockImplementation(({ where }) => Promise.resolve({ id: where.id })),
+      },
     } as any;
 
     notificationQueue = {

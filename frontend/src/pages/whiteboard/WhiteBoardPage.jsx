@@ -1,19 +1,29 @@
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
 import { useAppContext } from "../AppContext";
 import { formatSavedAt, useWhiteboardScene } from "../../hooks/useWhiteboardScene";
+
+const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+
+function getSafeAppState(appState) {
+  const safeAppState = appState && typeof appState === "object" ? { ...appState } : {};
+  safeAppState.collaborators = new Map();
+  return safeAppState;
+}
 
 export default function WhiteBoardPage() {
   const { setPath } = useOutletContext() || {};
   const { activeBoard } = useAppContext();
   const fileInputRef = useRef(null);
   const excalidrawApiRef = useRef(null);
+  const [isImporting, setIsImporting] = useState(false);
   const {
     storageKey,
     loadedScene,
     lastSavedAt,
+    setLastSavedAt,
     statusMessage,
     setStatusMessage,
     latestSceneRef,
@@ -42,6 +52,12 @@ export default function WhiteBoardPage() {
     ]);
   }, [setPath, activeBoard?.name]);
 
+  useEffect(() => {
+    if (!activeBoard?.id) {
+      setStatusMessage("No active board selected. A local fallback whiteboard is active in this browser.");
+    }
+  }, [activeBoard?.id, setStatusMessage]);
+
   const handleSceneChange = useCallback(
     (elements, appState, files) => {
       persistScene(elements, appState, files);
@@ -54,6 +70,11 @@ export default function WhiteBoardPage() {
   }, []);
 
   const handleExportJson = () => {
+    if (!latestSceneRef.current) {
+      setStatusMessage("Nothing is loaded to export yet.");
+      return;
+    }
+
     const payload = {
       ...latestSceneRef.current,
       updatedAt: latestSavedAtRef.current || new Date().toISOString(),
@@ -72,6 +93,10 @@ export default function WhiteBoardPage() {
   };
 
   const handleClearBoard = () => {
+    if (!window.confirm("Reset the current whiteboard? This removes the local snapshot for this board in this browser.")) {
+      return;
+    }
+
     const emptyScene = resetScene();
     excalidrawApiRef.current?.updateScene(emptyScene);
   };
@@ -87,9 +112,20 @@ export default function WhiteBoardPage() {
       return;
     }
 
+    if (file.size > MAX_IMPORT_BYTES) {
+      setStatusMessage("Import failed. Use a JSON export smaller than 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setIsImporting(true);
+
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed.elements)) {
+        throw new Error("Invalid scene payload.");
+      }
       const nextScene = {
         elements: Array.isArray(parsed.elements) ? parsed.elements : [],
         appState: {
@@ -107,6 +143,7 @@ export default function WhiteBoardPage() {
     } catch {
       setStatusMessage("Import failed. Use a valid exported whiteboard JSON file.");
     } finally {
+      setIsImporting(false);
       event.target.value = "";
     }
   };
@@ -130,9 +167,10 @@ export default function WhiteBoardPage() {
               <button
                 type="button"
                 onClick={handleImportClick}
+                disabled={isImporting}
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
               >
-                Import JSON
+                {isImporting ? "Importing..." : "Import JSON"}
               </button>
               <button
                 type="button"

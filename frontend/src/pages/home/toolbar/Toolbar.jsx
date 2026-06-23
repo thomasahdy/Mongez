@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { useAppContext } from "../../AppContext";
-import { createBoardTask, getBoard } from "../../../lib/pageApi";
+import { useBoard } from "../../../hooks/api/useBoards";
+import { useCreateBoardTaskMutation } from "../../../hooks/useDashboardQueries";
 
 function Toolbar() {
   const { boardId: routeBoardId } = useParams();
@@ -10,6 +11,8 @@ function Toolbar() {
   const [error, setError] = useState("");
 
   const boardId = routeBoardId || activeBoard?.id;
+  const boardQuery = useBoard(boardId);
+  const createTaskMutation = useCreateBoardTaskMutation();
   const boardName = useMemo(() => activeBoard?.name || "Board tools", [activeBoard?.name]);
 
   const handleCreateTask = async () => {
@@ -27,9 +30,12 @@ function Toolbar() {
     try {
       setCreating(true);
       setError("");
-      const board = await getBoard(boardId);
-      await createBoardTask(board, { title: title.trim() });
-      window.location.reload();
+      const board = boardQuery.data || activeBoard;
+      if (!board) {
+        throw new Error("Board details are still loading.");
+      }
+
+      await createTaskMutation.mutateAsync({ board, taskData: { title: title.trim() } });
     } catch (createError) {
       setError(createError.message || "Unable to create the task.");
     } finally {

@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { NavLink } from "react-router";
 import NavBreadcrumb from "./NavBreadcrumb";
-import { authService } from "../../services/auth.service";
+import { logout } from "../../services/api/authService";
 import { useAppContext } from "../../pages/AppContext";
 
 const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
@@ -18,62 +18,47 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
       .join("")
       .slice(0, 2)
       .toUpperCase();
-  }, [user]);
+  }, [user?.email, user?.name]);
 
   const handleLogout = async () => {
-    await authService.logout();
+    await logout();
     window.location.href = "/";
-  };
-
-  const handleShare = async () => {
-    const shareUrl = window.location.href;
-    if (navigator.share) {
-      await navigator.share({ title: document.title, url: shareUrl });
-      return;
-    }
-
-    await navigator.clipboard?.writeText(shareUrl);
   };
 
   return (
     <header className="workspace-navbar top-header">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className="action-btn px-2 lg:hidden"
-          aria-label="Open sidebar"
-        >
-          <i className="fa-solid fa-bars" />
-        </button>
+        {onToggleSidebar ? (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="action-btn px-2 lg:hidden"
+            aria-label="Open sidebar"
+          >
+            <i className="fa-solid fa-bars" />
+          </button>
+        ) : null}
         <NavBreadcrumb path={path} />
       </div>
 
       <div className="unified-search-bar" id="unifiedSearch">
-        <div
-          className="unified-search-wrapper"
-          data-focused={focused ? "true" : "false"}
-        >
+        <div className="unified-search-wrapper" data-focused={focused ? "true" : "false"}>
           <i className="fa-solid fa-magnifying-glass unified-search-icon" aria-hidden="true" />
           <i className="fa-solid fa-wand-magic-sparkles unified-ai-icon" aria-hidden="true" />
           <input
             type="search"
-            placeholder='Search or ask AI... "Show KPI summary" • "budget status"'
+            placeholder='Search or ask AI... "Show KPI summary" | "budget status"'
             className="unified-search-input"
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             aria-label="Search or ask AI"
           />
-          <span className="kbd-shortcut">⌘K</span>
+          <span className="kbd-shortcut">Ctrl K</span>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
         <div className="header-actions">
-          <button type="button" className="action-btn" onClick={handleShare}>
-            <i className="fa-solid fa-share-nodes" />
-            <span>Share</span>
-          </button>
           <button type="button" className="action-btn" onClick={onToggleAI}>
             <i className="fa-solid fa-robot" />
             <span>AI Agents</span>
@@ -96,7 +81,7 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
             {userInitials}
           </button>
 
-          {showUserMenu && (
+          {showUserMenu ? (
             <div className="absolute right-0 z-30 mt-2 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
               <NavLink
                 to="/spaces"
@@ -121,7 +106,7 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
                 Logout
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </header>

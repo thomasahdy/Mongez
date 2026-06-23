@@ -4,7 +4,7 @@ import AuthButton from "../shared/AuthButton";
 import AuthErrorMessage from "../shared/AuthErrorMessage";
 import AuthInput from "../shared/AuthInput";
 import PasswordInput from "../shared/PasswordInput";
-import authService from "../../../services/auth.service";
+import authService from "../../../services/api/authService";
 
 
 const LoginForm = () => {
@@ -53,8 +53,8 @@ const LoginForm = () => {
     setErrors((prev) => ({ ...prev, submit: "" }));
 
     try {
-      await authService.login(email, password);
-      window.location.href = "/dashboard";
+      await authService.login({ email, password });
+      window.location.href = "/spaces";
     } catch (error) {
       setErrors((prev) => ({
         ...prev,

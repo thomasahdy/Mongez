@@ -1,471 +1,442 @@
-import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import mongezMark from "../../assets/MongezMLogo.svg";
-import { useAppContext } from "../AppContext";
-import {
-  useOnboardingSetupMutation,
-  useOnboardingTemplatesQuery,
-} from "../../hooks/useOnboardingQueries";
+import { useOnboardingSetupMutation } from "../../hooks/useOnboardingQueries";
 
-const INDUSTRY_SUGGESTIONS = ["NGO", "Education", "Healthcare", "Government", "Technology", "Services"];
-const TEAM_SIZE_SUGGESTIONS = ["1-10", "11-50", "51-200", "201-500", "500+"];
-const DEFAULT_INVITE = { email: "", role: "MEMBER" };
+const ONBOARDING_STORAGE_KEY = "pendingOnboarding";
 
-function readPendingOnboarding() {
-  try {
-    const raw = window.localStorage.getItem("pendingOnboarding");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
+const INDUSTRIES = [
+  { value: "NGO", label: "Non-Governmental Organization (NGO)" },
+  { value: "CORP", label: "Corporation / Business" },
+  { value: "GOV", label: "Government / Public Sector" },
+  { value: "EDU", label: "Education / Academic" },
+];
 
-function normalizeInvites(invites) {
-  if (!Array.isArray(invites) || !invites.length) {
-    return [DEFAULT_INVITE];
-  }
+const SIZES = [
+  { value: "SMALL", label: "Small (1-10 members)" },
+  { value: "MEDIUM", label: "Medium (11-50 members)" },
+  { value: "LARGE", label: "Large (50+ members)" },
+];
 
-  return invites.map((invite) => ({
-    email: invite?.email || "",
-    role: String(invite?.role || "MEMBER").toUpperCase(),
-  }));
-}
-
-function countBoards(template) {
-  return Array.isArray(template?.departments)
-    ? template.departments.reduce((total, department) => total + (department?.boards?.length || 0), 0)
-    : 0;
-}
-
-function countColumns(template) {
-  if (!Array.isArray(template?.departments)) {
-    return 0;
-  }
-
-  return template.departments.reduce(
-    (total, department) =>
-      total +
-      (department?.boards || []).reduce((boardTotal, board) => boardTotal + (board?.columns?.length || 0), 0),
-    0,
-  );
-}
+const TEMPLATES = [
+  {
+    id: "project-board",
+    title: "Project Board",
+    description: "A standard Kanban board with To Do, In Progress, and Done columns for general task management.",
+    icon: "PB",
+  },
+  {
+    id: "ngo-operations",
+    title: "NGO Operations",
+    description: "Tailored for non-profits: track funding status, donation drives, outreach activities, and volunteer assignments.",
+    icon: "NG",
+  },
+  {
+    id: "blank",
+    title: "Blank Board",
+    description: "Start with a clean slate and configure columns, fields, and automation completely from scratch.",
+    icon: "BL",
+  },
+];
 
 export default function OnboardingPage() {
-  const { user, refreshApp } = useAppContext();
-  const pending = useMemo(() => readPendingOnboarding(), []);
+  const navigate = useNavigate();
+  const onboardingSetupMutation = useOnboardingSetupMutation();
+  const [step, setStep] = useState(1);
   const [error, setError] = useState("");
-  const [completionMessage, setCompletionMessage] = useState("");
-  const [organization, setOrganization] = useState(() => ({
-    name: pending?.organization?.name || "",
-    industry: pending?.organization?.industry || "",
-    size: pending?.organization?.size || "",
-    country: pending?.organization?.country || "",
-  }));
-  const [template, setTemplate] = useState(() => pending?.template || "");
-  const [invites, setInvites] = useState(() => normalizeInvites(pending?.invites));
-  const templatesQuery = useOnboardingTemplatesQuery();
-  const setupMutation = useOnboardingSetupMutation();
-  const templates = templatesQuery.data || [];
-  const loadingTemplates = templatesQuery.isLoading;
-  const submitting = setupMutation.isPending;
+
+  const [orgName, setOrgName] = useState("");
+  const [industry, setIndustry] = useState("NGO");
+  const [size, setSize] = useState("MEDIUM");
+  const [country, setCountry] = useState("EG");
+  const [selectedTemplate, setSelectedTemplate] = useState("project-board");
+  const [invites, setInvites] = useState([{ email: "", role: "MEMBER" }]);
 
   useEffect(() => {
-    if (templatesQuery.isError) {
-      setError(templatesQuery.error?.message || "Unable to load onboarding templates.");
+    try {
+      const rawPending = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
+      if (!rawPending) {
+        return;
+      }
+
+      const pending = JSON.parse(rawPending);
+      if (pending?.organization?.name) setOrgName(pending.organization.name);
+      if (pending?.organization?.industry) setIndustry(pending.organization.industry);
+      if (pending?.organization?.size) setSize(pending.organization.size);
+      if (pending?.organization?.country) setCountry(String(pending.organization.country).toUpperCase());
+      if (pending?.template) setSelectedTemplate(pending.template);
+      if (Array.isArray(pending?.invites) && pending.invites.length > 0) {
+        setInvites(
+          pending.invites.map((invite) => ({
+            email: invite.email || "",
+            role: String(invite.role || "MEMBER").toUpperCase(),
+          })),
+        );
+      }
+    } catch {
+      // Ignore stale onboarding cache.
     }
-  }, [templatesQuery.error?.message, templatesQuery.isError]);
+  }, []);
 
   useEffect(() => {
-    if (!templates.length) {
-      return;
+    try {
+      window.localStorage.setItem(
+        ONBOARDING_STORAGE_KEY,
+        JSON.stringify({
+          organization: {
+            name: orgName,
+            industry,
+            size,
+            country,
+          },
+          template: selectedTemplate,
+          invites,
+        }),
+      );
+    } catch {
+      // Ignore persistence issues and keep onboarding usable.
     }
+  }, [country, industry, invites, orgName, selectedTemplate, size]);
 
-    setTemplate((current) => (
-      current && templates.some((item) => item.id === current)
-        ? current
-        : templates[0]?.id || ""
-    ));
-  }, [templates]);
-
-  const selectedTemplate = useMemo(
-    () => templates.find((item) => item.id === template) || null,
-    [template, templates],
-  );
-
-  const primaryBoard = useMemo(
-    () => selectedTemplate?.departments?.[0]?.boards?.[0] || null,
-    [selectedTemplate],
-  );
-
-  const handleInviteChange = (index, field, value) => {
-    setInvites((current) => current.map((invite, inviteIndex) => (
-      inviteIndex === index ? { ...invite, [field]: value } : invite
-    )));
-  };
+  const loading = onboardingSetupMutation.isPending;
+  const trimmedOrgName = orgName.trim();
+  const normalizedCountry = country.trim().toUpperCase();
+  const normalizedInvites = invites
+    .map((invite) => ({
+      email: invite.email.trim().toLowerCase(),
+      role: String(invite.role || "MEMBER").toUpperCase(),
+    }))
+    .filter((invite) => invite.email !== "");
+  const duplicateInviteEmail = normalizedInvites.find(
+    (invite, index) => normalizedInvites.findIndex((item) => item.email === invite.email) !== index,
+  )?.email;
 
   const handleAddInvite = () => {
-    setInvites((current) => [...current, DEFAULT_INVITE]);
+    setInvites((current) => [...current, { email: "", role: "MEMBER" }]);
+  };
+
+  const handleInviteChange = (index, field, value) => {
+    setInvites((current) =>
+      current.map((invite, currentIndex) =>
+        currentIndex === index ? { ...invite, [field]: value } : invite,
+      ),
+    );
   };
 
   const handleRemoveInvite = (index) => {
-    setInvites((current) => (
-      current.length === 1
-        ? [DEFAULT_INVITE]
-        : current.filter((_, inviteIndex) => inviteIndex !== index)
-    ));
+    setInvites((current) => current.filter((_, currentIndex) => currentIndex !== index));
+  };
+
+  const handleNextStep = () => {
+    if (step === 1 && trimmedOrgName.length < 3) {
+      setError("Organization name must be at least 3 characters long.");
+      return;
+    }
+
+    if (step === 1 && !/^[A-Z]{2}$/.test(normalizedCountry)) {
+      setError("Country must use a 2-letter ISO code like EG, US, or GB.");
+      return;
+    }
+
+    if (step === 3 && duplicateInviteEmail) {
+      setError(`Remove the duplicate invite for ${duplicateInviteEmail}.`);
+      return;
+    }
+
+    setError("");
+    setStep((current) => current + 1);
+  };
+
+  const handlePrevStep = () => {
+    setError("");
+    setStep((current) => current - 1);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError("");
-    setCompletionMessage("");
 
-    const cleanInvites = invites
-      .map((invite) => ({
-        email: invite.email.trim(),
-        role: invite.role || "MEMBER",
-      }))
-      .filter((invite) => invite.email);
+    if (trimmedOrgName.length < 3) {
+      setStep(1);
+      setError("Organization name must be at least 3 characters long.");
+      return;
+    }
+
+    if (!/^[A-Z]{2}$/.test(normalizedCountry)) {
+      setStep(1);
+      setError("Country must use a 2-letter ISO code like EG, US, or GB.");
+      return;
+    }
+
+    if (duplicateInviteEmail) {
+      setStep(3);
+      setError(`Remove the duplicate invite for ${duplicateInviteEmail}.`);
+      return;
+    }
+
+    const invalidInvite = normalizedInvites.find((invite) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(invite.email));
+    if (invalidInvite) {
+      setStep(3);
+      setError(`Fix the invalid invite email: ${invalidInvite.email}.`);
+      return;
+    }
+
+    setError("");
 
     try {
-      const createdSpace = await setupMutation.mutateAsync({
-        organization,
-        template,
-        invites: cleanInvites,
+      await onboardingSetupMutation.mutateAsync({
+        organization: {
+          name: trimmedOrgName,
+          industry,
+          size,
+          country: normalizedCountry,
+        },
+        template: selectedTemplate,
+        invites: normalizedInvites,
       });
 
-      const createdSpaceId = createdSpace?.id || "";
-      const firstBoardId = createdSpace?.departments?.[0]?.boards?.[0]?.id || "";
-
-      window.localStorage.setItem("mongez.activeSpaceId", createdSpaceId);
-
-      if (firstBoardId) {
-        window.localStorage.setItem("mongez.activeBoardId", firstBoardId);
-      }
-
-      window.localStorage.removeItem("pendingOnboarding");
-      setCompletionMessage(cleanInvites.length ? "Workspace created and invitations sent." : "Workspace created successfully.");
-      await refreshApp?.();
-      window.location.href = "/dashboard";
-    } catch (submitError) {
-      setError(submitError.message || "Unable to complete onboarding.");
+      window.localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+      navigate("/spaces", { replace: true });
+    } catch (requestError) {
+      setError(requestError.message || "Onboarding failed. Please try again.");
     }
   };
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.12),_transparent_36%),linear-gradient(180deg,_#f8fafc_0%,_#eef6ff_100%)]">
-      <div className="mx-auto max-w-[1120px] px-6 py-6">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <img src={mongezMark} alt="" className="h-10 w-10" />
-            <div>
-              <div className="text-[20px] font-extrabold tracking-[-0.03em] text-slate-900">Mongez</div>
-              <div className="text-[12px] font-medium text-slate-500">Finalize your real workspace setup</div>
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans">
+      <header className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-950">
+        <div className="flex items-center gap-2.5">
+          <img src={mongezMark} alt="" className="w-8 h-8" />
+          <span className="text-lg font-bold tracking-tight">Mongez</span>
+        </div>
+        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Step {step} of 3</div>
+      </header>
+
+      <main className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-8 relative overflow-hidden animate-fadeIn">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-400 to-indigo-500" />
+
+          {error && (
+            <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-sm">
+              {error}
             </div>
+          )}
+
+          <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+            Your onboarding draft is saved locally in this browser so you can safely refresh and continue.
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              window.location.href = "/dashboard";
-            }}
-            className="text-left text-[13px] font-semibold text-slate-400 transition hover:text-slate-900 sm:text-right"
-          >
-            Skip for now
-          </button>
-        </header>
-
-        <div className="mx-auto mt-8 max-w-[720px] rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1.1fr_0.9fr]">
-            <section>
-              <div className="mb-8">
-                <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-[22px] text-sky-600">
-                  <i className="fa-solid fa-building" aria-hidden="true" />
-                </div>
-                <p className="mb-2 text-xs font-black uppercase tracking-[0.24em] text-sky-500">Onboarding</p>
-                <h1 className="text-[30px] font-black tracking-[-0.04em] text-slate-900">
-                  Welcome, {user.name || user.email}
-                </h1>
-                <p className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-500">
-                  Configure your workspace from the real onboarding templates already exposed by the platform, then invite your first team members without relying on placeholder data.
-                </p>
-              </div>
-
-              <div className="mb-6 grid gap-3 sm:grid-cols-4">
-                {[
-                  { label: "Workspace", detail: "Name and region" },
-                  { label: "Template", detail: "Live backend catalog" },
-                  { label: "Team", detail: "Real invitations" },
-                  { label: "Launch", detail: "Open dashboard" },
-                ].map((step, index) => (
-                  <div key={step.label} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Step {index + 1}</div>
-                    <div className="mt-1 text-sm font-bold text-slate-800">{step.label}</div>
-                    <div className="mt-1 text-xs text-slate-500">{step.detail}</div>
-                  </div>
-                ))}
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {step === 1 && (
+              <div className="space-y-5 animate-slideLeft">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Organization name</label>
-                  <input
-                    value={organization.name}
-                    onChange={(event) => setOrganization((current) => ({ ...current, name: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-                    placeholder="Al Noor Foundation"
-                    required
-                  />
+                  <h2 className="text-2xl font-extrabold tracking-tight">Create your workspace</h2>
+                  <p className="text-sm text-slate-500 mt-1">Set up a space for your team's projects and boards.</p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-4">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Industry</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="orgName">
+                      Organization Name *
+                    </label>
                     <input
-                      list="industry-suggestions"
-                      value={organization.industry}
-                      onChange={(event) => setOrganization((current) => ({ ...current, industry: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-                      placeholder="NGO"
+                      id="orgName"
+                      type="text"
+                      required
+                      placeholder="e.g. Acme Corporation, Hope NGO"
+                      value={orgName}
+                      onChange={(event) => setOrgName(event.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm"
                     />
-                    <datalist id="industry-suggestions">
-                      {INDUSTRY_SUGGESTIONS.map((option) => (
-                        <option key={option} value={option} />
-                      ))}
-                    </datalist>
                   </div>
 
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Team size</label>
-                    <input
-                      list="team-size-suggestions"
-                      value={organization.size}
-                      onChange={(event) => setOrganization((current) => ({ ...current, size: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-                      placeholder="11-50"
-                    />
-                    <datalist id="team-size-suggestions">
-                      {TEAM_SIZE_SUGGESTIONS.map((option) => (
-                        <option key={option} value={option} />
-                      ))}
-                    </datalist>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">Country or region</label>
-                  <input
-                    value={organization.country}
-                    onChange={(event) => setOrganization((current) => ({ ...current, country: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
-                    placeholder="Egypt"
-                  />
-                </div>
-
-                <div>
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <label className="block text-sm font-semibold text-slate-700">Workspace template</label>
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                      API-backed options
-                    </span>
-                  </div>
-
-                  {loadingTemplates ? (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                      Loading templates...
-                    </div>
-                  ) : (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {templates.map((item) => {
-                        const selected = item.id === template;
-
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => setTemplate(item.id)}
-                            className={`rounded-3xl border p-4 text-left transition ${
-                              selected
-                                ? "border-sky-400 bg-sky-50 shadow-sm"
-                                : "border-slate-200 bg-white hover:border-sky-200"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="text-sm font-bold text-slate-900">{item.name}</div>
-                              {selected ? (
-                                <span className="rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
-                                  Selected
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="mt-2 text-xs leading-5 text-slate-500">{item.description}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <h2 className="text-sm font-black uppercase tracking-wide text-slate-700">Initial invites</h2>
-                      <p className="mt-1 text-xs text-slate-500">These are sent through the real onboarding payload, not a mock step.</p>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="industry">
+                        Industry
+                      </label>
+                      <select
+                        id="industry"
+                        value={industry}
+                        onChange={(event) => setIndustry(event.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-sky-400 outline-none text-sm"
+                      >
+                        {INDUSTRIES.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleAddInvite}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:border-sky-200 hover:text-sky-600"
-                    >
-                      Add teammate
-                    </button>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="size">
+                        Organization Size
+                      </label>
+                      <select
+                        id="size"
+                        value={size}
+                        onChange={(event) => setSize(event.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-sky-400 outline-none text-sm"
+                      >
+                        {SIZES.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
-                  <div className="space-y-3">
-                    {invites.map((invite, index) => (
-                      <div key={`${index}-${invite.email}`} className="grid gap-3 sm:grid-cols-[1fr_140px_auto]">
-                        <input
-                          type="email"
-                          value={invite.email}
-                          onChange={(event) => handleInviteChange(index, "email", event.target.value)}
-                          placeholder="teammate@company.com"
-                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400"
-                        />
-                        <select
-                          value={invite.role}
-                          onChange={(event) => handleInviteChange(index, "role", event.target.value)}
-                          className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400"
-                        >
-                          <option value="MEMBER">Member</option>
-                          <option value="ADMIN">Admin</option>
-                        </select>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="country">
+                      Country Location (2-letter ISO)
+                    </label>
+                    <input
+                      id="country"
+                      type="text"
+                      maxLength={2}
+                      placeholder="e.g. EG, US, GB"
+                      value={country}
+                      onChange={(event) => setCountry(event.target.value.toUpperCase())}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm font-semibold tracking-wide"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white font-bold hover:shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-60"
+                    disabled={loading}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-5 animate-slideLeft">
+                <div>
+                  <h2 className="text-2xl font-extrabold tracking-tight">Choose a template</h2>
+                  <p className="text-sm text-slate-500 mt-1">Select a starting board configuration for your team.</p>
+                </div>
+
+                <div className="space-y-3.5">
+                  {TEMPLATES.map((template) => (
+                    <div
+                      key={template.id}
+                      onClick={() => setSelectedTemplate(template.id)}
+                      className={`p-4 rounded-xl border transition-all duration-150 cursor-pointer flex gap-4 items-start ${
+                        selectedTemplate === template.id
+                          ? "border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20 shadow-md ring-2 ring-indigo-500/20"
+                          : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-900/50"
+                      }`}
+                    >
+                      <span className="text-sm font-black tracking-[0.16em] p-1 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-center shrink-0 w-12 h-12">
+                        {template.icon}
+                      </span>
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-sm">{template.title}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{template.description}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="flex-1 py-3.5 rounded-xl border border-slate-200 dark:border-slate-800 font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition text-sm cursor-pointer"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white font-bold hover:shadow-lg transition duration-200 text-sm cursor-pointer"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-5 animate-slideLeft">
+                <div>
+                  <h2 className="text-2xl font-extrabold tracking-tight">Invite your team</h2>
+                  <p className="text-sm text-slate-500 mt-1">Add coworkers to collaborate on projects. You can also skip this for now.</p>
+                </div>
+
+                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                  {invites.map((invite, index) => (
+                    <div key={index} className="flex gap-2 items-center animate-fadeIn">
+                      <input
+                        type="email"
+                        placeholder="coworker@email.com"
+                        value={invite.email}
+                        onChange={(event) => handleInviteChange(index, "email", event.target.value)}
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent outline-none focus:ring-2 focus:ring-sky-400 text-sm"
+                      />
+                      <select
+                        value={invite.role}
+                        onChange={(event) => handleInviteChange(index, "role", event.target.value)}
+                        className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm"
+                      >
+                        <option value="MEMBER">Member</option>
+                        <option value="ADMIN">Admin</option>
+                        <option value="VIEWER">Viewer</option>
+                      </select>
+                      {invites.length > 1 && (
                         <button
                           type="button"
                           onClick={() => handleRemoveInvite(index)}
-                          className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
+                          className="p-2.5 text-slate-400 hover:text-red-500 transition rounded-lg"
                         >
-                          Remove
+                          x
                         </button>
-                      </div>
-                    ))}
-                  </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-
-                {error ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-                    {error}
-                  </div>
-                ) : null}
-
-                {completionMessage ? (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                    {completionMessage}
-                  </div>
-                ) : null}
 
                 <button
-                  type="submit"
-                  disabled={submitting || loadingTemplates || !template}
-                  className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  type="button"
+                  onClick={handleAddInvite}
+                  className="text-xs font-bold text-sky-500 hover:text-sky-600 flex items-center gap-1.5 focus:outline-none"
                 >
-                  {submitting ? "Finishing setup..." : "Create workspace"}
+                  + Add another invite
                 </button>
-              </form>
-            </section>
 
-            <aside className="rounded-[26px] bg-slate-950 p-5 text-white shadow-[0_20px_60px_rgba(15,23,42,0.24)]">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-300">Template</p>
-                  <h2 className="mt-2 text-xl font-black tracking-tight">
-                    {selectedTemplate?.name || "Loading templates"}
-                  </h2>
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-300">
-                  Live catalog
+                {duplicateInviteEmail ? (
+                  <p className="text-xs text-rose-600">Duplicate invite detected: {duplicateInviteEmail}</p>
+                ) : null}
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={handlePrevStep}
+                    className="flex-1 py-3.5 rounded-xl border border-slate-200 dark:border-slate-800 font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition text-sm disabled:opacity-50 cursor-pointer"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white font-bold hover:shadow-lg transition duration-200 text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    {loading ? "Setting up..." : "Complete Setup"}
+                  </button>
                 </div>
               </div>
-
-              {loadingTemplates ? (
-                <p className="text-sm text-slate-300">Loading onboarding templates...</p>
-              ) : selectedTemplate ? (
-                <div className="space-y-5">
-                  <p className="text-sm leading-6 text-slate-300">{selectedTemplate.description}</p>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Departments</div>
-                      <div className="mt-2 text-2xl font-black">{selectedTemplate.departments?.length || 0}</div>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Boards</div>
-                      <div className="mt-2 text-2xl font-black">{countBoards(selectedTemplate)}</div>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Workflows</div>
-                      <div className="mt-2 text-2xl font-black">{selectedTemplate.workflows?.length || 0}</div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-bold text-white">{primaryBoard?.name || "Board preview"}</h3>
-                        <p className="mt-1 text-xs text-slate-400">
-                          {countColumns(selectedTemplate)} configured columns across the selected workspace template.
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-sky-400/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-200">
-                        {selectedTemplate.id}
-                      </span>
-                    </div>
-
-                    {primaryBoard?.columns?.length ? (
-                      <div className="flex flex-wrap gap-2">
-                        {primaryBoard.columns.map((column) => (
-                          <span
-                            key={column.name}
-                            className="rounded-full border border-white/10 bg-white/6 px-3 py-1.5 text-xs font-semibold text-slate-200"
-                          >
-                            {column.name}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-400">This template has no board preview available.</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    {selectedTemplate.departments?.map((department) => (
-                      <div key={department.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-bold text-white">{department.name}</div>
-                            <div className="mt-1 text-xs text-slate-400">{department.description}</div>
-                          </div>
-                          <div className="text-xs font-semibold text-slate-300">
-                            {department.boards?.length || 0} board{department.boards?.length === 1 ? "" : "s"}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-slate-400">
-                  No onboarding templates were returned by the API.
-                </div>
-              )}
-            </aside>
-          </div>
+            )}
+          </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

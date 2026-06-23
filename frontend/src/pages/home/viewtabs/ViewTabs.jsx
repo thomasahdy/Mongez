@@ -10,7 +10,7 @@ function ViewTabs() {
   const tabs = [
     { icon: "fa-table-columns", label: "Board" },
     { icon: "fa-list", label: "List" },
-    { icon: "fa-calendar", label: "Calendar", regular: true },
+    { to: "/calendar", icon: "fa-calendar", label: "Calendar", match: "/calendar", regular: true },
     { to: boardId ? `/board/${boardId}/timeline` : "", icon: "fa-bars-staggered", label: "Gantt", match: "/timeline" },
     { to: boardId ? `/board/${boardId}/table` : "", icon: "fa-table-cells", label: "Table", match: "/table" },
   ];

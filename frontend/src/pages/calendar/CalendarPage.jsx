@@ -170,7 +170,7 @@ function normalizeEvents(payload) {
           ? payload.items
           : [];
 
-  return rawEvents
+  const items = rawEvents
     .map((event, index) => {
       const startValue = event.start || event.startDate || event.date || event.dueDate || event.datetime;
       const endValue = event.end || event.endDate || event.date || event.dueDate || startValue;
@@ -208,6 +208,11 @@ function normalizeEvents(payload) {
       };
     })
     .filter(Boolean);
+
+  return {
+    items,
+    invalidCount: rawEvents.length - items.length,
+  };
 }
 
 function buildNonWorkingEntries(visibleDates, eventsByDate, selectedCountry) {
@@ -254,7 +259,9 @@ export default function CalendarPage() {
     holidayCountry: appliedFilters.holidayCountry.trim() || preferences?.holidayCountry || "",
     enabled: Boolean(visibleRange.start && visibleRange.end),
   });
-  const events = useMemo(() => normalizeEvents(calendarEventsQuery.data), [calendarEventsQuery.data]);
+  const normalizedEvents = useMemo(() => normalizeEvents(calendarEventsQuery.data), [calendarEventsQuery.data]);
+  const events = normalizedEvents.items;
+  const invalidEventCount = normalizedEvents.invalidCount;
   const loading = calendarEventsQuery.isLoading || calendarEventsQuery.isFetching;
 
   const visibleDates = useMemo(() => {
@@ -375,6 +382,17 @@ export default function CalendarPage() {
       boardId: activeBoardId || "",
     };
     setDraftFilters(nextFilters);
+  };
+
+  const handleClearFilters = () => {
+    const nextFilters = {
+      spaceId: activeSpaceId || "",
+      boardId: "",
+      holidayCountry: preferences?.holidayCountry || "",
+    };
+    setDraftFilters(nextFilters);
+    setAppliedFilters(nextFilters);
+    setSelectedDayEventsExpanded(false);
   };
 
   const handleSelectDate = (date) => {
@@ -660,12 +678,25 @@ export default function CalendarPage() {
                     >
                       Use active
                     </button>
+                    <button
+                      type="button"
+                      onClick={handleClearFilters}
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
+                    >
+                      Reset
+                    </button>
                   </div>
                 </div>
 
                 <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] text-slate-500">
                   Non-working days are now derived from the backend calendar feed plus visible weekends. No frontend-only add/remove stubs are used here anymore.
                 </div>
+
+                {invalidEventCount > 0 ? (
+                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-700">
+                    {invalidEventCount} calendar entr{invalidEventCount === 1 ? "y was" : "ies were"} skipped because the backend payload did not include a usable date.
+                  </div>
+                ) : null}
 
                 {calendarView === "month" ? renderMonthView() : null}
                 {calendarView === "week" ? renderWeekView() : null}
@@ -749,6 +780,9 @@ export default function CalendarPage() {
                   </div>
                   <div>
                     Board: <span className="font-semibold text-slate-700">{resolvedBoard?.name || draftFilters.boardId || "All boards"}</span>
+                  </div>
+                  <div>
+                    Timezone: <span className="font-semibold text-slate-700">{preferences?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
                   </div>
                   <div>
                     Viewer: <span className="font-semibold text-slate-700">{user?.email || user?.name || "Current user"}</span>

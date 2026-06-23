@@ -1,19 +1,17 @@
 import { NavLink } from "react-router";
+import mongezWordmark from "../../../assets/Mongez.svg";
+import mongezMark from "../../../assets/MongezMLogo.svg";
 
 const AuthLogo = ({ className = "mb-10" }) => {
   return (
-    <NavLink
-      to="/"
-      className={`inline-flex items-center gap-2.5 rounded px-2 py-1 transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-primary ${className}`}
-    >
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-        <rect width="32" height="32" rx="8" fill="#00a8e8" />
-        <path d="M8 22V10l5 8 5-8v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        <circle cx="24" cy="10" r="2" fill="#6366f1" />
-      </svg>
-
-      <span className="text-[22px] leading-none font-extrabold tracking-[-0.5px] text-text-primary">Mongez</span>
-    </NavLink>
+      <div className="flex justify-center mb-8">
+       <a href="/" className="flex items-center gap-1 text-slate-900">
+              <div className="grid h-10 w-10 place-items-center rounded-xl">
+                <img src={mongezMark} alt="Mongez mark" className="h-11 w-11 object-contain" />
+              </div>
+              <img src={mongezWordmark} alt="Mongez" className="h-13 w-auto object-contain" />
+            </a>
+      </div>
   );
 };
 

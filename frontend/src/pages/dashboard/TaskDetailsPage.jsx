@@ -10,6 +10,8 @@ import {
   useTaskUploadMutation,
 } from '../../hooks/useTaskDetailsQueries';
 
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
 function asArray(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -58,6 +60,17 @@ function priorityClass(priority) {
   if (normalized.includes('HIGH')) return 'priority-high';
   if (normalized.includes('MEDIUM')) return 'priority-normal-chip';
   return '';
+}
+
+function renderPageNotice(root, className, message) {
+  const container = root.querySelector('.task-detail-container');
+  if (!container) return;
+  container.querySelector('[data-task-page-note]')?.remove();
+  const note = document.createElement('div');
+  note.setAttribute('data-task-page-note', 'true');
+  note.className = className;
+  note.textContent = message;
+  container.prepend(note);
 }
 
 function setText(root, selector, text) {
@@ -272,22 +285,17 @@ function TaskDetailsPage() {
     if (!taskId) return;
 
     if (taskDetailsQuery.isError) {
-      const note = document.createElement('div');
-      note.className = 'rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700';
-      note.textContent = taskDetailsQuery.error?.message || 'Unable to load task details.';
-      root.querySelector('.task-detail-container')?.prepend(note);
+      renderPageNotice(root, 'rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700', taskDetailsQuery.error?.message || 'Unable to load task details.');
       return;
     }
 
     if (!taskDetailsQuery.data) {
-      const note = document.createElement('div');
-      note.className = 'rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600';
-      note.textContent = 'Loading task details...';
-      root.querySelector('.task-detail-container')?.prepend(note);
+      renderPageNotice(root, 'rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600', 'Loading task details...');
       return;
     }
 
     try {
+      root.querySelector('[data-task-page-note]')?.remove();
       let task = taskDetailsQuery.data.task;
       let comments = asArray(taskDetailsQuery.data.comments);
       let files = asArray(taskDetailsQuery.data.files);
@@ -375,23 +383,36 @@ function TaskDetailsPage() {
       }
 
       if (risk) {
+        root.querySelector('[data-task-risk-note]')?.remove();
         const insightNote = document.createElement('p');
+        insightNote.setAttribute('data-task-risk-note', 'true');
         insightNote.className = 'text-sm text-slate-500';
         insightNote.textContent = typeof risk === 'string' ? risk : (risk.summary || risk.report || 'AI risk analysis loaded for this task.');
         root.querySelector('.task-description')?.appendChild(insightNote);
       }
 
       const renameTask = async () => {
-        const nextTitle = window.prompt('Update task title', root.querySelector('.task-title').textContent);
-        if (nextTitle && nextTitle !== root.querySelector('.task-title').textContent) {
-          await applyTaskUpdate({ title: nextTitle });
+        const currentTitle = root.querySelector('.task-title').textContent || '';
+        const nextTitle = window.prompt('Update task title', currentTitle);
+        const trimmedTitle = nextTitle?.trim();
+
+        if (!trimmedTitle) {
+          setFeedback('Task title cannot be empty.', 'error');
+          return;
+        }
+
+        if (trimmedTitle !== currentTitle) {
+          await applyTaskUpdate({ title: trimmedTitle });
           setFeedback('Task title updated.', 'success');
         }
       };
 
-      root.querySelector('.task-title')?.addEventListener('dblclick', () => {
-        void renameTask();
-      });
+      const titleNode = root.querySelector('.task-title');
+      if (titleNode) {
+        titleNode.ondblclick = () => {
+          void renameTask();
+        };
+      }
 
       const renameButton = root.querySelector('[data-task-action="rename"]');
       if (renameButton) {
@@ -439,6 +460,12 @@ function TaskDetailsPage() {
           const [file] = event.target.files || [];
           if (!file) return;
 
+          if (file.size > MAX_ATTACHMENT_BYTES) {
+            setFeedback('Attachments must be 10 MB or smaller.', 'error');
+            event.target.value = '';
+            return;
+          }
+
           try {
             setFeedback(`Uploading ${file.name}...`);
             await uploadMutation.mutateAsync(file);
@@ -483,10 +510,7 @@ function TaskDetailsPage() {
         link.style.cursor = 'default';
       });
     } catch (error) {
-      const note = document.createElement('div');
-      note.className = 'rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700';
-      note.textContent = error.message || 'Unable to load task details.';
-      root.querySelector('.task-detail-container')?.prepend(note);
+      renderPageNotice(root, 'rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700', error.message || 'Unable to load task details.');
     }
   }, [
     commentMutation,

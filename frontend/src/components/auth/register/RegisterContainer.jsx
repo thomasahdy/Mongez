@@ -6,7 +6,8 @@ import AccountStep from "./steps/AccountStep";
 import InviteStep from "./steps/InviteStep";
 import OrganizationStep from "./steps/OrganizationStep";
 import TemplateStep from "./steps/TemplateStep";
-import authService from "../../../services/auth.service";
+import authService from "../../../services/api/authService";
+import AuthLogo from "../shared/AuthLogo";
 
 const initialValues = {
   account: {
@@ -73,7 +74,11 @@ const RegisterContainer = () => {
 
     try {
       const fullName = [values.account.firstName, values.account.lastName].filter(Boolean).join(" ").trim();
-      await authService.register(values.account.email.trim(), values.account.password, fullName);
+      await authService.register({
+        email: values.account.email.trim(),
+        password: values.account.password,
+        name: fullName,
+      });
       window.location.href = "/onboarding";
     } catch (error) {
       const errorMessage = error?.message || error?.toString?.() || "Something went wrong";
@@ -88,16 +93,7 @@ const RegisterContainer = () => {
 
   return (
     <div className="w-full max-w-[520px]">
-      <div className="flex justify-center mb-8">
-        <a href="/" className="inline-flex items-center gap-2.5 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary rounded px-2 py-1">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="#00a8e8" />
-            <path d="M8 22V10l5 8 5-8v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <circle cx="24" cy="10" r="2" fill="#6366f1" />
-          </svg>
-          <span className="text-[22px] leading-none font-extrabold tracking-[-0.5px] text-text-primary">Mongez</span>
-        </a>
-      </div>
+      <AuthLogo />
 
       <RegisterStepper step={step} />
 
