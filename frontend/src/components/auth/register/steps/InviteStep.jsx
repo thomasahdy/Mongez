@@ -3,7 +3,7 @@ import AuthButton from "../../shared/AuthButton";
 import AuthErrorMessage from "../../shared/AuthErrorMessage";
 import AuthInput from "../../shared/AuthInput";
 
-const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError }) => {
+const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError, onSkip }) => {
   const addInvite = () => {
     onChange([...invites, { email: "", role: "Member" }]);
   };
@@ -96,7 +96,7 @@ const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError 
 
       <button
         type="button"
-        onClick={() => onSubmit({ skipInvites: true })}
+        onClick={onSkip}  // ← Use the separate handler
         className="w-full py-3 rounded-lg text-[13px] text-text-tertiary hover:text-text-secondary hover:bg-bg-body transition-all duration-200 border-0 bg-transparent cursor-pointer"
       >
         Skip — I'll invite later

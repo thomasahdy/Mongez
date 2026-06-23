@@ -14,9 +14,9 @@ import Button from '../../components/ui/Button';
  * @param {Function} props.onToggle - Toggle collapse callback
  * @param {Function} props.onInvite - Invite click handler
  * @param {Function} props.onSettings - Edit settings click handler
- * @param {Function} props.onDelete - Delete/archive click handler
+ * @param {Function} props.onMore - Delete/archive click handler
  */
-const SpaceCardHeader = ({ space, expanded, onToggle, onInvite, onSettings, onDelete }) => {
+const SpaceCardHeader = ({ space, expanded, onToggle, onInvite, onSettings, onMore }) => {
   return (
     <div
       className="flex items-center justify-between px-6 py-5 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
@@ -57,9 +57,6 @@ const SpaceCardHeader = ({ space, expanded, onToggle, onInvite, onSettings, onDe
         {/* Edit Settings button */}
         <Button variant="outline" size="md" onClick={onSettings} aria-label={`Edit settings for ${space.name}`} title="Workspace Settings">
           <i className="fa-solid fa-gear text-slate-500 dark:text-slate-400" />
-        </Button>
-        <Button variant="outline" size="md" onClick={onDelete} aria-label={`Edit settings for ${space.name}`} title="Workspace Settings">
-          <i className="fa-solid fa-delete-left text-red-500 dark:text-red-400"></i>
         </Button>
 
         {/* Delete Space button (Only allowed for Owners/Admins in business logic) */}

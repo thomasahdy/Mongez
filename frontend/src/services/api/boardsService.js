@@ -1,4 +1,5 @@
 import apiClient from "./apiClient";
+import { toPagedPayload } from "./responseUtils";
 
 /**
  * Boards API Service
@@ -107,7 +108,7 @@ export const deleteColumn = async (boardId, colId) => {
  */
 export const getDepartmentBoards = async (deptId, params = {}) => {
   const response = await apiClient.get(`/departments/${deptId}/boards`, { params });
-  return response.data;
+  return toPagedPayload(response.data, ["data", "items", "boards"]);
 };
 
 const boardsService = {

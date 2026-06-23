@@ -9,7 +9,7 @@ const metrics = [
 
 function ResultsSection() {
   return (
-    <section id="results" className="bg-[#04060a] px-6 py-24 text-white lg:px-10">
+    <section id="results" className="bg-[#0f172a] px-6 py-24 text-white lg:px-10">
       <div className="mx-auto max-w-6xl text-center">
         <SectionBadge icon="chart">Impact</SectionBadge>
         <h2 className="mt-6 text-4xl font-black tracking-[-0.05em] sm:text-5xl lg:text-6xl">Real Results, Measured.</h2>

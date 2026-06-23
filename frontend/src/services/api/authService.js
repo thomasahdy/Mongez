@@ -16,6 +16,8 @@ export const login = async (data) => {
  */
 export const register = async (data) => {
   const response = await apiClient.post("/auth/register", data);
+  const { accessToken, refreshToken } = response.data;
+  setTokens({ accessToken, refreshToken });
   return response.data;
 };
 
@@ -97,6 +99,14 @@ export const getGoogleAuthUrl = () => {
   return `${import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"}/auth/google`;
 };
 
+/**
+ * Verify reset password token
+ */
+export const verifyResetToken = async (token) => {
+  const response = await apiClient.post("/auth/verify-reset-token", { token });
+  return response.data;
+};
+
 // Export as a unified object default export for compatibility
 const authService = {
   login,
@@ -110,6 +120,7 @@ const authService = {
   verifyEmail,
   getVerificationStatus,
   getGoogleAuthUrl,
+  verifyResetToken,
 };
 
 export default authService;

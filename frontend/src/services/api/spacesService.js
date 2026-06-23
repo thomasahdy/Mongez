@@ -165,6 +165,10 @@ export const setActiveSpace = async (spaceId) => {
   return { success: true, spaceId };
 };
 
+export const leaveSpace = async (spaceId) => {
+  await apiClient.delete(`/spaces/${spaceId}/members/me`);
+};
+
 const spacesService = {
   getSpaces,
   getSpace,
@@ -177,6 +181,7 @@ const spacesService = {
   updateDepartment,
   deleteDepartment,
   setActiveSpace,
+  leaveSpace,
 };
 
 export default spacesService;

@@ -53,6 +53,7 @@ import { JwtService } from './modules/auth/services/jwt.service';
 import { ObservabilityModule } from './infrastructure/observability/observability.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { StorageModule } from './infrastructure/storage/storage.module';
 
 @Module({
   imports: [
@@ -73,11 +74,13 @@ import { AppService } from './app.service';
     CacheModule,
     QueueModule,
     ObservabilityModule,
+    StorageModule,
 
     // Shared utilities (Global — exposes IdentifierService + TenantContextService everywhere)
     SharedModule,
 
     // Modules
+    
     HealthModule,
     AuthModule,
     UsersModule,
@@ -178,4 +181,4 @@ export class AppModule implements NestModule {
       .forRoutes('*');
   }
 }
-
+

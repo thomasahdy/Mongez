@@ -76,9 +76,6 @@ export const updateMemberRoleSchema = z.object({
     errorMap: () => ({ message: 'Please select a valid role (OWNER, ADMIN, MEMBER, or VIEWER)' }),
   }),
 });
-
-
-
 export const createDepartmentSchema = z.object({
   name: z
     .string()

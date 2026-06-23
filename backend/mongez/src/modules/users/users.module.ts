@@ -3,9 +3,10 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { UserRepository } from './repositories/user.repository';
 import { AuthModule } from '../auth/auth.module';
+import { StorageModule } from '../../infrastructure/storage/storage.module';
 
 @Module({
-  imports: [AuthModule],   // provides PasswordService
+  imports: [AuthModule, StorageModule],   // provides PasswordService
   controllers: [UsersController],
   providers: [UsersService, UserRepository],
   exports: [UsersService, UserRepository],

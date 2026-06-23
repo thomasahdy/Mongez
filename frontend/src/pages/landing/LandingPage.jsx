@@ -10,7 +10,7 @@ import OuterNavbar from '../../components/landing/OuterNavbar'
 
 function LandingPage() {
   return (
-    <div className="bg-[#f8f6f2] text-slate-900">
+    <div className="bg-white text-slate-900">
       <OuterNavbar/>
       <main>
         <HeroSection />

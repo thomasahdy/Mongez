@@ -9,7 +9,7 @@ const aiPrompts = [
 
 function AiAssistantSection() {
   return (
-    <section id="ai-assistant" className="bg-[linear-gradient(180deg,#18243b_0%,#111b2f_100%)] px-6 py-24 text-white lg:px-10">
+    <section id="ai-assistant" className="bg-[linear-gradient(180deg,#1e293b_0%,#0f172a_100%)] px-6 py-24 text-white lg:px-10">
       <div className="mx-auto max-w-5xl text-center">
         <SectionBadge icon="brain" dark>
           AI Assistant
@@ -47,7 +47,7 @@ function AiAssistantSection() {
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-white/10 bg-[#141f34] p-5">
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#334155] p-5">
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Suggested actions</p>
               <div className="mt-4 space-y-3">
                 {aiPrompts.map((prompt) => (

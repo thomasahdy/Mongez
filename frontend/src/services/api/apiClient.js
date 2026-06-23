@@ -7,12 +7,12 @@ import {
   clearTokens,
 } from "./tokenService";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
 const unsafeMethods = new Set(["post", "put", "patch", "delete"]);
 
 let csrfToken = null;
 
-const getCsrfToken = async () => {
+export const getCsrfToken = async () => {
   if (csrfToken) {
     return csrfToken;
   }
@@ -91,8 +91,6 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         clearTokens();
-        window.location.href = "/login";
-
         return Promise.reject(refreshError);
       }
     }

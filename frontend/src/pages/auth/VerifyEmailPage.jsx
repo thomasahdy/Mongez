@@ -1,95 +1,194 @@
-import mongezMark from '../../assets/MongezMLogo.svg'
+import { useEffect, useMemo, useState } from "react";
+import { NavLink, useNavigate } from "react-router";
+import mongezMark from "../../assets/MongezMLogo.svg";
+import {
+  useSendVerificationEmailMutation,
+  useVerificationStatusQuery,
+  useVerifyEmailTokenQuery,
+} from "../../hooks/useAuthQueries";
 
-const codeDigits = ['4', '7', '', '', '', '']
+function TokenPreview({ token }) {
+  const preview = token ? `${token.slice(0, 3)} ${token.slice(3, 6)} ${token.slice(6, 9)}`.trim() : "Inbox link";
 
-function VerifyEmailPage() {
+  return (
+    <div className="flex justify-center gap-2">
+      {preview.split(" ").map((chunk, index) => (
+        <div
+          key={`${chunk}-${index}`}
+          className="min-w-[74px] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-center text-[18px] font-black tracking-[0.25em] text-slate-800"
+        >
+          {chunk || "..."}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  const navigate = useNavigate();
+  const token = useMemo(() => new URLSearchParams(window.location.search).get("token") || "", []);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const verificationTokenQuery = useVerifyEmailTokenQuery(token);
+  const verificationStatusQuery = useVerificationStatusQuery(!token);
+  const sendVerificationMutation = useSendVerificationEmailMutation();
+  const loading = token ? verificationTokenQuery.isLoading : verificationStatusQuery.isLoading;
+  const data = token ? verificationTokenQuery.data : verificationStatusQuery.data;
+  const verified = Boolean(data?.verified);
+  const isOAuthUser = Boolean(data?.isOAuthUser);
+  const isAuthenticated = Boolean(data?.isAuthenticated);
+  const sending = sendVerificationMutation.isPending;
+
+  useEffect(() => {
+    if (resendCooldown <= 0) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setResendCooldown((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
+
+  useEffect(() => {
+    if (token && verificationTokenQuery.isError) {
+      setError(verificationTokenQuery.error?.message || "Unable to verify this email link.");
+      return;
+    }
+
+    if (!token && verificationStatusQuery.isError) {
+      setMessage("Sign in to resend a verification email, or open the verification link from your inbox.");
+      return;
+    }
+
+    if (data?.message) {
+      setMessage(data.message);
+    }
+  }, [
+    data?.message,
+    token,
+    verificationStatusQuery.isError,
+    verificationTokenQuery.error?.message,
+    verificationTokenQuery.isError,
+  ]);
+
+  useEffect(() => {
+    if (!verified) {
+      return undefined;
+    }
+
+    const redirectTimer = window.setTimeout(() => {
+      navigate(isAuthenticated ? "/dashboard" : "/login", { replace: true });
+    }, 1800);
+
+    return () => window.clearTimeout(redirectTimer);
+  }, [isAuthenticated, navigate, verified]);
+
+  const handleResend = async () => {
+    setError("");
+    setMessage("");
+
+    try {
+      const result = await sendVerificationMutation.mutateAsync();
+      setMessage(result.message || "Verification email sent.");
+      setResendCooldown(45);
+    } catch (sendError) {
+      setError(sendError.message || "Unable to send a new verification email.");
+    }
+  };
+
+  const showResend = !loading && !verified && !token && !isOAuthUser && isAuthenticated;
+
   return (
     <div className="auth-page">
       <header className="auth-brand-row">
-        <a href="#landing" className="auth-brand" aria-label="Mongez home">
+        <NavLink to="/" className="auth-brand" aria-label="Mongez home">
           <img src={mongezMark} alt="" className="auth-brand-mark" />
           <span className="auth-brand-text">Mongez</span>
-        </a>
+        </NavLink>
       </header>
 
       <main className="auth-main">
         <section className="auth-card verify-card">
-          <div className="verify-progress" aria-label="Verification progress">
-            <span className="verify-progress-dot verify-progress-dot-done" />
-            <span className="verify-progress-bar" />
-            <span className="verify-progress-dot verify-progress-dot-current" />
-            <span className="verify-progress-dot" />
-            <span className="verify-progress-dot" />
-          </div>
-
-          <div className="verify-mail-badge" aria-hidden="true">
-            <div className="verify-mail-badge-ring" />
-            <svg viewBox="0 0 24 24" className="auth-icon" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="5" width="18" height="14" rx="2" />
-              <path d="m4 7 8 6 8-6" />
-            </svg>
-          </div>
-
           <div className="auth-copy verify-copy">
-            <h1>Verify your email</h1>
+            <div className="mx-auto mb-5 flex h-[76px] w-[76px] items-center justify-center rounded-[26px] bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(99,102,241,0.12))] text-sky-500">
+              <i className={`fa-solid ${verified ? "fa-circle-check" : "fa-envelope-open-text"} text-[28px]`} />
+            </div>
+            <h1>{verified ? "Email verified" : "Verify your email"}</h1>
             <p>
-              We&apos;ve sent a 6-digit verification code to
-              <strong> alsherif@gmail.com</strong>
+              {loading
+                ? "Checking the live verification state..."
+                : verified
+                  ? `Your account is ready. Redirecting to ${isAuthenticated ? "the dashboard" : "login"}...`
+                  : "Use the secure verification link from your inbox. This screen mirrors an OTP-style check-in without faking a code flow the backend does not support."}
             </p>
           </div>
 
-          <div className="verify-code-grid" aria-label="Verification code">
-            {codeDigits.map((digit, index) => {
-              const className = ['verify-code-box']
+          {!verified ? <TokenPreview token={token} /> : null}
 
-              if (digit && index < 2) className.push('verify-code-box-filled')
-              if (index === 2) className.push('verify-code-box-active')
-
-              return (
-                <input
-                  key={`${index}-${digit || 'empty'}`}
-                  className={className.join(' ')}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  readOnly
-                  aria-label={`Verification code digit ${index + 1}`}
-                />
-              )
-            })}
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              { label: "Inbox", detail: "Receive email", active: !verified },
+              { label: "Open link", detail: "Secure token", active: Boolean(token) || !verified },
+              { label: "Verified", detail: "Continue", active: verified },
+            ].map((step, index) => (
+              <div
+                key={step.label}
+                className={`rounded-2xl border px-3 py-3 ${
+                  step.active ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-slate-50 text-slate-400"
+                }`}
+              >
+                <div className="text-[10px] font-black uppercase tracking-[0.16em]">Step {index + 1}</div>
+                <div className="mt-1 text-sm font-semibold">{step.label}</div>
+                <div className="mt-1 text-xs">{step.detail}</div>
+              </div>
+            ))}
           </div>
 
-          <button type="button" className="auth-primary-button verify-button">
-            Verify &amp; Continue
-          </button>
+          {message && <p className="text-sm text-emerald-600">{message}</p>}
+          {error && <p className="text-sm text-rose-600">{error}</p>}
 
-          <button type="button" className="auth-secondary-button">
-            <svg viewBox="0 0 24 24" className="auth-method-icon whatsapp-icon" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M16.6 13.4c-.3-.2-1.8-.9-2-.9s-.5-.1-.8.2-.9 1.1-1.1 1.3-.4.2-.7.1a8.2 8.2 0 0 1-2.4-1.5A9.1 9.1 0 0 1 8 10.4c-.2-.3 0-.5.1-.7l.5-.6c.2-.2.2-.4.3-.6s0-.4 0-.6-.8-1.9-1-2.5c-.2-.5-.5-.5-.7-.5H6a1.4 1.4 0 0 0-1 .5A4.2 4.2 0 0 0 3.7 8c0 1.4 1 2.7 1.1 2.9a11.9 11.9 0 0 0 4.6 4.1c3 .9 3 .6 3.6.6s1.8-.7 2-1.4.3-1.3.2-1.4-.3-.2-.6-.4Z" />
-              <circle cx="12" cy="12" r="9" />
-            </svg>
-            <span>Verify via WhatsApp instead</span>
-          </button>
+          {showResend ? (
+            <div className="grid gap-2">
+              <button
+                type="button"
+                className="auth-primary-button verify-button"
+                onClick={handleResend}
+                disabled={sending || resendCooldown > 0}
+              >
+                {sending ? "Sending..." : resendCooldown > 0 ? `Resend available in ${resendCooldown}s` : "Send verification email"}
+              </button>
+              <p className="text-xs text-slate-500">
+                Request a new email only if the latest verification link is missing, expired, or blocked by inbox filters.
+              </p>
+            </div>
+          ) : null}
 
-          <p className="verify-resend">
-            Didn&apos;t receive it? <a href="#verify-email">Resend in 0:42</a>
-          </p>
+          {!token && !loading && !verified && !isAuthenticated ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-[13px] leading-6 text-slate-500">
+              Sign in first if you want Mongez to send another verification email to the current account.
+            </div>
+          ) : null}
 
-          <div className="verify-divider" />
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-[13px] leading-6 text-slate-500">
+            <strong className="block text-slate-700">Need help?</strong>
+            If you do not see the email, check spam, promotions, or any corporate filters before requesting another verification message.
+          </div>
 
           <div className="verify-links">
             <p>
-              Wrong email? <a href="#landing">Go back to registration</a>
+              <NavLink to={verified ? (isAuthenticated ? "/dashboard" : "/login") : "/login"}>
+                {verified ? (isAuthenticated ? "Continue to dashboard" : "Continue to login") : "Back to login"}
+              </NavLink>
             </p>
             <p>
-              Need help? <a href="#landing">Contact Support</a>
+              <NavLink to="/register">Need a different account?</NavLink>
             </p>
           </div>
         </section>
       </main>
     </div>
-  )
+  );
 }
-
-export default VerifyEmailPage
