@@ -1,4 +1,7 @@
 import './infrastructure/observability/otel.setup';
+(BigInt.prototype as any).toJSON = function () {
+  return Number(this);
+};
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';

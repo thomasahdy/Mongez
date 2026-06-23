@@ -44,6 +44,9 @@ const PERMISSIONS: Array<[string, string, string]> = [
   ['read', 'ai_action', 'View AI proposed actions'],
   ['approve', 'ai_action', 'Approve or reject AI proposed actions'],
   ['manage', 'ai_action', 'Full AI action management'],
+  ['manage', 'workflow', 'Full workflow management'],
+  ['read', 'audit', 'View space audit logs'],
+  ['read', 'analytics', 'View space analytics'],
 ];
 
 // ─── Role → Permission mapping ──────────────────────────────────────────────
@@ -60,6 +63,7 @@ const ROLE_PERMISSIONS: Record<string, Array<[string, string]>> = {
     ['read', 'member'], ['manage', 'member'],
     ['read', 'report'], ['create', 'report'],
     ['read', 'ai_action'], ['approve', 'ai_action'], ['manage', 'ai_action'],
+    ['manage', 'workflow'], ['read', 'audit'], ['read', 'analytics'],
   ],
   HEAD: [
     // Department-level leadership — can manage tasks and boards, limited member access
@@ -69,6 +73,7 @@ const ROLE_PERMISSIONS: Record<string, Array<[string, string]>> = {
     ['read', 'member'],
     ['read', 'report'],
     ['read', 'ai_action'], ['approve', 'ai_action'],
+    ['read', 'audit'], ['read', 'analytics'],
   ],
   MEMBER: [
     // Regular team member — create and update their own tasks
@@ -77,6 +82,7 @@ const ROLE_PERMISSIONS: Record<string, Array<[string, string]>> = {
     ['read', 'space'],
     ['read', 'member'],
     ['read', 'ai_action'],
+    ['read', 'analytics'],
   ],
   VIEWER: [
     // Read-only observer
@@ -84,6 +90,7 @@ const ROLE_PERMISSIONS: Record<string, Array<[string, string]>> = {
     ['read', 'board'],
     ['read', 'space'],
     ['read', 'member'],
+    ['read', 'analytics'],
   ],
 };
 
