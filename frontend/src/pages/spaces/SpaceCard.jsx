@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import SpaceCardHeader from './SpaceCardHeader';
 import DepartmentRow from './DepartmentRow';
+import { useInviteMember } from '../../hooks/api/useMembers';
+import { useCreateDepartment, useSpaceDepartments } from '../../hooks/api/useSpaces';
 
 /**
  * Component: SpaceCard

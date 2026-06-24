@@ -117,7 +117,7 @@ const CreateBoardModal = ({ dept, onSubmit, onClose }) => {
             {...register("type")}
             className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
               ${
-                errors.role
+                errors.type
                   ? "border-red-500 dark:border-red-900/50"
                   : "border-slate-200 dark:border-slate-800"
               }`}

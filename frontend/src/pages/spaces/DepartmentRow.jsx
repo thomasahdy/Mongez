@@ -9,21 +9,14 @@ const DepartmentRow = ({ dept}) => {
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
   const createBoard = useCreateBoard();
   const handleCreateBoard = async(data) => {
-    console.info("Add board to dept:", dept.id);
-    try{
-      console.log(data);
-      
-      console.log(await createBoard.mutateAsync({data:data}))
-      
+    try {
+      await createBoard.mutateAsync(data);
+      setShowCreateBoardModal(false);
     }
     catch (err) {
       alert(err.response?.data?.message || err.message || "Failed to create a board.");
     }
   };
-
-  const onAddBoard = ()=>{
-
-  }
   return (
     <div>
       {/* Row */}
@@ -67,18 +60,16 @@ const DepartmentRow = ({ dept}) => {
  
       {/* Board chips below the row */}
       {dept.boards.length > 0 && (
-        <BoardChips boards={dept.boards} onAddBoard={() => onAddBoard()} />
+        <BoardChips boards={dept.boards} onAddBoard={() => setShowCreateBoardModal(true)} />
       )}
 
       {showCreateBoardModal && (
-              <CreateBoardModal
-                onSubmit={handleCreateBoard}
-                onClose={() => setShowCreateBoardModal(false)}
-                dept={dept}
-                
-                
-              />
-            )}
+        <CreateBoardModal
+          onSubmit={handleCreateBoard}
+          onClose={() => setShowCreateBoardModal(false)}
+          dept={dept}
+        />
+      )}
     </div>
 
   )

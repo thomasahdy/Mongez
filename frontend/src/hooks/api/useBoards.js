@@ -32,11 +32,11 @@ export function useBoard(boardId) {
  * Hook: useCreateBoard
  * Mutation to create a board. On success, invalidates the department boards cache.
  */
-export function useCreateBoard(data) {
+export function useCreateBoard() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ()=> boardsService.createBoard(data),
+    mutationFn: (data) => boardsService.createBoard(data),
     onSuccess: (newBoard) => {
       queryClient.invalidateQueries({ queryKey: ['boards'] });
       queryClient.setQueryData(['boards', newBoard.id], newBoard);
