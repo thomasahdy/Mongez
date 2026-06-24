@@ -101,8 +101,15 @@ export class CalendarService {
       holidayCountry?: string;
     },
   ) {
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
+    // Safely parse dates — fall back to current month window when params are missing or invalid
+    const parsedStart = new Date(startDateStr);
+    const parsedEnd = new Date(endDateStr);
+    const startDate = isNaN(parsedStart.getTime())
+      ? new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      : parsedStart;
+    const endDate = isNaN(parsedEnd.getTime())
+      ? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+      : parsedEnd;
 
     const sources = filters?.sources || ['MONGEZ', 'GOOGLE', 'HOLIDAY', 'MEETING', 'APPROVAL', 'ESCALATION'];
 

@@ -1,11 +1,15 @@
-import React from 'react'
+import { NavLink } from 'react-router'
 
-const NavSection = ({ label, actionHref, children }) => {
+const NavSection = ({ label, actionHref, actionTo, children }) => {
   return (
     <div className="mb-5 group">
       <div className="flex items-center justify-between px-2 mb-1">
         <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">{label}</span>
-        {actionHref && (
+        {actionTo ? (
+          <NavLink to={actionTo} className="opacity-0 group-hover:opacity-100 w-[18px] h-[18px] flex items-center justify-center rounded text-[10px] text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all" aria-label={`Manage ${label}`}>
+            <i className="fa-solid fa-gear" />
+          </NavLink>
+        ) : actionHref && (
           <a href={actionHref} className="opacity-0 group-hover:opacity-100 w-[18px] h-[18px] flex items-center justify-center rounded text-[10px] text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all" aria-label={`Manage ${label}`}>
             <i className="fa-solid fa-gear" />
           </a>

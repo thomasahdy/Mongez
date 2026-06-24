@@ -96,15 +96,28 @@ export class AnalyticsService {
    * Per-member performance (completion, overdue, approval activity).
    */
   async getTeamMetrics(spaceId: string, period: AnalyticsPeriod) {
+    // Ensure we have valid Date objects – fall back to a 30-day window if the
+    // caller passes an invalid date (e.g. undefined period string from the frontend).
+    const safeTo = period.to instanceof Date && !isNaN(period.to.getTime()) ? period.to : new Date();
+    const safeFrom = period.from instanceof Date && !isNaN(period.from.getTime()) ? period.from : new Date(safeTo.getTime() - 30 * 24 * 3600 * 1000);
+
     const [overdue, approvals] = await Promise.all([
+      // Cast avg_overdue_duration from interval → text so Prisma can deserialize it.
       this.prisma.$queryRaw<any[]>`
-        SELECT * FROM mv_overdue_by_assignee WHERE "spaceId" = ${spaceId}
+        SELECT
+          "assigneeId",
+          assignee_name,
+          "spaceId",
+          overdue_count,
+          avg_overdue_duration::text AS avg_overdue_duration
+        FROM mv_overdue_by_assignee
+        WHERE "spaceId" = ${spaceId}
       `,
       this.prisma.workflowAction.groupBy({
         by: ['actorId'],
         where: {
           instance: { spaceId },
-          createdAt: { gte: period.from, lte: period.to },
+          createdAt: { gte: safeFrom, lte: safeTo },
         },
         _count: { _all: true },
       }),

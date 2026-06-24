@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { useDispatch } from "react-redux";
 import { FaEnvelope, FaSignInAlt } from "react-icons/fa";
 import AuthButton from "../shared/AuthButton";
 import AuthErrorMessage from "../shared/AuthErrorMessage";
 import AuthInput from "../shared/AuthInput";
 import PasswordInput from "../shared/PasswordInput";
-import { loginUser } from "../../../store/auth/authThunks";
+import authService from "../../../services/api/authService";
 
 
 const LoginForm = () => {
@@ -54,29 +53,8 @@ const LoginForm = () => {
     setErrors((prev) => ({ ...prev, submit: "" }));
 
     try {
-      const response = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorMessage = data.message || data.error || "Login failed";
-        if (response.status === 401) {
-          throw new Error("Invalid email or password");
-        } else if (response.status === 429) {
-          throw new Error("Too many attempts. Please try again later.");
-        } else {
-          throw new Error(errorMessage);
-        }
-      }
-
-      window.location.href = "/dashboard";
+      await authService.login({ email, password });
+      window.location.href = "/spaces";
     } catch (error) {
       setErrors((prev) => ({
         ...prev,

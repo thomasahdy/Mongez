@@ -28,13 +28,17 @@ export class AIGatewayService {
   ) {}
 
   async chat(userId: string, dto: ChatDto): Promise<any> {
-    const withinLimit = await this.subscriptions.checkQuota(dto.spaceId, 'AI_REQUESTS');
-    if (!withinLimit) {
-      throw new ForbiddenException('You have exceeded your monthly AI requests quota. Please upgrade.');
+    if (dto.spaceId) {
+      const withinLimit = await this.subscriptions.checkQuota(dto.spaceId, 'AI_REQUESTS');
+      if (!withinLimit) {
+        throw new ForbiddenException('You have exceeded your monthly AI requests quota. Please upgrade.');
+      }
     }
 
     const sanitizedMessage = this.sanitizeForPrompt(dto.message);
-    const memoryContext = await this.memory.getConversationContext(userId, dto.spaceId);
+    const memoryContext = dto.spaceId
+      ? await this.memory.getConversationContext(userId, dto.spaceId)
+      : '';
     const profile = await this.aiMemoryProfileService.getMemoryProfile(userId);
     const enrichedMemoryContext = profile
       ? `User Preferences:\n${profile}\n\n${memoryContext}`
@@ -44,7 +48,7 @@ export class AIGatewayService {
       this.llm.chat(userId, { ...dto, message: sanitizedMessage, memoryContext: enrichedMemoryContext }),
     );
 
-    if (result && !result.degraded) {
+    if (result && !result.degraded && dto.spaceId) {
       await this.memory.appendToSession(userId, dto.spaceId, { role: 'user', content: sanitizedMessage });
       await this.memory.saveConversationTurn(userId, dto.spaceId, 'user', sanitizedMessage, result.traceId);
 
@@ -66,9 +70,11 @@ export class AIGatewayService {
   }
 
   async streamChat(userId: string, dto: ChatDto): Promise<{ traceId: string; stream: Observable<string> }> {
-    const withinLimit = await this.subscriptions.checkQuota(dto.spaceId, 'AI_REQUESTS');
-    if (!withinLimit) {
-      throw new ForbiddenException('You have exceeded your monthly AI requests quota. Please upgrade.');
+    if (dto.spaceId) {
+      const withinLimit = await this.subscriptions.checkQuota(dto.spaceId, 'AI_REQUESTS');
+      if (!withinLimit) {
+        throw new ForbiddenException('You have exceeded your monthly AI requests quota. Please upgrade.');
+      }
     }
 
     const sanitizedMessage = this.sanitizeForPrompt(dto.message);
@@ -78,8 +84,10 @@ export class AIGatewayService {
     )) as any;
 
     if (result && !result.degraded) {
-      await this.memory.appendToSession(userId, dto.spaceId, { role: 'user', content: sanitizedMessage });
-      await this.memory.saveConversationTurn(userId, dto.spaceId, 'user', sanitizedMessage, result.traceId);
+      if (dto.spaceId) {
+        await this.memory.appendToSession(userId, dto.spaceId, { role: 'user', content: sanitizedMessage });
+        await this.memory.saveConversationTurn(userId, dto.spaceId, 'user', sanitizedMessage, result.traceId);
+      }
 
       let fullResponse = '';
       let tokensUsed = 0;
@@ -99,15 +107,17 @@ export class AIGatewayService {
           },
           error: (err) => subscriber.error(err),
           complete: () => {
-            if (fullResponse) {
+            if (fullResponse && dto.spaceId) {
               this.memory.appendToSession(userId, dto.spaceId, { role: 'assistant', content: fullResponse }).catch(() => {});
               this.memory.saveConversationTurn(userId, dto.spaceId, 'assistant', fullResponse, result.traceId).catch(() => {});
             }
 
-            // Record AI Requests and Tokens usage asynchronously
-            this.subscriptions.recordUsage(dto.spaceId, 'AI_REQUESTS').catch(() => {});
-            if (tokensUsed > 0) {
-              this.subscriptions.recordUsage(dto.spaceId, 'AI_TOKENS', tokensUsed).catch(() => {});
+            // Record AI Requests and Tokens usage asynchronously (only when spaceId known)
+            if (dto.spaceId) {
+              this.subscriptions.recordUsage(dto.spaceId, 'AI_REQUESTS').catch(() => {});
+              if (tokensUsed > 0) {
+                this.subscriptions.recordUsage(dto.spaceId, 'AI_TOKENS', tokensUsed).catch(() => {});
+              }
             }
 
             subscriber.complete();

@@ -27,10 +27,23 @@
  *   npx ts-node prisma/seed-complex.ts
  */
 import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { hash } from "bcrypt";
 import * as crypto from "crypto";
 
-const prisma = new PrismaClient();
+// Load env variables
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('❌ DATABASE_URL is not defined in the environment variables');
+  process.exit(1);
+}
+
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
 
 // ─── Password Hash Helper ──────────────────────────────────────────────────────
 async function hashPassword(pw: string): Promise<string> {
@@ -196,6 +209,9 @@ async function main() {
     { action: "approve", resource: "task" },
     { action: "manage", resource: "members" },
     { action: "use",    resource: "ai" },
+    { action: "manage", resource: "workflow" },
+    { action: "read",   resource: "audit" },
+    { action: "read",   resource: "analytics" },
   ];
   await prisma.permission.createMany({ data: permData });
   const allPerms = await prisma.permission.findMany();
@@ -210,15 +226,15 @@ async function main() {
       await prisma.rolePermission.create({ data: { roleId: ids.roleAdmin, permissionId: p.id } });
     }
   }
-  // HEAD gets task + board CRUD + report read
+  // HEAD gets task + board CRUD + report/analytics/audit read
   for (const p of allPerms) {
-    if (["task", "board", "report"].includes(p.resource) && p.action !== "delete") {
+    if (["task", "board", "report", "analytics", "audit"].includes(p.resource) && p.action !== "delete") {
       await prisma.rolePermission.create({ data: { roleId: ids.roleHead, permissionId: p.id } });
     }
   }
-  // MEMBER gets task CRUD + read board/space
+  // MEMBER gets task CRUD + read board/space/analytics/report
   for (const p of allPerms) {
-    if (p.resource === "task" || ((p.resource === "board" || p.resource === "space") && p.action === "read")) {
+    if (p.resource === "task" || ((p.resource === "board" || p.resource === "space" || p.resource === "analytics" || p.resource === "report") && p.action === "read")) {
       await prisma.rolePermission.create({ data: { roleId: ids.roleMember, permissionId: p.id } });
     }
   }
@@ -575,7 +591,6 @@ async function main() {
     { taskId: "task_alp_040", dependsOnId: "task_alp_018", type: "BLOCKS" },
     // Chain: Rate limiting → Audit log → GDPR compliance
     { taskId: "task_alp_008", dependsOnId: "task_alp_007", type: "FOLLOWS" },
-    { taskId: "task_alp_026", dependsOnId: "task_alp_008", type: "BLOCKS" },
     // Beta dependencies
     { taskId: "task_bet_001", dependsOnId: "task_bet_007", type: "REQUIRES" },
     { taskId: "task_bet_005", dependsOnId: "task_bet_001", type: "BLOCKS" },

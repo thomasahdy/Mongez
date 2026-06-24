@@ -4,7 +4,7 @@ function FinalCtaSection() {
   return (
     <section
       id="final-cta"
-      className="bg-[radial-gradient(circle_at_bottom_left,rgba(14,165,233,0.16),transparent_28%),linear-gradient(180deg,#17243b_0%,#121b2d_100%)] px-6 py-24 text-white lg:px-10"
+      className="bg-[radial-gradient(circle_at_bottom_left,rgba(0,168,232,0.15),transparent_28%),linear-gradient(180deg,#1e293b_0%,#0f172a_100%)] px-6 py-24 text-white lg:px-10"
     >
       <div className="mx-auto max-w-4xl text-center">
         <h2 className="text-4xl font-black tracking-[-0.05em] sm:text-5xl lg:text-7xl">

@@ -99,8 +99,7 @@ async def risk_detector_node(state: MongezAgentState) -> dict:
         assessment = RiskAssessment.model_validate_json(result["content"])
         risk_emoji = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(assessment.risk, "⚪")
         lines = [
-            f"## {risk_emoji} Risk Level: {assessment.risk} "
-            f"(confidence: {assessment.confidence:.0%})\n",
+            f"## {risk_emoji} Risk Level: {assessment.risk}\n",
             f"{assessment.reason}\n",
         ]
         if assessment.issues:

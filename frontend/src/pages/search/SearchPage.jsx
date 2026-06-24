@@ -10,7 +10,6 @@ import SearchBar from "./sections/SearchBar";
 import SuggestionChips from "./sections/SuggestionChips";
 import SearchHero from "./sections/SearchHero";
 import ResultItem from "../../components/search/ResultItem";
-import ViewTabs from "../home/viewtabs/ViewTabs";
 
 // ─────────────────────────────────────────────
 // CONSTANTS / DATA
@@ -134,13 +133,7 @@ const AI_ANSWER = {
   ],
 };
 
-const VIEW_TABS_DATA = [
-  { id: "board",    href: "#board",    icon: "fa-table-columns", label: "Board" },
-  { id: "list",     href: "#list",     icon: "fa-list",          label: "List" },
-  { id: "calendar", href: "#calendar", icon: "fa-calendar",      label: "Calendar" },
-  { id: "gantt",    href: "#gantt",    icon: "fa-bars-staggered", label: "Gantt" },
-  { id: "table",    href: "#table",    icon: "fa-table-cells",   label: "Table" },
-];
+
 
 
 
@@ -172,10 +165,6 @@ export default function SearchPage({ initialQuery = "" }) {
 
   return (
     <>
-
-      
-          <ViewTabs />
-
           {/* Scrollable content area */}
           <main
             className="flex-1 overflow-y-auto"

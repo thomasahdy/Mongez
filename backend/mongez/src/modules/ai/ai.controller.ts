@@ -36,6 +36,13 @@ export class AIController {
     private readonly aiGateway: AIGatewayService,
   ) {}
 
+  /** GET /ai/dashboard?spaceId=xxx — Fetch workspace intelligence dashboard stats */
+  @Get('dashboard')
+  async getDashboard(@Query('spaceId') spaceId: string, @Req() req: Request) {
+    const userId = (req as any).user?.userId;
+    return this.aiService.getDashboard(spaceId, userId);
+  }
+
   // ─── Chat ──────────────────────────────────────────────────────────────────
 
   /** POST /ai/chat — Send a message, receive AI response (blocking) */
@@ -131,8 +138,9 @@ export class AIController {
 
   /** GET /ai/actions/pending?spaceId=xxx — List pending AI proposed actions */
   @Get('actions/pending')
-  async getPendingActions(@Query('spaceId') spaceId: string) {
-    return this.aiService.getPendingActions(spaceId);
+  async getPendingActions(@Query('spaceId') spaceId: string, @Req() req: Request) {
+    const userId = (req as any).user?.userId;
+    return this.aiService.getPendingActions(spaceId, userId);
   }
 
   /** POST /ai/actions/:id/approve — Approve and execute a proposed action */
@@ -144,7 +152,7 @@ export class AIController {
     @Req() req: Request,
   ) {
     const reviewerId = (req as any).user?.userId;
-    return this.aiGateway.executeApprovedAction(id, reviewerId);
+    return this.aiService.approveAction(id, reviewerId, dto);
   }
 
   /** POST /ai/actions/:id/reject — Reject a proposed action */
@@ -164,8 +172,9 @@ export class AIController {
   /** POST /ai/feedback — Submit thumbs up/down + optional note */
   @Post('feedback')
   @HttpCode(HttpStatus.OK)
-  async submitFeedback(@Body() dto: FeedbackDto) {
-    return this.aiService.submitFeedback(dto);
+  async submitFeedback(@Body() dto: FeedbackDto, @Req() req: Request) {
+    const userId = (req as any).user?.userId;
+    return this.aiService.submitFeedback(dto, userId);
   }
 
   // ─── History ──────────────────────────────────────────────────────────────

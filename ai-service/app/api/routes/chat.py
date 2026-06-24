@@ -119,6 +119,10 @@ async def chat_stream(
         "response_metadata": {},
     }
 
+    # Only stream tokens from these final answering nodes — NOT from
+    # query_rewriter or intent_router whose LLM output is internal.
+    RESPONSE_NODES = {"chat_responder", "report_generator", "risk_detector", "recommendation"}
+
     async def generate():
         """Yield SSE events as the LangGraph processes."""
         start_time = time.time()
@@ -128,8 +132,18 @@ async def chat_stream(
 
         try:
             async for event in agent_graph.astream_events(initial_state, version="v2"):
-                # Stream LLM tokens as they arrive
+                # Stream LLM tokens only from the final response-generating nodes
                 if event["event"] == "on_chat_model_stream":
+                    # Check which graph node this event belongs to
+                    tags = event.get("tags") or []
+                    run_name = event.get("name", "")
+                    # astream_events v2 puts the node name in metadata.langgraph_node
+                    node_name = (event.get("metadata") or {}).get("langgraph_node", "")
+
+                    # Only yield tokens from the answering nodes
+                    if node_name not in RESPONSE_NODES and not any(n in run_name for n in RESPONSE_NODES):
+                        continue
+
                     chunk = event["data"].get("chunk")
                     if chunk and hasattr(chunk, "content") and chunk.content:
                         if first_token_time is None:
@@ -162,7 +176,7 @@ async def chat_stream(
 
         except Exception as e:
             logger.error("[%s] Stream error: %s", trace_id, e, exc_info=True)
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'error': 'Something went wrong. Our team has been notified.'})}\n\n"
 
     return StreamingResponse(
         generate(),

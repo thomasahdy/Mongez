@@ -80,7 +80,7 @@ async def analyze_meeting(
         logger.error("Failed to transcribe audio file: %s", exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Transcription failed: {str(exc)}"
+            detail="Audio transcription failed. Please try again."
         )
 
     if not transcript_text.strip():

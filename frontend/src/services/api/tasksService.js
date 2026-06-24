@@ -1,4 +1,6 @@
 import apiClient from "./apiClient";
+import { normalizeTask, normalizeTaskList } from "../../lib/taskMappers";
+import { toArrayPayload, toPagedPayload } from "./responseUtils";
 
 /**
  * Tasks API Service
@@ -33,7 +35,17 @@ export const createTask = async (data) => {
  */
 export const getBoardTasks = async (boardId, params = {}) => {
   const response = await apiClient.get(`/boards/${boardId}/tasks`, { params });
-  return response.data;
+  return normalizeTaskList(response.data);
+};
+
+export const getBoardTasksPage = async (boardId, params = {}) => {
+  const response = await apiClient.get(`/boards/${boardId}/tasks`, { params });
+  const paged = toPagedPayload(response.data, ["data", "items", "tasks"]);
+
+  return {
+    ...paged,
+    items: normalizeTaskList(paged.items),
+  };
 };
 
 /**
@@ -51,7 +63,7 @@ export const searchTasks = async (query, spaceId, params = {}) => {
       ...params,
     },
   });
-  return response.data;
+  return normalizeTaskList(response.data);
 };
 
 /**
@@ -61,7 +73,7 @@ export const searchTasks = async (query, spaceId, params = {}) => {
  */
 export const getTask = async (id) => {
   const response = await apiClient.get(`/tasks/${id}`);
-  return response.data;
+  return normalizeTask(response.data);
 };
 
 /**
@@ -72,7 +84,7 @@ export const getTask = async (id) => {
  */
 export const updateTask = async (id, data) => {
   const response = await apiClient.patch(`/tasks/${id}`, data);
-  return response.data;
+  return normalizeTask(response.data);
 };
 
 /**
@@ -97,6 +109,31 @@ export const archiveTask = async (id) => {
   await apiClient.delete(`/tasks/${id}`);
 };
 
+export const deleteTask = archiveTask;
+
+export const createBoardTask = async (board, taskData) => {
+  if (!board?.id) {
+    throw new Error("Choose a board before creating a task.");
+  }
+
+  const firstColumn =
+    board.columns?.find((column) => !column.isArchived) ||
+    board.columns?.[0];
+
+  return createTask({
+    title: taskData.title,
+    description: taskData.description || "",
+    boardId: board.id,
+    columnId: taskData.columnId || firstColumn?.id,
+    spaceId: board.spaceId,
+    spacePrefix: board.space?.prefix || board.spacePrefix,
+    priority: taskData.priority || "MEDIUM",
+    assigneeId: taskData.assigneeId,
+    dueDate: taskData.dueDate,
+    labels: taskData.labels || [],
+  });
+};
+
 /**
  * Add a comment to a task
  * @param {string} id - Task ID
@@ -117,7 +154,7 @@ export const addComment = async (id, data) => {
  */
 export const getComments = async (id, params = {}) => {
   const response = await apiClient.get(`/tasks/${id}/comments`, { params });
-  return response.data;
+  return toPagedPayload(response.data, ["data", "items", "comments"]);
 };
 
 /**
@@ -162,23 +199,43 @@ export const logTime = async (id, data) => {
  */
 export const getTimeLogs = async (id) => {
   const response = await apiClient.get(`/tasks/${id}/time-logs`);
+  return toArrayPayload(response.data, ["data", "items", "timeLogs"]);
+};
+
+export const getTaskFiles = async (id, params = {}) => {
+  const response = await apiClient.get(`/tasks/${id}/files`, { params });
+  return toArrayPayload(response.data, ["data", "items", "files", "attachments"]);
+};
+
+export const uploadTaskAttachment = async (id, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await apiClient.post(`/tasks/${id}/files`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return response.data;
 };
 
 const tasksService = {
   createTask,
   getBoardTasks,
+  getBoardTasksPage,
   searchTasks,
   getTask,
   updateTask,
   moveTask,
   archiveTask,
+  deleteTask,
+  createBoardTask,
   addComment,
   getComments,
   updateComment,
   deleteComment,
   logTime,
   getTimeLogs,
+  getTaskFiles,
+  uploadTaskAttachment,
 };
 
 export default tasksService;

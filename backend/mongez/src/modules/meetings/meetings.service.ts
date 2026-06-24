@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { StorageService } from '../../infrastructure/storage/storage.service';
 import { TasksService } from '../tasks/tasks.service';
@@ -18,7 +18,17 @@ export class MeetingsService {
     private readonly config: ConfigService,
   ) {}
 
-  async listMeetings(spaceId: string) {
+  async checkSpaceMembership(userId: string, spaceId: string): Promise<void> {
+    const membership = await this.prisma.membership.findUnique({
+      where: { userId_spaceId: { userId, spaceId } },
+    });
+    if (!membership) {
+      throw new ForbiddenException('You do not have access to this workspace.');
+    }
+  }
+
+  async listMeetings(spaceId: string, userId: string) {
+    await this.checkSpaceMembership(userId, spaceId);
     return this.prisma.meeting.findMany({
       where: { spaceId },
       include: { proposedTasks: true },
@@ -26,7 +36,8 @@ export class MeetingsService {
     });
   }
 
-  async getMeeting(id: string, spaceId: string) {
+  async getMeeting(id: string, spaceId: string, userId: string) {
+    await this.checkSpaceMembership(userId, spaceId);
     const meeting = await this.prisma.meeting.findFirst({
       where: { id, spaceId },
       include: { proposedTasks: true },
@@ -36,6 +47,7 @@ export class MeetingsService {
   }
 
   async uploadMeeting(spaceId: string, userId: string, title: string, file: UploadedFile): Promise<Meeting> {
+    await this.checkSpaceMembership(userId, spaceId);
     if (!file) throw new BadRequestException('No meeting audio file provided.');
 
     // 1. Upload raw audio file to storage (S3/MinIO/Local)
@@ -128,6 +140,7 @@ export class MeetingsService {
   }
 
   async approveProposedTask(proposedTaskId: string, spaceId: string, userId: string, boardId: string, columnId: string) {
+    await this.checkSpaceMembership(userId, spaceId);
     const proposedTask = await this.prisma.proposedTask.findFirst({
       where: { id: proposedTaskId, spaceId },
     });
@@ -174,7 +187,8 @@ export class MeetingsService {
     });
   }
 
-  async rejectProposedTask(proposedTaskId: string, spaceId: string) {
+  async rejectProposedTask(proposedTaskId: string, spaceId: string, userId: string) {
+    await this.checkSpaceMembership(userId, spaceId);
     const proposedTask = await this.prisma.proposedTask.findFirst({
       where: { id: proposedTaskId, spaceId },
     });
@@ -195,8 +209,8 @@ export class MeetingsService {
     });
   }
 
-  async getTranscript(meetingId: string, spaceId: string) {
-    const meeting = await this.getMeeting(meetingId, spaceId);
+  async getTranscript(meetingId: string, spaceId: string, userId: string) {
+    const meeting = await this.getMeeting(meetingId, spaceId, userId);
     if (!meeting.transcriptUrl) {
       throw new NotFoundException('Transcript file not found');
     }

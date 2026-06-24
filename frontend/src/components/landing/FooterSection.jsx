@@ -5,21 +5,33 @@ import mongezWordmark from '../../assets/Mongez.svg'
 const footerColumns = [
   {
     title: 'Product',
-    links: ['Features', 'Results', 'Pricing'],
+    links: [
+      { label: 'Features', href: '#features' },
+      { label: 'Results', href: '#results' },
+      { label: 'Pricing', href: '/billing' },
+    ],
   },
   {
     title: 'Company',
-    links: ['About', 'Blog','Contact'],
+    links: [
+      { label: 'About' },
+      { label: 'Blog' },
+      { label: 'Contact' },
+    ],
   },
   {
     title: 'Legal',
-    links: ['Privacy', 'Terms', 'Security'],
+    links: [
+      { label: 'Privacy' },
+      { label: 'Terms' },
+      { label: 'Security' },
+    ],
   },
 ]
 
 function FooterSection() {
   return (
-    <footer id="footer" className="bg-[#12192d] px-6 py-20 text-white lg:px-10">
+    <footer id="footer" className="bg-[#0f172a] px-6 py-20 text-white lg:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-12 border-b border-white/8 pb-14 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div>
@@ -41,9 +53,15 @@ function FooterSection() {
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">{column.title}</p>
               <div className="mt-6 space-y-4">
                 {column.links.map((link) => (
-                  <a key={link} href="#" className="block text-lg text-slate-400 transition hover:text-white">
-                    {link}
-                  </a>
+                  link.href ? (
+                    <a key={link.label} href={link.href} className="block text-lg text-slate-400 transition hover:text-white">
+                      {link.label}
+                    </a>
+                  ) : (
+                    <span key={link.label} className="block cursor-not-allowed text-lg text-slate-500" aria-disabled="true">
+                      {link.label}
+                    </span>
+                  )
                 ))}
               </div>
             </div>
@@ -53,15 +71,15 @@ function FooterSection() {
         <div className="flex flex-col gap-6 pt-8 text-slate-400 sm:flex-row sm:items-center sm:justify-between">
           <p>&copy; 2026 Mongez. All rights reserved.</p>
           <div className="flex items-center gap-5 text-xl">
-            <a href="#" aria-label="X" className="transition hover:text-white ">
+            <button type="button" aria-label="X unavailable" disabled className="cursor-not-allowed opacity-60">
               <BrandIcon name="x" />
-            </a>
-            <a href="#" aria-label="LinkedIn" className="transition hover:text-white">
+            </button>
+            <button type="button" aria-label="LinkedIn unavailable" disabled className="cursor-not-allowed opacity-60">
               <BrandIcon name="linkedin" />
-            </a>
-            <a href="#" aria-label="GitHub" className="transition hover:text-white">
+            </button>
+            <button type="button" aria-label="GitHub unavailable" disabled className="cursor-not-allowed opacity-60">
               <BrandIcon name="github" />
-            </a>
+            </button>
           </div>
         </div>
       </div>

@@ -31,9 +31,13 @@ async def query_rewriter_node(state: MongezAgentState) -> dict:
     words = raw.lower().split()
     has_pronoun = any(w in _PRONOUNS for w in words)
 
-    # Skip rewriting if the query looks self-contained
-    if len(words) > 6 and not has_pronoun:
-        logger.debug("Query rewriter: skipping (self-contained): %r", raw[:80])
+    # Skip rewriting if the query is a greeting or does not contain pronouns.
+    # Since there is no chat history passed to the agent graph in this version,
+    # we cannot resolve pronouns anyway, so we only attempt to rewrite if pronouns are present.
+    greetings = {"hi", "hello", "hey", "howdy", "yo", "greetings", "morning", "afternoon", "evening"}
+    is_greeting = any(w in greetings for w in words) if words else False
+    if not has_pronoun or is_greeting:
+        logger.debug("Query rewriter: skipping (greeting or no pronouns to resolve): %r", raw[:80])
         return {"rewritten_query": raw}
 
     # Use fast model to rewrite
@@ -46,8 +50,14 @@ async def query_rewriter_node(state: MongezAgentState) -> dict:
         result = await llm_client.invoke("fast", prompt, raw)
         rewritten = result["content"].strip()
 
-        # Guard: if the model returned something clearly wrong, fall back
-        if not rewritten or len(rewritten) < 3:
+        # Strip any "Rewritten query:" prefix the model might include
+        for prefix in ("Rewritten query:", "Rewritten Query:", "rewritten query:"):
+            if rewritten.lower().startswith(prefix.lower()):
+                rewritten = rewritten[len(prefix):].strip()
+                break
+
+        # Guard: if the model returned something clearly wrong or too long, fall back
+        if not rewritten or len(rewritten) < 3 or len(rewritten) > len(raw) * 5:
             rewritten = raw
 
         logger.debug("Query rewriter: %r → %r", raw[:60], rewritten[:60])
