@@ -24,20 +24,20 @@ export class MeetingsController {
 
   @Get()
   @ApiOperation({ summary: 'List all meetings in a space' })
-  async listMeetings(@Query('spaceId') spaceId: string) {
-    return this.meetingsService.listMeetings(spaceId);
+  async listMeetings(@Query('spaceId') spaceId: string, @Req() req: any) {
+    return this.meetingsService.listMeetings(spaceId, req.user.userId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get meeting details by ID' })
-  async getMeeting(@Param('id') id: string, @Query('spaceId') spaceId: string) {
-    return this.meetingsService.getMeeting(id, spaceId);
+  async getMeeting(@Param('id') id: string, @Query('spaceId') spaceId: string, @Req() req: any) {
+    return this.meetingsService.getMeeting(id, spaceId, req.user.userId);
   }
 
   @Get(':id/transcript')
   @ApiOperation({ summary: 'Get meeting transcript text' })
-  async getTranscript(@Param('id') id: string, @Query('spaceId') spaceId: string) {
-    return this.meetingsService.getTranscript(id, spaceId);
+  async getTranscript(@Param('id') id: string, @Query('spaceId') spaceId: string, @Req() req: any) {
+    return this.meetingsService.getTranscript(id, spaceId, req.user.userId);
   }
 
   @Post('upload')
@@ -79,7 +79,8 @@ export class MeetingsController {
   async rejectProposedTask(
     @Param('id') id: string,
     @Query('spaceId') spaceId: string,
+    @Req() req: any,
   ) {
-    return this.meetingsService.rejectProposedTask(id, spaceId);
+    return this.meetingsService.rejectProposedTask(id, spaceId, req.user.userId);
   }
 }

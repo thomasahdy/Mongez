@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import mongezMark from "../../assets/MongezMLogo.svg";
 import {
@@ -67,6 +67,8 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const emailInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
   const forgotPasswordMutation = useForgotPasswordMutation();
   const resetPasswordMutation = useResetPasswordMutation();
   const tokenVerificationQuery = useResetTokenVerificationQuery(token);
@@ -75,6 +77,20 @@ export default function ResetPasswordPage() {
   const tokenValid = mode === "request" || tokenVerificationQuery.isSuccess;
   const passwordIssues = getPasswordIssues(password, confirmPassword);
   const trimmedEmail = email.trim();
+
+  // Auto-focus email input when in request mode
+  useEffect(() => {
+    if (mode === "request" && emailInputRef.current) {
+      emailInputRef.current.focus();
+    }
+  }, [mode]);
+
+  // Auto-focus password input when token is verified
+  useEffect(() => {
+    if (mode === "reset" && tokenValid && !tokenChecking && passwordInputRef.current) {
+      passwordInputRef.current.focus();
+    }
+  }, [mode, tokenValid, tokenChecking]);
 
   useEffect(() => {
     if (tokenVerificationQuery.isError) {
@@ -188,6 +204,7 @@ export default function ResetPasswordPage() {
                 <span className="auth-label">Email address</span>
                 <span className="auth-input-shell">
                   <input
+                    ref={emailInputRef}
                     type="email"
                     placeholder="you@organization.com"
                     value={email}
@@ -222,6 +239,7 @@ export default function ResetPasswordPage() {
                     <span className="auth-label">New password</span>
                     <span className="auth-input-shell">
                       <input
+                        ref={passwordInputRef}
                         type="password"
                         placeholder="Create a strong password"
                         value={password}

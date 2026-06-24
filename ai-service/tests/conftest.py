@@ -161,6 +161,10 @@ async def mock_astream_events(self, input, *args, **kwargs):
     for t in tokens:
         yield {
             "event": "on_chat_model_stream",
+            "name": "chat_responder",
+            "metadata": {
+                "langgraph_node": "chat_responder"
+            },
             "data": {
                 "chunk": MockChunk(t)
             }

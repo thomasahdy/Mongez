@@ -89,7 +89,10 @@ export default function BillingPage() {
 
             <button
               type="button"
-              onClick={() => billingQuery.refetch()}
+              onClick={() => {
+                setError("");
+                billingQuery.refetch();
+              }}
               disabled={loading || !spaceId}
               className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:border-sky-200 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
             >

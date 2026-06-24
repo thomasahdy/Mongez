@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength, IsArray } from 'class-validator';
 
 export class ChatDto {
   @IsString()
@@ -6,11 +6,26 @@ export class ChatDto {
   @MaxLength(2000)
   message: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  spaceId: string;
+  spaceId?: string;
 
   @IsOptional()
   @IsString()
   boardId?: string;
+
+  /** Optional task context (for task-scoped risk scans) */
+  @IsOptional()
+  @IsString()
+  taskId?: string;
+
+  /** Comment tone preference (professional, friendly, concise, urgent) */
+  @IsOptional()
+  @IsString()
+  commentTone?: string;
+
+  /** Array of selected context item IDs to include in the request */
+  @IsOptional()
+  @IsArray()
+  context?: string[];
 }

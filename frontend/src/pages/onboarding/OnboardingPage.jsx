@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import mongezMark from "../../assets/MongezMLogo.svg";
-import { useOnboardingSetupMutation } from "../../hooks/useOnboardingQueries";
+import { useOnboardingSetupMutation, useOnboardingTemplatesQuery } from "../../hooks/useOnboardingQueries";
 
 const ONBOARDING_STORAGE_KEY = "pendingOnboarding";
 
@@ -18,7 +18,7 @@ const SIZES = [
   { value: "LARGE", label: "Large (50+ members)" },
 ];
 
-const TEMPLATES = [
+const FALLBACK_TEMPLATES = [
   {
     id: "project-board",
     title: "Project Board",
@@ -42,6 +42,7 @@ const TEMPLATES = [
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const onboardingSetupMutation = useOnboardingSetupMutation();
+  const templatesQuery = useOnboardingTemplatesQuery();
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
 
@@ -51,6 +52,11 @@ export default function OnboardingPage() {
   const [country, setCountry] = useState("EG");
   const [selectedTemplate, setSelectedTemplate] = useState("project-board");
   const [invites, setInvites] = useState([{ email: "", role: "MEMBER" }]);
+
+  // Merge backend templates with hardcoded fallback
+  const templates = templatesQuery.data?.length > 0
+    ? templatesQuery.data
+    : FALLBACK_TEMPLATES;
 
   useEffect(() => {
     try {
@@ -97,6 +103,13 @@ export default function OnboardingPage() {
       // Ignore persistence issues and keep onboarding usable.
     }
   }, [country, industry, invites, orgName, selectedTemplate, size]);
+
+  // Update page title per step
+  useEffect(() => {
+    const titles = ['Create Workspace', 'Choose Template', 'Invite Team'];
+    document.title = `${titles[step - 1]} — Mongez`;
+    return () => { document.title = 'Mongez'; };
+  }, [step]);
 
   const loading = onboardingSetupMutation.isPending;
   const trimmedOrgName = orgName.trim();
@@ -323,8 +336,13 @@ export default function OnboardingPage() {
                   <p className="text-sm text-slate-500 mt-1">Select a starting board configuration for your team.</p>
                 </div>
 
-                <div className="space-y-3.5">
-                  {TEMPLATES.map((template) => (
+                {templatesQuery.isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-sky-500" />
+                  </div>
+                ) : (
+                  <div className="space-y-3.5">
+                    {templates.map((template) => (
                     <div
                       key={template.id}
                       onClick={() => setSelectedTemplate(template.id)}
@@ -343,7 +361,8 @@ export default function OnboardingPage() {
                       </div>
                     </div>
                   ))}
-                </div>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-4">
                   <button

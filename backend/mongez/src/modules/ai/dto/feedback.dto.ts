@@ -5,8 +5,9 @@ export class FeedbackDto {
   @IsNotEmpty()
   traceId: string;
 
-  @IsIn([1, -1])
-  rating: 1 | -1; // 1 = thumbs up, -1 = thumbs down
+  @IsNotEmpty()
+  @IsIn([1, -1, 'positive', 'negative'])
+  rating: 1 | -1 | 'positive' | 'negative';
 
   @IsOptional()
   @IsString()

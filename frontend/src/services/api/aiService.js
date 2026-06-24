@@ -31,7 +31,7 @@ export const streamAiChat = async ({ onToken, signal, ...body }) => {
   const decoder = new TextDecoder();
   let buffer = "";
   let fullText = "";
-  const traceId = response.headers.get("X-Trace-Id") || "";
+  let traceId = response.headers.get("X-Trace-Id") || "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -49,9 +49,36 @@ export const streamAiChat = async ({ onToken, signal, ...body }) => {
         return;
       }
 
-      const token = line.slice(5).trimStart();
-      fullText += token;
-      onToken?.(token);
+      const rawData = line.slice(5).trimStart();
+
+      // Parse the JSON emitted by the Python AI service: { token, metadata, done, intent }
+      try {
+        const parsed = JSON.parse(rawData);
+
+        if (parsed.error) {
+          const err = new Error(parsed.error);
+          err.traceId = traceId;
+          throw err;
+        }
+
+        if (parsed.token) {
+          fullText += parsed.token;
+          onToken?.(parsed.token);
+        }
+
+        if (parsed.metadata?.trace_id) {
+          traceId = parsed.metadata.trace_id;
+        }
+
+        // "done" frame — nothing to append, stream will close naturally
+      } catch (parseError) {
+        if (parseError instanceof Error && parseError.traceId) {
+          throw parseError;
+        }
+        // Non-JSON chunk — append as-is (fallback)
+        fullText += rawData;
+        onToken?.(rawData);
+      }
     });
   }
 
@@ -65,6 +92,11 @@ export const analyzeRisk = async (body) => {
 
 export const generateAiReport = async (body) => {
   const response = await apiClient.post("/ai/report/generate", body);
+  return response.data;
+};
+
+export const fetchAiDashboard = async (spaceId) => {
+  const response = await apiClient.get("/ai/dashboard", { params: { spaceId } });
   return response.data;
 };
 
@@ -104,6 +136,7 @@ const aiService = {
   streamAiChat,
   analyzeRisk,
   generateAiReport,
+  fetchAiDashboard,
   fetchPendingAiActions,
   fetchAiContext,
   approveAiAction,

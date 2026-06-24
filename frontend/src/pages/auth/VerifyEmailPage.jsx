@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import mongezMark from "../../assets/MongezMLogo.svg";
 import {
@@ -30,6 +30,7 @@ export default function VerifyEmailPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const resendButtonRef = useRef(null);
   const verificationTokenQuery = useVerifyEmailTokenQuery(token);
   const verificationStatusQuery = useVerificationStatusQuery(!token);
   const sendVerificationMutation = useSendVerificationEmailMutation();
@@ -39,6 +40,14 @@ export default function VerifyEmailPage() {
   const isOAuthUser = Boolean(data?.isOAuthUser);
   const isAuthenticated = Boolean(data?.isAuthenticated);
   const sending = sendVerificationMutation.isPending;
+  const showResend = !loading && !verified && !token && !isOAuthUser && isAuthenticated;
+
+  // Auto-focus resend button when shown and cooldown expires
+  useEffect(() => {
+    if (showResend && resendCooldown === 0 && resendButtonRef.current) {
+      resendButtonRef.current.focus();
+    }
+  }, [showResend, resendCooldown]);
 
   useEffect(() => {
     if (resendCooldown <= 0) {
@@ -99,8 +108,6 @@ export default function VerifyEmailPage() {
     }
   };
 
-  const showResend = !loading && !verified && !token && !isOAuthUser && isAuthenticated;
-
   return (
     <div className="auth-page">
       <header className="auth-brand-row">
@@ -153,6 +160,7 @@ export default function VerifyEmailPage() {
           {showResend ? (
             <div className="grid gap-2">
               <button
+                ref={resendButtonRef}
                 type="button"
                 className="auth-primary-button verify-button"
                 onClick={handleResend}

@@ -4,6 +4,7 @@ import { AIGatewayService } from './ai-gateway.service';
 import { AIRequestRepository } from './repositories/ai-request.repository';
 import { AIActionRepository } from './repositories/ai-action.repository';
 import { CacheService } from '../../infrastructure/cache/cache.service';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 describe('AIService', () => {
   let service: AIService;
@@ -11,6 +12,7 @@ describe('AIService', () => {
   let requestRepo: jest.Mocked<AIRequestRepository>;
   let actionRepo: jest.Mocked<AIActionRepository>;
   let cache: jest.Mocked<CacheService>;
+  let prisma: jest.Mocked<PrismaService>;
 
   const userId = 'user-1';
   const chatDto = { spaceId: 'space-1', message: 'Summarize risks' } as any;
@@ -44,7 +46,35 @@ describe('AIService', () => {
       delPattern: jest.fn().mockResolvedValue(undefined),
     } as any;
 
-    service = new AIService(aiGateway, requestRepo, actionRepo, cache);
+    prisma = {
+      membership: {
+        findUnique: jest.fn().mockResolvedValue({ userId: 'user-1', spaceId: 'space-1' } as any),
+      },
+      task: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      workflowInstance: {
+        count: jest.fn().mockResolvedValue(0),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      proposedTask: {
+        count: jest.fn().mockResolvedValue(0),
+      },
+      board: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      decisionRecord: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      meeting: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as any;
+
+    // Set up default behavior for actionRepo
+    actionRepo.findById.mockResolvedValue({ id: 'action-1', spaceId: 'space-1' } as any);
+
+    service = new AIService(aiGateway, requestRepo, actionRepo, cache, prisma);
   });
 
   // ─── chat / chatStream ───────────────────────────────────────
@@ -107,7 +137,7 @@ describe('AIService', () => {
     it('should return pending AI actions for space', async () => {
       actionRepo.findPending.mockResolvedValue([{ id: 'action-1' }] as any);
 
-      const result = await service.getPendingActions('space-1');
+      const result = await service.getPendingActions('space-1', userId);
 
       expect(actionRepo.findPending).toHaveBeenCalledWith('space-1');
       expect(result).toHaveLength(1);
@@ -138,7 +168,7 @@ describe('AIService', () => {
     });
 
     it('should reject action and record reviewer note', async () => {
-      actionRepo.findById.mockResolvedValue({ id: 'action-1' } as any);
+      actionRepo.findById.mockResolvedValue({ id: 'action-1', spaceId: 'space-1' } as any);
       actionRepo.reject.mockResolvedValue({ id: 'action-1', status: 'REJECTED' } as any);
 
       await service.rejectAction('action-1', 'reviewer-1', { reviewNote: 'Not safe' } as any);
@@ -154,15 +184,15 @@ describe('AIService', () => {
       requestRepo.findByTraceId.mockResolvedValue(null);
 
       await expect(
-        service.submitFeedback({ traceId: 'missing-trace', rating: 5 } as any),
+        service.submitFeedback({ traceId: 'missing-trace', rating: 5 } as any, userId),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should update AI request with feedback rating and note', async () => {
-      requestRepo.findByTraceId.mockResolvedValue({ traceId: 'trace-1' } as any);
+      requestRepo.findByTraceId.mockResolvedValue({ traceId: 'trace-1', spaceId: 'space-1' } as any);
       requestRepo.update.mockResolvedValue({ traceId: 'trace-1', userFeedback: 5 } as any);
 
-      await service.submitFeedback({ traceId: 'trace-1', rating: 5, note: 'Great!' } as any);
+      await service.submitFeedback({ traceId: 'trace-1', rating: 5, note: 'Great!' } as any, userId);
 
       expect(requestRepo.update).toHaveBeenCalledWith('trace-1', {
         userFeedback: 5,
@@ -192,6 +222,27 @@ describe('AIService', () => {
 
       expect(requestRepo.findByUser).toHaveBeenCalledWith(userId, 1, 20);
       expect(result).toHaveLength(1);
+    });
+  });
+
+  // ─── getDashboard ────────────────────────────────────────────
+
+  describe('getDashboard()', () => {
+    it('should fetch and return all workspace intelligence metrics and alerts', async () => {
+      actionRepo.findPending.mockResolvedValue([{ id: 'action-1', commandType: 'TASK_CREATE', reason: 'Automated' }] as any);
+
+      const result = await service.getDashboard('space-1', userId);
+
+      expect(prisma.membership.findUnique).toHaveBeenCalledWith({
+        where: { userId_spaceId: { userId, spaceId: 'space-1' } },
+      });
+      expect(result).toHaveProperty('metrics');
+      expect(result).toHaveProperty('insights');
+      expect(result).toHaveProperty('pendingActions');
+      expect(result).toHaveProperty('approvals');
+      expect(result).toHaveProperty('risks');
+      expect(result).toHaveProperty('recentDecisions');
+      expect(result).toHaveProperty('meetingIntelligence');
     });
   });
 });

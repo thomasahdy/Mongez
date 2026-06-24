@@ -1,9 +1,10 @@
 import { Icon } from '../../../components/ui/Icons'
 import SectionBadge from './SectionBadge'
+import { NavLink } from 'react-router'
 
 function HeroSection() {
   return (
-    <section id="hero" className="relative overflow-hidden px-6 pb-24 pt-16 lg:px-10 lg:pt-24">
+    <section id="hero" className="relative overflow-hidden px-6 pb-24 pt-16 lg:px-10 lg:pt-24" aria-label="Product hero section">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.16),transparent_35%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.1),transparent_30%)]" />
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/80 to-transparent" />
       <div className="relative mx-auto max-w-6xl text-center">
@@ -18,13 +19,13 @@ function HeroSection() {
           results.
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <a
-            href="#features"
+          <NavLink
+            to="/register"
             className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-7 py-4 text-base font-semibold text-white shadow-[0_20px_45px_rgba(14,165,233,0.35)] transition hover:-translate-y-0.5"
           >
             <Icon name="rocket" />
             Get Started
-          </a>
+          </NavLink>
           <a
             href="#ai-assistant"
             className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-7 py-4 text-base font-semibold text-slate-700 shadow-[0_16px_35px_rgba(15,23,42,0.08)] transition hover:border-sky-200 hover:text-sky-600"
@@ -34,7 +35,7 @@ function HeroSection() {
           </a>
         </div>
 
-        <div className="relative mx-auto mt-14 max-w-5xl rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-[0_35px_90px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:p-6">
+        <div className="relative mx-auto mt-14 max-w-5xl rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-[0_35px_90px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:p-6" aria-label="Product preview dashboard mockup">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 pb-4">
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-rose-300" />

@@ -10,19 +10,23 @@ import {
 export const API_BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
 const unsafeMethods = new Set(["post", "put", "patch", "delete"]);
 
-let csrfToken = null;
+let csrfTokenValue = null;
+let csrfTokenFetchedAt = 0;
+const CSRF_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
-export const getCsrfToken = async () => {
-  if (csrfToken) {
-    return csrfToken;
+export const getCsrfToken = async (force = false) => {
+  const isStale = Date.now() - csrfTokenFetchedAt > CSRF_TTL_MS;
+  if (csrfTokenValue && !isStale && !force) {
+    return csrfTokenValue;
   }
 
   const response = await axios.get(`${API_BASE_URL}/auth/csrf-token`, {
     withCredentials: true,
   });
 
-  csrfToken = response.data?.data?.csrfToken;
-  return csrfToken;
+  csrfTokenValue = response.data?.data?.csrfToken;
+  csrfTokenFetchedAt = Date.now();
+  return csrfTokenValue;
 };
 
 const apiClient = axios.create({
@@ -92,6 +96,25 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         clearTokens();
         return Promise.reject(refreshError);
+      }
+    }
+
+    // Handle 403 errors for unsafe methods - re-fetch CSRF and retry once
+    if (
+      error.response?.status === 403 &&
+      originalRequest &&
+      !originalRequest._csrfRetry &&
+      unsafeMethods.has(originalRequest.method?.toLowerCase())
+    ) {
+      originalRequest._csrfRetry = true;
+
+      try {
+        const freshToken = await getCsrfToken(true); // Force re-fetch
+        originalRequest.headers['X-CSRF-Token'] = freshToken;
+        return apiClient(originalRequest);
+      } catch (csrfError) {
+        // If CSRF re-fetch fails, reject with original error
+        return Promise.reject(error);
       }
     }
 

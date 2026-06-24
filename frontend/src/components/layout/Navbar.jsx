@@ -1,12 +1,16 @@
-import { useMemo, useState } from "react";
-import { NavLink } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import NavBreadcrumb from "./NavBreadcrumb";
 import { logout } from "../../services/api/authService";
 import { useAppContext } from "../../pages/AppContext";
 
 const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
+  const navigate = useNavigate();
   const [focused, setFocused] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const inputRef = useRef(null);
+  const userMenuRef = useRef(null);
   const { user } = useAppContext();
 
   const userInitials = useMemo(() => {
@@ -19,6 +23,31 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
       .slice(0, 2)
       .toUpperCase();
   }, [user?.email, user?.name]);
+
+  // Ctrl+K global shortcut to focus search
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showUserMenu]);
 
   const handleLogout = async () => {
     await logout();
@@ -46,11 +75,21 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
           <i className="fa-solid fa-magnifying-glass unified-search-icon" aria-hidden="true" />
           <i className="fa-solid fa-wand-magic-sparkles unified-ai-icon" aria-hidden="true" />
           <input
+            ref={inputRef}
             type="search"
+            value={searchValue}
             placeholder='Search or ask AI... "Show KPI summary" | "budget status"'
             className="unified-search-input"
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target.value.trim()) {
+                navigate(`/search?q=${encodeURIComponent(e.target.value.trim())}`);
+                setSearchValue('');
+                setFocused(false);
+              }
+            }}
             aria-label="Search or ask AI"
           />
           <span className="kbd-shortcut">Ctrl K</span>
@@ -71,7 +110,7 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
           <span className="notification-dot" />
         </button>
 
-        <div className="relative">
+        <div className="relative" ref={userMenuRef}>
           <button
             type="button"
             onClick={() => setShowUserMenu((current) => !current)}

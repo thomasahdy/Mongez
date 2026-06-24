@@ -26,7 +26,7 @@ export class AILlmService {
 
   private async resolveUserContext(
     userId: string,
-    spaceId: string,
+    spaceId?: string,
     boardId?: string,
   ): Promise<ResolvedUserContext> {
     const [user, membership, space, board] = await Promise.all([
@@ -34,14 +34,18 @@ export class AILlmService {
         where: { id: userId },
         select: { name: true },
       }),
-      this.prisma.membership.findUnique({
-        where: { userId_spaceId: { userId, spaceId } },
-        select: { role: { select: { name: true } } },
-      }),
-      this.prisma.space.findUnique({
-        where: { id: spaceId },
-        select: { name: true },
-      }),
+      spaceId
+        ? this.prisma.membership.findUnique({
+            where: { userId_spaceId: { userId, spaceId } },
+            select: { role: { select: { name: true } } },
+          })
+        : Promise.resolve(null),
+      spaceId
+        ? this.prisma.space.findUnique({
+            where: { id: spaceId },
+            select: { name: true },
+          })
+        : Promise.resolve(null),
       boardId
         ? this.prisma.board.findUnique({
             where: { id: boardId },
@@ -65,7 +69,7 @@ export class AILlmService {
     await this.requestRepo.create({
       traceId,
       userId,
-      spaceId: dto.spaceId,
+      spaceId: dto.spaceId ?? '',
       intent: 'chat',
       rawInput: dto.message,
     });
@@ -82,7 +86,7 @@ export class AILlmService {
       const result = await this.aiClient.chat({
         traceId,
         userId,
-        spaceId: dto.spaceId,
+        spaceId: dto.spaceId ?? '',
         message: enrichedMessage,
         userName: context.userName,
         userRole: context.userRole,
@@ -125,7 +129,7 @@ export class AILlmService {
     await this.requestRepo.create({
       traceId,
       userId,
-      spaceId: dto.spaceId,
+      spaceId: dto.spaceId ?? '',
       intent: 'chat',
       rawInput: dto.message,
     });
@@ -136,7 +140,7 @@ export class AILlmService {
     const stream = this.aiClient.streamChat({
       traceId,
       userId,
-      spaceId: dto.spaceId,
+      spaceId: dto.spaceId ?? '',
       message: dto.message,
       userName: context.userName,
       userRole: context.userRole,

@@ -89,7 +89,18 @@ function AppContent() {
   return (
     <Suspense fallback={<FullScreenLoader />}>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/"
+          element={
+            !authReady ? (
+              <FullScreenLoader />
+            ) : isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <LandingPage />
+            )
+          }
+        />
         <Route
           path="/login"
           element={

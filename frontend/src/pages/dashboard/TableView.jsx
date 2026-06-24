@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router';
 import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
@@ -25,6 +25,7 @@ export default function TableView() {
   const navigate = useNavigate();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'title', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,10 +37,10 @@ export default function TableView() {
     () => ({
       page: currentPage,
       limit: itemsPerPage,
-      ...(search.trim() ? { search: search.trim() } : {}),
+      ...(deferredSearch.trim() ? { search: deferredSearch.trim() } : {}),
       ...(statusFilter ? { status: [statusFilter] } : {}),
     }),
-    [currentPage, search, statusFilter],
+    [currentPage, deferredSearch, statusFilter],
   );
   const tableQuery = useBoardTableQuery(boardIdValue, filters);
   const createTaskMutation = useCreateBoardTaskMutation();

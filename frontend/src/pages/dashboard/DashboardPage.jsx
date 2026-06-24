@@ -112,7 +112,13 @@ function KpiCard({ icon, iconClass, label, value, suffix = "", trend, trendDirec
           )}
         </div>
       </div>
-      <div className="kpi-value">{loading ? "..." : `${value}${suffix}`}</div>
+      <div className="kpi-value" aria-busy={loading}>
+        {loading ? (
+          <span className="inline-block h-8 w-20 animate-pulse rounded-lg bg-slate-200" aria-hidden="true" />
+        ) : (
+          `${value}${suffix}`
+        )}
+      </div>
       <div className="kpi-label">{label}</div>
       <Sparkline color={iconClass.includes("success") ? "var(--success)" : iconClass.includes("warning") ? "var(--warning)" : iconClass.includes("accent") ? "var(--accent)" : "var(--primary)"} direction={trendDirection} />
     </div>

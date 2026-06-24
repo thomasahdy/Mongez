@@ -9,6 +9,15 @@ export function useAiFeedQuery(spaceId) {
   });
 }
 
+export function useAiDashboardQuery(spaceId) {
+  return useQuery({
+    queryKey: ["ai", "dashboard", spaceId],
+    queryFn: () => aiService.fetchAiDashboard(spaceId),
+    enabled: Boolean(spaceId),
+    refetchInterval: 30000, // refresh every 30 seconds to keep feed alive
+  });
+}
+
 export function useAiContextQuery({ spaceId, boardId, taskId }) {
   return useQuery({
     queryKey: ["ai", "context", spaceId || "", boardId || "", taskId || ""],

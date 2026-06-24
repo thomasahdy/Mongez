@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import authService from "../services/api/authService";
+import apiClient from "../services/api/apiClient";
 
 function buildSpacePrefix(name) {
   const normalized = String(name || "")
@@ -16,7 +17,15 @@ function buildSpacePrefix(name) {
 export function useOnboardingTemplatesQuery() {
   return useQuery({
     queryKey: ["onboarding", "templates"],
-    queryFn: async () => [],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get('/onboarding/templates');
+        return Array.isArray(response.data) ? response.data : [];
+      } catch {
+        // Return empty array on error - OnboardingPage will use hardcoded fallback
+        return [];
+      }
+    },
     staleTime: Infinity,
   });
 }

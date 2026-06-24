@@ -239,7 +239,7 @@ function buildActionBar(spaceMembers) {
       </div>
       <div style="min-width:220px;display:flex;flex-direction:column;gap:6px;">
         <label style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);">Assignee</label>
-        <select data-task-control="assignee" disabled style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#f8fafc;color:var(--text-secondary);cursor:not-allowed;">
+        <select data-task-control="assignee" style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:white;color:var(--text-primary);cursor:pointer;">
           ${assigneeOptions}
         </select>
       </div>
@@ -318,8 +318,11 @@ function TaskDetailsPage() {
         nextFiles.forEach((file, index) => {
           const node = fileNodes[index]?.querySelector('.file-name');
           const url = file?.url || file?.downloadUrl || file?.fileUrl;
-          if (node && url) {
-            node.innerHTML = `<a href="${url}" target="_blank" rel="noreferrer" style="color:var(--primary);text-decoration:none;">${file.name || file.fileName || 'Attachment'}</a>`;
+          const downloadUrl = url || (file?.id
+            ? `${import.meta.env.VITE_API_URL || '/api/v1'}/files/${file.id}/download`
+            : null);
+          if (node && downloadUrl) {
+            node.innerHTML = `<a href="${downloadUrl}" target="_blank" rel="noreferrer" style="color:var(--primary);text-decoration:none;">${file.name || file.fileName || 'Attachment'}</a>`;
           }
         });
       };
@@ -447,8 +450,13 @@ function TaskDetailsPage() {
 
       const assigneeSelect = root.querySelector('[data-task-control="assignee"]');
       if (assigneeSelect) {
-        assigneeSelect.onchange = () => {
-          setFeedback('Assignee changes are not exposed by the current backend task API.', 'error');
+        assigneeSelect.onchange = async (event) => {
+          try {
+            await applyTaskUpdate({ assigneeId: event.target.value || null });
+            setFeedback('Assignee updated.', 'success');
+          } catch (error) {
+            setFeedback(error.message || 'Unable to update assignee.', 'error');
+          }
         };
       }
 
