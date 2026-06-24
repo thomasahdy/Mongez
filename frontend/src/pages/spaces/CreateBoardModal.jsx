@@ -28,9 +28,10 @@ const CreateBoardModal = ({ dept, onSubmit, onClose }) => {
   }, [dept?.id,  setValue]);
 
   const handleFormSubmit = async (data) => {
+    console.log("CreateBoardModal handleFormSubmit with:", data);
     try {
-      console.log(await onSubmit(data));
-      reset();
+      await onSubmit(data);
+      // Don't reset - let the parent handle modal close
     } catch (err) {
       console.error("Form submission failed:", err);
     }

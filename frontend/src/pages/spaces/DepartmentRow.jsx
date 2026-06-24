@@ -9,11 +9,14 @@ const DepartmentRow = ({ dept}) => {
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
   const createBoard = useCreateBoard();
   const handleCreateBoard = async(data) => {
+    console.log("handleCreateBoard called with:", data);
     try {
-      await createBoard.mutateAsync(data);
+      const result = await createBoard.mutateAsync(data);
+      console.log("Board created successfully:", result);
       setShowCreateBoardModal(false);
     }
     catch (err) {
+      console.error("Board creation failed:", err);
       alert(err.response?.data?.message || err.message || "Failed to create a board.");
     }
   };

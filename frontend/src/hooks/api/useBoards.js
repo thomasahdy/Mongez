@@ -36,10 +36,17 @@ export function useCreateBoard() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data) => boardsService.createBoard(data),
+    mutationFn: (data) => {
+      console.log("useCreateBoard mutationFn called with:", data);
+      return boardsService.createBoard(data);
+    },
     onSuccess: (newBoard) => {
+      console.log("useCreateBoard onSuccess:", newBoard);
       queryClient.invalidateQueries({ queryKey: ['boards'] });
       queryClient.setQueryData(['boards', newBoard.id], newBoard);
+    },
+    onError: (error) => {
+      console.error("useCreateBoard onError:", error);
     },
   });
 }
