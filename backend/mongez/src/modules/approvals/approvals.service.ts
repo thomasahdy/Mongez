@@ -29,13 +29,20 @@ export class ApprovalsService {
     });
 
     // Notify reviewer via BullMQ queue
-    await this.notificationsQueue.add(JOB_NAMES.SEND_NOTIFICATION, {
-      userId: dto.reviewerId,
-      type: 'APPROVAL_REQUESTED',
-      title: 'Approval Requested',
-      body: `A task requires your approval`,
-      deepLink: `/approvals/${approval.id}`,
-    });
+    await this.notificationsQueue.add(
+      JOB_NAMES.SEND_NOTIFICATION,
+      {
+        userId: dto.reviewerId,
+        type: 'APPROVAL_REQUESTED',
+        title: 'Approval Requested',
+        body: `A task requires your approval`,
+        deepLink: `/approvals/${approval.id}`,
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+      }
+    );
 
     return approval;
   }
@@ -45,13 +52,20 @@ export class ApprovalsService {
     const approval = await this.approvalRepo.resolve(id, reviewerId, status, dto.comment);
 
     // Notify requester
-    await this.notificationsQueue.add(JOB_NAMES.SEND_NOTIFICATION, {
-      userId: approval.requestedById,
-      type: 'APPROVAL_RESOLVED',
-      title: `Task ${dto.status === 'APPROVED' ? 'Approved' : 'Rejected'}`,
-      body: dto.comment || `Your approval request has been ${dto.status.toLowerCase()}`,
-      deepLink: `/tasks/${approval.taskId}`,
-    });
+    await this.notificationsQueue.add(
+      JOB_NAMES.SEND_NOTIFICATION,
+      {
+        userId: approval.requestedById,
+        type: 'APPROVAL_RESOLVED',
+        title: `Task ${dto.status === 'APPROVED' ? 'Approved' : 'Rejected'}`,
+        body: dto.comment || `Your approval request has been ${dto.status.toLowerCase()}`,
+        deepLink: `/tasks/${approval.taskId}`,
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+      }
+    );
 
     return approval;
   }

@@ -93,7 +93,7 @@ class QdrantIndexer:
             PointStruct(
                 id=_stable_uuid(
                     chunk["metadata"].get(source_key, str(i)),
-                    i,
+                    chunk["metadata"].get("chunk_index", 0),
                 ),
                 vector=vector,
                 payload={**chunk["metadata"], "text": chunk["text"]},

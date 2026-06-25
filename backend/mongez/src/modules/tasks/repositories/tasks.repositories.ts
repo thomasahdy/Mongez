@@ -16,6 +16,7 @@ export class TaskRepository {
   private readonly TASK_INCLUDE = {
     assignments: { include: { user: { select: userSelect } } },
     board: { select: { id: true, name: true, department: { select: { spaceId: true } } } },
+    views: { select: { userId: true, viewedAt: true, user: { select: userSelect } } },
     _count: { select: { comments: true, attachments: true, subtasks: true } },
   };
 

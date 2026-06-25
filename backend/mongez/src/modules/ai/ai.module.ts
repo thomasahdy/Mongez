@@ -66,6 +66,6 @@ import { QUEUE_NAMES } from '../../infrastructure/queue/queue.constants';
     AIRiskService,
     AISchedulerService,
   ],
-  exports: [AIService, AIGatewayService, AIExecutorService, AIMemoryProfileService],
+  exports: [AIService, AIGatewayService, AIExecutorService, AIMemoryProfileService, AIRagService, AIRiskService],
 })
 export class AIModule {}

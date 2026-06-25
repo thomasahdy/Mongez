@@ -145,7 +145,23 @@ import { StorageModule } from './infrastructure/storage/storage.module';
       adapter: BullMQAdapter,
     }),
     BullBoardModule.forFeature({
+      name: 'emails',
+      adapter: BullMQAdapter,
+    }),
+    BullBoardModule.forFeature({
       name: 'ai-processing',
+      adapter: BullMQAdapter,
+    }),
+    BullBoardModule.forFeature({
+      name: 'reports',
+      adapter: BullMQAdapter,
+    }),
+    BullBoardModule.forFeature({
+      name: 'activity-log',
+      adapter: BullMQAdapter,
+    }),
+    BullBoardModule.forFeature({
+      name: 'workspace-export',
       adapter: BullMQAdapter,
     }),
     BullBoardModule.forFeature({
@@ -154,6 +170,14 @@ import { StorageModule } from './infrastructure/storage/storage.module';
     }),
     BullBoardModule.forFeature({
       name: 'telegram',
+      adapter: BullMQAdapter,
+    }),
+    BullBoardModule.forFeature({
+      name: 'approval-expiry',
+      adapter: BullMQAdapter,
+    }),
+    BullBoardModule.forFeature({
+      name: 'analytics-funnel',
       adapter: BullMQAdapter,
     }),
   ],

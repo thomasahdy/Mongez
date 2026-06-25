@@ -11,8 +11,11 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { TrashModule } from '../trash/trash.module';
+import { FilesModule } from '../files/files.module';
 
 import { CqrsModule } from '@nestjs/cqrs';
+import { forwardRef } from '@nestjs/common';
+import { AIModule } from '../ai/ai.module';
 
 @Module({
   imports: [
@@ -23,6 +26,8 @@ import { CqrsModule } from '@nestjs/cqrs';
     RealtimeModule,
     CqrsModule,
     TrashModule,
+    FilesModule,
+    forwardRef(() => AIModule),
   ],
   controllers: [TasksController],
   providers: [

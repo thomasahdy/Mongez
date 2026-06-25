@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -79,6 +80,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         (exception as Error)?.stack,
         { traceId },
       );
+    }
+
+    if (status >= 500 || !(exception instanceof HttpException)) {
+      Sentry.captureException(exception);
     }
 
     response.status(status).json({

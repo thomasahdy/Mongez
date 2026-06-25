@@ -65,7 +65,17 @@ export class TasksService {
   async createTask(dto: CreateTaskDto, userId: string, spaceId: string, spacePrefix: string) {
     const task = await this.taskRepo.create(dto, spaceId, spacePrefix, this.identifierService, userId);
 
-    await this.aiQueue.add(JOB_NAMES.AI_INDEX_DOCUMENT, { spaceId, taskId: task.id });
+    await this.aiQueue.add(
+      JOB_NAMES.AI_INDEX_DOCUMENT,
+      { spaceId, taskId: task.id },
+      {
+        attempts: 5,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      },
+    );
     
     // Publish Domain Event
     this.eventBus.publish(new TaskCreatedEvent(task));
@@ -78,7 +88,14 @@ export class TasksService {
     const task = await this.taskRepo.update(id, dto, userId);
 
     if (dto.status === 'BLOCKED') {
-      await this.aiQueue.add(JOB_NAMES.AI_RISK_SCAN, { taskId: task.id });
+      await this.aiQueue.add(
+        JOB_NAMES.AI_RISK_SCAN,
+        { taskId: task.id },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+        }
+      );
     }
 
     // Publish Domain Event

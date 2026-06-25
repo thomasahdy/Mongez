@@ -97,13 +97,23 @@ export class FilesService {
     });
 
     // Queue RAG incremental indexing (Python service consumes this).
-    await this.aiQueue.add(JOB_NAMES.AI_INDEX_DOCUMENT, {
-      spaceId,
-      taskId,
-      attachmentId: attachment.id,
-      fileName: attachment.fileName,
-      storageKey: storageKey,
-    });
+    await this.aiQueue.add(
+      JOB_NAMES.AI_INDEX_DOCUMENT,
+      {
+        spaceId,
+        taskId,
+        attachmentId: attachment.id,
+        fileName: attachment.fileName,
+        storageKey: storageKey,
+      },
+      {
+        attempts: 5,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      },
+    );
 
     // Record storage usage in MB
     const sizeInMb = Math.ceil(size / (1024 * 1024));

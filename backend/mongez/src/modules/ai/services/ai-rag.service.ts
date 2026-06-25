@@ -13,7 +13,7 @@ export class AIRagService {
       await this.aiClient.indexDocument({ spaceId, taskId });
     } catch (err: any) {
       this.logger.error(`Failed to index document for space ${spaceId}, task ${taskId}: ${err.message}`);
-      // Don't throw to prevent background queue crashes, just log
+      throw err;
     }
   }
 

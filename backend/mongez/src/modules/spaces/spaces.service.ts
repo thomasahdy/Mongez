@@ -124,18 +124,24 @@ export class SpacesService {
     if (targetUserId === requesterId && dto.role !== 'OWNER') {
       // Prevent owner from demoting themselves (should transfer ownership first)
     }
-    return this.memberRepo.changeRole(targetUserId, spaceId, dto.role);
+    const result = await this.memberRepo.changeRole(targetUserId, spaceId, dto.role);
+    await this.cache.del(`membership:${targetUserId}:${spaceId}`).catch(() => {});
+    return result;
   }
 
   async removeMember(spaceId: string, targetUserId: string, requesterId: string) {
     if (targetUserId === requesterId) {
       throw new ForbiddenException('Use the leave endpoint to leave a space');
     }
-    return this.memberRepo.remove(targetUserId, spaceId);
+    const result = await this.memberRepo.remove(targetUserId, spaceId);
+    await this.cache.del(`membership:${targetUserId}:${spaceId}`).catch(() => {});
+    return result;
   }
 
   async leaveSpace(spaceId: string, userId: string) {
-    return this.memberRepo.remove(userId, spaceId);
+    const result = await this.memberRepo.remove(userId, spaceId);
+    await this.cache.del(`membership:${userId}:${spaceId}`).catch(() => {});
+    return result;
   }
 
   // ─── Invitations ───────────────────────────────────────────
@@ -192,7 +198,7 @@ export class SpacesService {
       throw new ForbiddenException('This invitation was sent to a different email address');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const role = await tx.role.upsert({
         where: { name: invitation.role },
         update: {},
@@ -206,6 +212,9 @@ export class SpacesService {
       await tx.invitation.update({ where: { token }, data: { accepted: true } });
       return { message: 'Successfully joined the space', spaceId: invitation.spaceId };
     });
+
+    await this.cache.del(`membership:${userId}:${invitation.spaceId}`).catch(() => {});
+    return result;
   }
 
   async requestExport(spaceId: string, userId: string) {

@@ -15,12 +15,14 @@ import { TelegramModule } from '../telegram/telegram.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { PresenceService } from './presence/presence.service';
 import { ApprovalExpiryProcessor } from '../messaging/approvals/approval-expiry.service';
+import { EmailPlaceholderProcessor } from './processors/email-placeholder.processor';
 
 import { CacheModule } from '../../infrastructure/cache/cache.module';
 import { forwardRef } from '@nestjs/common';
 @Module({
   imports: [
     BullModule.registerQueue({ name: QUEUE_NAMES.NOTIFICATIONS }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.EMAILS }),
     BullModule.registerQueue({ name: QUEUE_NAMES.APPROVAL_EXPIRY }),
     RealtimeModule,
     forwardRef(() => WhatsAppModule),
@@ -33,6 +35,7 @@ import { forwardRef } from '@nestjs/common';
     NotificationsService,
     NotificationRepository,
     NotificationProcessor,
+    EmailPlaceholderProcessor,
     OutboxRepository,
     OutboxRelayService,
     EmailChannel,

@@ -36,6 +36,7 @@ export class NotificationsService {
     const notif = await this.notifRepo.markAsRead(id, userId);
     await this.cache.del(`notif:count:${userId}:${spaceId}`);
     await this.pushCountUpdate(userId, spaceId);
+    this.realtimeService.emitToUser(userId, 'notification:read', { id });
     return notif;
   }
 
@@ -43,12 +44,14 @@ export class NotificationsService {
     await this.notifRepo.markAllAsRead(userId, spaceId);
     await this.cache.del(`notif:count:${userId}:${spaceId}`);
     await this.pushCountUpdate(userId, spaceId);
+    this.realtimeService.emitToUser(userId, 'notification:read', { all: true });
   }
 
   async delete(id: string, userId: string, spaceId: string) {
     await this.notifRepo.delete(id, userId);
     await this.cache.del(`notif:count:${userId}:${spaceId}`);
     await this.pushCountUpdate(userId, spaceId);
+    this.realtimeService.emitToUser(userId, 'notification:deleted', { id });
   }
 
   // Called by the BullMQ processor — creates notification + pushes via WebSocket

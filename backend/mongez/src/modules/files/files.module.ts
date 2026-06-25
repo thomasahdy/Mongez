@@ -20,6 +20,6 @@ import { QUEUE_NAMES } from '../../infrastructure/queue/queue.constants';
   ],
   controllers: [FilesController],
   providers: [FilesService, FileRepository, VirusScannerService],
-  exports: [FilesService],
+  exports: [FilesService, FileRepository],
 })
 export class FilesModule {}

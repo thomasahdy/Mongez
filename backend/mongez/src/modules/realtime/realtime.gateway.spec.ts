@@ -31,6 +31,9 @@ describe('RealtimeGateway', () => {
       task: {
         findUnique: jest.fn(),
       },
+      taskView: {
+        upsert: jest.fn(),
+      },
       user: {
         findUnique: jest.fn(),
       },
@@ -85,6 +88,8 @@ describe('RealtimeGateway', () => {
       join: jest.fn(),
       leave: jest.fn(),
       disconnect: jest.fn(),
+      to: jest.fn().mockReturnThis(),
+      emit: jest.fn(),
       data: {},
     };
   });
@@ -100,7 +105,9 @@ describe('RealtimeGateway', () => {
       expect(mockSocket.data.userId).toBe('user-1');
       expect(mockSocket.join).toHaveBeenCalledWith('user:user-1');
       expect(mockSocket.join).toHaveBeenCalledWith('space:space-1');
-      expect(cacheService.set).toHaveBeenCalledWith('user:user-1:last_seen', expect.any(String), 90);
+      // Check that both status and last_seen were set (order matters: status first, then last_seen)
+      expect(cacheService.set).toHaveBeenNthCalledWith(1, 'user:user-1:status', 'ONLINE', 180);
+      expect(cacheService.set).toHaveBeenNthCalledWith(2, 'user:user-1:last_seen', expect.any(String), 90);
     });
 
     it('should disconnect client on authentication failure', async () => {
@@ -225,6 +232,7 @@ describe('RealtimeGateway', () => {
       };
       mockServer.fetchSockets.mockResolvedValue([]); // No other sockets
       cacheService.zrange.mockResolvedValue([]);
+      prisma.membership.findMany.mockResolvedValue([{ spaceId: 'space-1' }] as any);
 
       await gateway.handleDisconnect(mockSocket);
 

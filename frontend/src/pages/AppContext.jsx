@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import boardsService from "../services/api/boardsService";
 import membersService from "../services/api/membersService";
 import spacesService from "../services/api/spacesService";
+import { useSocket } from "../context/SocketContext";
 
 const ACTIVE_SPACE_STORAGE_KEY = "mongez.activeSpaceId";
 const ACTIVE_BOARD_STORAGE_KEY = "mongez.activeBoardId";
@@ -35,6 +36,7 @@ function flattenBoards(boardsByDepartment) {
 
 export function AppProvider({ children }) {
   const user = useSelector((state) => state.users?.user || null);
+  const { getSpacePresence } = useSocket();
   const [spaces, setSpaces] = useState([]);
   const [spaceMembers, setSpaceMembers] = useState([]);
   const [departmentsBySpace, setDepartmentsBySpace] = useState({});
@@ -219,8 +221,9 @@ export function AppProvider({ children }) {
 
       const members = await membersService.getMembers(spaceId).catch(() => []);
       setSpaceMembers(Array.isArray(members) ? members : []);
+      getSpacePresence(spaceId);
     },
-    [ensureSpaceData],
+    [ensureSpaceData, getSpacePresence],
   );
 
   const setActiveBoard = useCallback(

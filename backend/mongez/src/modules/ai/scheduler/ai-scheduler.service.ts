@@ -31,6 +31,8 @@ export class AISchedulerService {
           {
             delay: Math.random() * 60000, // Stagger by up to 60s to avoid thundering herd
             jobId: `risk-scan:${space.id}:${Date.now()}`,
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 },
           },
         );
       }
@@ -76,16 +78,23 @@ export class AISchedulerService {
         if (!spaceId) continue;
 
         for (const assignment of task.assignments) {
-          await this.notificationQueue.add(JOB_NAMES.SEND_NOTIFICATION, {
-            userId: assignment.userId,
-            spaceId,
-            type: 'DEADLINE_REMINDER',
-            channel: 'IN_APP',
-            title: `Due soon: ${task.title}`,
-            body: `This task is due on ${task.dueDate?.toLocaleDateString()}`,
-            entityType: 'task',
-            entityId: task.id,
-          });
+          await this.notificationQueue.add(
+            JOB_NAMES.SEND_NOTIFICATION,
+            {
+              userId: assignment.userId,
+              spaceId,
+              type: 'DEADLINE_REMINDER',
+              channel: 'IN_APP',
+              title: `Due soon: ${task.title}`,
+              body: `This task is due on ${task.dueDate?.toLocaleDateString()}`,
+              entityType: 'task',
+              entityId: task.id,
+            },
+            {
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 5000 },
+            }
+          );
           remindersCount++;
         }
       }

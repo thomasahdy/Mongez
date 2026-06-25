@@ -35,6 +35,9 @@ describe('MeetingsService', () => {
       space: {
         findUnique: jest.fn(),
       },
+      membership: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'member-1' }),
+      },
     } as any;
 
     storage = {

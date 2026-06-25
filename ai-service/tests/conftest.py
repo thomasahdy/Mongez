@@ -127,6 +127,11 @@ async def mock_index(*args, **kwargs):
 DenseRetriever.retrieve = AsyncMock(side_effect=mock_retrieve)
 DenseRetriever.format_as_xml_context = mock_format_as_xml_context
 QdrantIndexer.index = AsyncMock(side_effect=mock_index)
+QdrantIndexer.index_tasks = MagicMock(return_value=1)
+QdrantIndexer.index_comments = MagicMock(return_value=1)
+QdrantIndexer.index_audit_logs = MagicMock(return_value=1)
+QdrantIndexer.ensure_collection = MagicMock(return_value=None)
+
 
 
 from app.agents.graph import agent_graph

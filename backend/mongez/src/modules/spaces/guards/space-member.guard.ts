@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { CacheService } from '../../../infrastructure/cache/cache.service';
 import { resolveSpaceId } from '../../../common/utils/space-resolver';
 
 export const SPACE_ROLES_KEY = 'spaceRoles';
@@ -25,6 +26,7 @@ export class SpaceMemberGuard implements CanActivate {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reflector: Reflector,
+    private readonly cache: CacheService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -36,10 +38,15 @@ export class SpaceMemberGuard implements CanActivate {
 
     if (!spaceId) return true; // no space context — skip guard
 
-    const membership = await this.prisma.membership.findFirst({
-      where: { userId, spaceId },
-      select: { role: { select: { name: true } } },
-    });
+    const cacheKey = `membership:${userId}:${spaceId}`;
+    const membership = await this.cache.getOrSet<{ role: { name: string } } | null>(
+      cacheKey,
+      () => this.prisma.membership.findFirst({
+        where: { userId, spaceId },
+        select: { role: { select: { name: true } } },
+      }),
+      300, // 5 minutes TTL
+    );
 
     if (!membership) {
       throw new ForbiddenException('You are not a member of this space');

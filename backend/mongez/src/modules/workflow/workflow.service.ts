@@ -282,6 +282,11 @@ export class WorkflowService {
           outcome,
         });
 
+        this.realtime.emitToSpace(updatedInstance.spaceId, 'approval:resolved', {
+          instanceId: updatedInstance.id,
+          outcome,
+        });
+
         this.eventBus.publish(new WorkflowResolvedEvent(updatedInstance, outcome));
       } else if (transitionEvent.type === 'ADVANCED') {
         const nextStepOrder = transitionEvent.data.nextStepOrder;
@@ -473,6 +478,11 @@ export class WorkflowService {
       this.realtime.emitToUser(approverId, 'workflow:pending_review', {
         instanceId: instance.id,
         stepName: step.name,
+      });
+      this.realtime.emitToUser(approverId, 'approval:created', {
+        instanceId: instance.id,
+        stepName: step.name,
+        expiresAt,
       });
     }
   }

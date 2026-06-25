@@ -95,3 +95,48 @@ def test_generate_report_success(client):
     data = res.json()
     assert "trace_id" in data
     assert "# Project Status Report" in data["report"]
+
+
+def test_index_unauthorized(client):
+    """POST /index should reject request with missing or invalid service key."""
+    res = client.post(
+        "/index",
+        json={"space_id": "space-1", "task_id": "task-1"},
+    )
+    assert res.status_code == 403
+
+
+def test_index_success(client):
+    """POST /index with valid key should successfully index task and comments."""
+    res = client.post(
+        "/index",
+        headers={"X-Service-API-Key": "test-key"},
+        json={"space_id": "space-1", "task_id": "task-1"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert "points_indexed" in data
+
+
+def test_retrieve_unauthorized(client):
+    """POST /retrieve should reject request with missing or invalid service key."""
+    res = client.post(
+        "/retrieve",
+        json={"space_id": "space-1", "query": "hello"},
+    )
+    assert res.status_code == 403
+
+
+def test_retrieve_success(client):
+    """POST /retrieve with valid key should return retrieved XML context."""
+    res = client.post(
+        "/retrieve",
+        headers={"X-Service-API-Key": "test-key"},
+        json={"space_id": "space-1", "query": "Find overdue tasks"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "context" in data
+    assert "Mocked XML context" in data["context"]
+

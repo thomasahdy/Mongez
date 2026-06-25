@@ -11,6 +11,7 @@ const TaskCard = ({ card }) => {
     dueLabel, dueVariant = "neutral", comments,
     blocker, leftBorder,
     done, doneLabel, celebration,
+    views = [],
   } = card;
 
   const dueColors = {
@@ -69,9 +70,17 @@ const TaskCard = ({ card }) => {
       )}
 
       {/* Meta row */}
-      {(avatars || dueLabel || comments !== undefined) && !done && (
+      {(avatars || dueLabel || comments !== undefined || views?.length > 0) && !done && (
         <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2.5">
-          {avatars && <AvatarGroup avatars={avatars} extra={extraAvatars} />}
+          <div className="flex items-center gap-2">
+            {avatars && <AvatarGroup avatars={avatars} extra={extraAvatars} />}
+            {views?.length > 0 && (
+              <span className="flex items-center gap-1 text-[10px] text-slate-400/80 cursor-help" title={`Seen by: ${views.map(v => v.user?.name || 'User').join(', ')}`}>
+                <i className="fa-regular fa-eye text-[10px]" />
+                <span>{views.length}</span>
+              </span>
+            )}
+          </div>
           {dueLabel && (
             <span className={`flex items-center gap-1 ${dueColors[dueVariant]}`}>
               {dueVariant !== "neutral" && <i className="fa-regular fa-clock" />}

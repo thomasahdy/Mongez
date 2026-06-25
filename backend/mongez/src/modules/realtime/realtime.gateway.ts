@@ -13,6 +13,7 @@ import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { RealtimeService } from './realtime.service';
 import { CacheService } from '../../infrastructure/cache/cache.service';
 import { Cron } from '@nestjs/schedule';
+import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true },
@@ -20,6 +21,7 @@ import { Cron } from '@nestjs/schedule';
 })
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
+  private readonly logger = new Logger(RealtimeGateway.name);
 
   constructor(
     private readonly jwtService: JwtService,
@@ -103,10 +105,27 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       client.data.boards = new Set<string>();
       client.data.tasks = new Set<string>();
 
+      // Store ONLINE status in Redis (TTL: 180s)
+      await this.cacheService.set(`user:${payload.sub}:status`, 'ONLINE', 180);
+
+      // Broadcast ONLINE status to all space members
+      for (const m of memberships) {
+        if (m.spaceId) {
+          client.to(`space:${m.spaceId}`).emit('presence:status', {
+            userId: payload.sub,
+            status: 'ONLINE',
+          });
+        }
+      }
+
       // Initial heartbeat on connection (90s TTL)
       await this.cacheService.set(`user:${payload.sub}:last_seen`, new Date().toISOString(), 90);
 
-    } catch {
+    } catch (err: unknown) {
+      this.logger.error(
+        'Socket connection auth/setup failed',
+        err instanceof Error ? err.stack : String(err)
+      );
       client.disconnect();
     }
   }
@@ -119,6 +138,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const expirationScore = now + 90000; // 90s TTL
 
       await this.cacheService.set(`user:${userId}:last_seen`, new Date().toISOString(), 90);
+      await this.cacheService.set(`user:${userId}:status`, 'ONLINE', 180);
 
       // Heartbeat updates score for all active boards the user is on
       if (client.data.boards) {
@@ -139,6 +159,28 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   async handleDisconnect(client: Socket) {
     const userId = client.data.userId;
     if (!userId) return;
+
+    // Check if user has other active tabs / connections
+    const userSockets = await this.server.in(`user:${userId}`).fetchSockets();
+    const otherSockets = userSockets.filter((s) => s.id !== client.id);
+
+    if (otherSockets.length === 0) {
+      // Truly offline
+      await this.cacheService.set(`user:${userId}:status`, 'OFFLINE', 180);
+      
+      const memberships = await this.prisma.membership.findMany({
+        where: { userId },
+        select: { spaceId: true },
+      });
+      for (const m of memberships) {
+        if (m.spaceId) {
+          this.server.to(`space:${m.spaceId}`).emit('presence:status', {
+            userId,
+            status: 'OFFLINE',
+          });
+        }
+      }
+    }
 
     if (client.data.boards) {
       for (const boardId of client.data.boards) {
@@ -169,6 +211,28 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
         await this.broadcastTaskPresence(taskId);
       }
     }
+  }
+
+  @SubscribeMessage('space:get-presence')
+  async handleGetSpacePresence(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() spaceId: string,
+  ) {
+    const userId = client.data.userId;
+    if (!userId) return;
+
+    const members = await this.prisma.membership.findMany({
+      where: { spaceId },
+      select: { userId: true },
+    });
+
+    const statusMap: Record<string, string> = {};
+    for (const m of members) {
+      const status = await this.cacheService.get<string>(`user:${m.userId}:status`);
+      statusMap[m.userId] = status || 'OFFLINE';
+    }
+
+    client.emit('space:presence-list', statusMap);
   }
 
   @SubscribeMessage('join:board')
@@ -236,6 +300,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
       select: {
+        boardId: true,
         board: {
           select: {
             department: {
@@ -262,6 +327,27 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
         await this.cacheService.zadd(presenceKey, expirationScore, userId);
         await this.cacheService.hset(statesKey, userId, 'VIEWING');
+
+        // Upsert TaskView in database
+        try {
+          await this.prisma.taskView.upsert({
+            where: { taskId_userId: { taskId, userId } },
+            create: { taskId, userId },
+            update: { viewedAt: new Date() },
+          });
+
+          // Broadcast task:seen event to board room
+          this.realtimeService.emitToBoard(task.boardId, 'task:seen', {
+            taskId,
+            userId,
+            viewedAt: new Date().toISOString(),
+          });
+        } catch (err: unknown) {
+          this.logger.error(
+            `Failed to record task view for taskId=${taskId}, userId=${userId}`,
+            err instanceof Error ? err.stack : String(err)
+          );
+        }
 
         await this.broadcastTaskPresence(taskId);
       }

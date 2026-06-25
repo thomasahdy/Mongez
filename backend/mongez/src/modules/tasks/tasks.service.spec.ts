@@ -128,7 +128,11 @@ describe('TasksService', () => {
 
       expect(taskRepo.create).toHaveBeenCalledWith(createDto, 'space-1', 'PROJ', identifier, 'user-1');
       expect(eventBus.publish).toHaveBeenCalledWith(expect.any(TaskCreatedEvent));
-      expect(aiQueue.add).toHaveBeenCalledWith('ai-index-document', { spaceId: 'space-1', taskId: mockTask.id });
+      expect(aiQueue.add).toHaveBeenCalledWith(
+        'ai-index-document',
+        { spaceId: 'space-1', taskId: mockTask.id },
+        { attempts: 5, backoff: { type: 'exponential', delay: 5000 } }
+      );
       expect(result).toEqual(mockTask);
     });
 
@@ -179,7 +183,11 @@ describe('TasksService', () => {
 
       await service.updateTask('task-1', blockedDto, 'user-1');
 
-      expect(aiQueue.add).toHaveBeenCalledWith('ai-risk-scan', { taskId: mockTask.id });
+      expect(aiQueue.add).toHaveBeenCalledWith(
+        'ai-risk-scan',
+        { taskId: mockTask.id },
+        { attempts: 3, backoff: { type: 'exponential', delay: 5000 } }
+      );
     });
 
     it('should NOT queue risk scan when status is not BLOCKED', async () => {

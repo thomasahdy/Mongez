@@ -2,6 +2,7 @@ import { Module, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationsQueueEventsListener, AIProcessingQueueEventsListener } from './dlq.processor';
+import { QUEUE_NAMES } from './queue.constants';
 
 @Global()
 @Module({
@@ -26,6 +27,11 @@ import { NotificationsQueueEventsListener, AIProcessingQueueEventsListener } fro
         },
       }),
     }),
+    BullModule.registerQueue(
+      { name: QUEUE_NAMES.EMAILS },
+      { name: QUEUE_NAMES.REPORTS },
+      { name: QUEUE_NAMES.ANALYTICS_FUNNEL },
+    ),
   ],
   providers: [NotificationsQueueEventsListener, AIProcessingQueueEventsListener],
   exports: [BullModule, NotificationsQueueEventsListener, AIProcessingQueueEventsListener],

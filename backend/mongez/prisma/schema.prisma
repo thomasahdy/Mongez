@@ -183,6 +183,7 @@ model User {
   googleCalendarSyncs      GoogleCalendarSync[]
   calendarEventParticipants CalendarEventParticipant[]
   meetings                 Meeting[]
+  taskViews                TaskView[]
 
   @@index([email])
   @@index([status])
@@ -556,6 +557,7 @@ model Task {
   journalEntries  TaskJournal[]
   activities      Activity[]
   driveAttachments DriveAttachment[]
+  views           TaskView[]
 
   @@index([boardId])
   @@index([columnId])
@@ -1552,5 +1554,18 @@ model DecisionRecord {
 
   space            Space            @relation(fields: [spaceId], references: [id], onDelete: Restrict)
   workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict)
+}
+
+model TaskView {
+  taskId   String
+  userId   String
+  viewedAt DateTime @default(now()) @updatedAt
+
+  task     Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@index([userId])
+  @@map("task_views")
 }
 

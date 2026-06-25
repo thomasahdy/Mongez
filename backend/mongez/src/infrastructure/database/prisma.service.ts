@@ -55,6 +55,7 @@ export class PrismaService implements OnModuleInit {
   get taskDependency() { return this.prisma.taskDependency; }
   get timeLog() { return this.prisma.timeLog; }
   get watcher() { return this.prisma.watcher; }
+  get taskView() { return this.prisma.taskView; }
 
   // ─── Collaboration ─────────────────────────────────────────
   get comment() { return this.prisma.comment; }

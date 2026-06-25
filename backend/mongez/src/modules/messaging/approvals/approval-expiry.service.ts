@@ -1,10 +1,11 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
+import { Logger, OnModuleInit } from '@nestjs/common';
+import { Job, Queue } from 'bullmq';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { QUEUE_NAMES, JOB_NAMES } from '../../../infrastructure/queue/queue.constants';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { ApprovalDelegationService } from './approval-delegation.service';
+import { RealtimeService } from '../../realtime/realtime.service';
 
 /** Escalation policy types stored in WorkflowStep.escalationPolicy JSON. */
 interface EscalationPolicy {
@@ -52,15 +53,42 @@ interface ActiveInstance {
  * Runs every 5 minutes via a BullMQ repeatable job.
  */
 @Processor(QUEUE_NAMES.APPROVAL_EXPIRY)
-export class ApprovalExpiryProcessor extends WorkerHost {
+export class ApprovalExpiryProcessor extends WorkerHost implements OnModuleInit {
   private readonly logger = new Logger(ApprovalExpiryProcessor.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly delegation: ApprovalDelegationService,
+    private readonly realtime: RealtimeService,
+    @InjectQueue(QUEUE_NAMES.APPROVAL_EXPIRY) private readonly expiryQueue: Queue,
   ) {
     super();
+  }
+
+  async onModuleInit() {
+    this.logger.log('Scheduling repeatable approval-expiry repeatable sweep...');
+    try {
+      const repeatableJobs = await this.expiryQueue.getRepeatableJobs();
+      for (const job of repeatableJobs) {
+        if (job.name === JOB_NAMES.APPROVAL_EXPIRY_SWEEP) {
+          await this.expiryQueue.removeRepeatableByKey(job.key);
+        }
+      }
+
+      await this.expiryQueue.add(
+        JOB_NAMES.APPROVAL_EXPIRY_SWEEP,
+        {},
+        {
+          repeat: { pattern: '*/5 * * * *' },
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      );
+      this.logger.log('Successfully scheduled approval-expiry repeatable sweep (every 5 minutes).');
+    } catch (err: any) {
+      this.logger.error(`Failed to schedule approval-expiry sweep: ${err.message}`);
+    }
   }
 
   async process(job: Job<any>) {
@@ -220,6 +248,10 @@ export class ApprovalExpiryProcessor extends WorkerHost {
             note: 'Auto-approved due to escalation policy timeout',
           },
         });
+        this.realtime.emitToSpace(instance.spaceId, 'approval:resolved', {
+          instanceId: instance.id,
+          outcome: 'APPROVED',
+        });
         this.logger.log(`Instance ${instance.id}: AUTO_APPROVE executed`);
         break;
 
@@ -240,6 +272,10 @@ export class ApprovalExpiryProcessor extends WorkerHost {
             decision: 'REJECTED',
             note: 'Auto-rejected due to escalation policy timeout',
           },
+        });
+        this.realtime.emitToSpace(instance.spaceId, 'approval:resolved', {
+          instanceId: instance.id,
+          outcome: 'REJECTED',
         });
         this.logger.log(`Instance ${instance.id}: AUTO_REJECT executed`);
         break;
@@ -281,12 +317,22 @@ export class ApprovalExpiryProcessor extends WorkerHost {
             metadata: { escalationType: 'ESCALATE_TO_MANAGER' },
           });
 
+          this.realtime.emitToSpace(instance.spaceId, 'approval:escalated', {
+            instanceId: instance.id,
+            escalationType: 'ESCALATE_TO_MANAGER',
+            newApproverId: manager.userId,
+          });
+
           this.logger.log(`Instance ${instance.id}: ESCALATE_TO_MANAGER → ${manager.userId}`);
         } else {
           // No manager found → fallback to TIMED_OUT
           await this.prisma.workflowInstance.update({
             where: { id: instance.id },
             data: { status: 'TIMED_OUT', resolvedAt: now, durationMinutes },
+          });
+          this.realtime.emitToSpace(instance.spaceId, 'approval:resolved', {
+            instanceId: instance.id,
+            outcome: 'TIMED_OUT',
           });
         }
         break;
@@ -331,11 +377,22 @@ export class ApprovalExpiryProcessor extends WorkerHost {
             });
           }
 
+          this.realtime.emitToSpace(instance.spaceId, 'approval:escalated', {
+            instanceId: instance.id,
+            escalationType: 'ESCALATE_TO_ROLE',
+            targetRole: targetRoleName,
+            newApproverIds: roleMembers.map((m) => m.userId),
+          });
+
           this.logger.log(`Instance ${instance.id}: ESCALATE_TO_ROLE → ${targetRoleName} (${roleMembers.length} members)`);
         } else {
           await this.prisma.workflowInstance.update({
             where: { id: instance.id },
             data: { status: 'TIMED_OUT', resolvedAt: now, durationMinutes },
+          });
+          this.realtime.emitToSpace(instance.spaceId, 'approval:resolved', {
+            instanceId: instance.id,
+            outcome: 'TIMED_OUT',
           });
         }
         break;
@@ -345,6 +402,10 @@ export class ApprovalExpiryProcessor extends WorkerHost {
         await this.prisma.workflowInstance.update({
           where: { id: instance.id },
           data: { status: 'TIMED_OUT', resolvedAt: now, durationMinutes },
+        });
+        this.realtime.emitToSpace(instance.spaceId, 'approval:resolved', {
+          instanceId: instance.id,
+          outcome: 'TIMED_OUT',
         });
     }
   }

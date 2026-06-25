@@ -62,7 +62,10 @@ class DocumentChunker:
 
         chunks = self.splitter.split_text(text)
         logger.debug("Chunked comment %s → %d chunks", comment_id, len(chunks))
-        return [{"text": f"{prefix} — {chunk}", "metadata": metadata} for chunk in chunks]
+        return [
+            {"text": f"{prefix} — {chunk}", "metadata": {**metadata, "chunk_index": idx}}
+            for idx, chunk in enumerate(chunks)
+        ]
 
     def chunk_audit_log(self, entry: dict) -> list[dict]:
         """Chunk a single audit log entry into embeddable pieces.
@@ -98,7 +101,10 @@ class DocumentChunker:
 
         chunks = self.splitter.split_text(text)
         logger.debug("Chunked audit log %s → %d chunks", audit_id, len(chunks))
-        return [{"text": f"{prefix} — {chunk}", "metadata": metadata} for chunk in chunks]
+        return [
+            {"text": f"{prefix} — {chunk}", "metadata": {**metadata, "chunk_index": idx}}
+            for idx, chunk in enumerate(chunks)
+        ]
 
     def chunk_task_description(self, task: dict) -> list[dict]:
         """Chunk a task's title + description for semantic search.
@@ -133,4 +139,7 @@ class DocumentChunker:
         full_text = f"{title}. {description}" if description else title
 
         chunks = self.splitter.split_text(full_text)
-        return [{"text": f"{prefix} — {chunk}", "metadata": metadata} for chunk in chunks]
+        return [
+            {"text": f"{prefix} — {chunk}", "metadata": {**metadata, "chunk_index": idx}}
+            for idx, chunk in enumerate(chunks)
+        ]

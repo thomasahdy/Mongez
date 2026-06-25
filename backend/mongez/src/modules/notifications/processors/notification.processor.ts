@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
-import { QUEUE_NAMES } from '../../../infrastructure/queue/queue.constants';
+import { QUEUE_NAMES, JOB_NAMES } from '../../../infrastructure/queue/queue.constants';
 import { CacheService } from '../../../infrastructure/cache/cache.service';
 import { BaseEvent } from '../core/contracts/event.contracts';
 import { EmailChannel } from '../channels/email.channel';
@@ -42,17 +42,110 @@ export class NotificationProcessor extends WorkerHost {
   }
 
   async process(job: Job<any>) {
-    console.log(`[NotificationProcessor DEBUG] Processing job ID: ${job.id}, Name: ${job.name}`);
     const correlationId = job.data?.correlationId || randomUUID();
 
     return this.traceContext.run(correlationId, async () => {
       if (job.name === 'process_event') {
-        console.log(`[NotificationProcessor DEBUG] Routing to handleProcessEvent for job ID: ${job.id}`);
         await this.handleProcessEvent(job);
       } else if (job.name === 'process_digest') {
         await this.handleProcessDigest(job);
+      } else if (job.name === JOB_NAMES.SEND_NOTIFICATION) {
+        await this.handleSendNotification(job);
       }
     });
+  }
+
+  async handleSendNotification(job: Job<{
+    userId: string;
+    spaceId: string;
+    type: string;
+    channel: 'IN_APP' | 'PUSH' | 'EMAIL' | 'WHATSAPP' | 'TELEGRAM';
+    priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
+    title: string;
+    body: string;
+    entityType?: string;
+    entityId?: string;
+    metadata?: any;
+  }>) {
+    const data = job.data;
+    const userId = data.userId;
+    const priority = data.priority || 'NORMAL';
+
+    this.logger.log(`Handling send-notification: userId=${userId}, type=${data.type}, channel=${data.channel}`);
+
+    // Verify user exists
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!userExists) {
+      this.logger.warn(`User ${userId} does not exist. Skipping notification.`);
+      return;
+    }
+
+    const title = data.title;
+    const body = data.body;
+    const spaceId = data.spaceId;
+    const eventType = data.type;
+
+    if (data.channel === 'IN_APP') {
+      const notification = await this.notificationsService.createAndNotify({
+        userId,
+        spaceId,
+        type: eventType,
+        channel: 'IN_APP',
+        priority,
+        title,
+        body,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        metadata: data.metadata,
+      });
+
+      await this.webSocketChannel.send(notification, data.metadata || {});
+
+      await this.messagingAnalytics.record('SENT', {
+        notificationId: notification.id,
+        userId,
+        spaceId,
+        channel: 'IN_APP',
+        eventType,
+        metadata: { source: 'direct-queue' },
+      });
+    } else if (data.channel === 'EMAIL') {
+      const notification = await this.notificationsService.createAndNotify({
+        userId,
+        spaceId,
+        type: eventType,
+        channel: 'EMAIL',
+        priority,
+        title,
+        body,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        metadata: data.metadata,
+      });
+      await this.emailChannel.send(notification, { eventId: notification.id } as any);
+    } else if (data.channel === 'WHATSAPP' || data.channel === 'TELEGRAM') {
+      const pseudoNotification = {
+        id: `evt-direct-${Date.now()}`,
+        userId,
+        spaceId,
+        type: eventType,
+        priority,
+        channel: data.channel,
+        title,
+        body,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        status: 'QUEUED',
+        metadata: data.metadata,
+        templateVersion: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await this.fanOutToMessaging(pseudoNotification as any, {} as any, [data.channel.toLowerCase()]);
+    }
   }
 
   async handleProcessEvent(job: Job<{
@@ -86,7 +179,6 @@ export class NotificationProcessor extends WorkerHost {
         const singleUserId = event.payload['assigneeId'] || event.payload['userId'] || 'system';
         userIds.push(singleUserId);
       }
-      console.log(`[NotificationProcessor DEBUG] Processing user IDs: ${JSON.stringify(userIds)}`);
 
       for (const userId of userIds) {
         await this.processSingleNotification(userId, event);
@@ -94,9 +186,8 @@ export class NotificationProcessor extends WorkerHost {
 
       // 2. Mark Idempotency (TTL 24 hours)
       await this.cacheService.set(idempotencyKey, true, 86400);
-      
+
     } catch (error) {
-      console.log(`[NotificationProcessor DEBUG] Error in handleProcessEvent:`, error);
       this.logger.error(`Failed to process event ${eventId}`, error);
       throw error; // Throwing will cause BullMQ to retry
     }
@@ -120,7 +211,6 @@ export class NotificationProcessor extends WorkerHost {
 
     // Check presence
     const isOnline = await this.presenceService.isUserOnline(userId);
-    console.log(`[NotificationProcessor DEBUG] User: ${userId}, isOnline: ${isOnline}, priority: ${priority}`);
 
     // Resolve enabled channels from user preferences
     const enabledChannels = await this.notificationPreferenceService.getEnabledChannels(
@@ -128,7 +218,6 @@ export class NotificationProcessor extends WorkerHost {
       eventType,
       priority,
     );
-    console.log(`[NotificationProcessor DEBUG] Enabled channels for ${eventType}:`, enabledChannels);
 
     // Apply presence suppression: if online and not CRITICAL, suppress WhatsApp/Telegram
     const targetChannels = enabledChannels.filter((ch) => {
@@ -138,7 +227,6 @@ export class NotificationProcessor extends WorkerHost {
       }
       return true;
     });
-    console.log(`[NotificationProcessor DEBUG] Target channels after presence filter:`, targetChannels);
 
     // Always include IN_APP as a fallback if no channels enabled
     const finalChannels = targetChannels.length > 0 ? targetChannels : ['inApp'];

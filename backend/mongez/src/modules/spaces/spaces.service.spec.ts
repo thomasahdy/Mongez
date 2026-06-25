@@ -77,6 +77,7 @@ describe('SpacesService', () => {
       getOrSet: jest.fn(),
       invalidateEntity: jest.fn(),
       invalidateEntityType: jest.fn(),
+      del: jest.fn().mockResolvedValue(undefined),
     } as any;
 
     service = new SpacesService(spaceRepo, deptRepo, memberRepo, invitationRepo, prisma, cache);

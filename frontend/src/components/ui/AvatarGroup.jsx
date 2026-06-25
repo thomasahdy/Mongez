@@ -6,7 +6,7 @@ const AvatarGroup = ({ avatars, extra = 0 }) => {
     <div className="flex items-center">
       {avatars.map((av, i) => (
         <span key={i} className={i > 0 ? "-ml-1.5 border-2 border-white dark:border-slate-800 rounded-full" : ""}>
-          <Avatar initials={av.initials} color={av.color} size="sm" />
+          <Avatar initials={av.initials} color={av.color} size="sm" userId={av.id || av.userId} />
         </span>
       ))}
       {extra > 0 && (

@@ -78,6 +78,7 @@ describe('WorkflowService', () => {
 
     realtime = {
       emitToUser: jest.fn(),
+      emitToSpace: jest.fn(),
     } as any;
 
     messagingApproval = {
