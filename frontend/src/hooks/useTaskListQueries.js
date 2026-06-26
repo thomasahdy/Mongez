@@ -9,3 +9,16 @@ export function useBoardTasksQuery(boardId) {
   });
 }
 
+
+// @IsString() columnId: string;
+// @IsInt() @Min(0) position: number;    // target position within column
+
+export function useMoveTaskQuery(boardId) {
+  return useQuery({
+    queryKey: ["board", "moveTask", boardId],
+    queryFn: () => tasksService.moveTask(taskId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["board", "tasks", boardId] });
+    }
+  });
+}

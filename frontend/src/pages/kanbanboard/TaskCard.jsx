@@ -4,8 +4,13 @@ import Tag from '../../components/ui/Tag';
 import AvatarGroup from '../../components/ui/AvatarGroup';
 import MetaItem from '../../components/ui/MetaItem';
 import BlockerBox from './BlockerBox';
+import {CSS} from '@dnd-kit/utilities'
+import {useSortable} from '@dnd-kit/sortable'
 
 const TaskCard = ({ card }) => {
+  // 1. Fix: useSortable expects an object configuration
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: card.id });
+  
   const {
     progress, tags, title, avatars, extraAvatars = 0,
     dueLabel, dueVariant = "neutral", comments,
@@ -21,8 +26,19 @@ const TaskCard = ({ card }) => {
     neutral: "text-slate-400",
   };
 
+  // 2. Combine dnd-kit properties and your conditional left border into one single object
+  const combinedStyle = {
+    transition,
+    transform: CSS.Transform.toString(transform),
+    ...(leftBorder ? { borderLeftColor: leftBorder } : {})
+  };
+
   return (
     <article
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={combinedStyle} // Pass the combined style object safely here
       className={`
         bg-white dark:bg-slate-800 rounded-xl p-3.5 border border-slate-200 dark:border-slate-700
         transition-all duration-200 cursor-pointer hover:-translate-y-0.5
@@ -30,7 +46,6 @@ const TaskCard = ({ card }) => {
         relative
         ${leftBorder ? `border-l-[3px]` : ""}
       `}
-      style={leftBorder ? { borderLeftColor: leftBorder } : undefined}
       role="listitem"
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
@@ -94,4 +109,4 @@ const TaskCard = ({ card }) => {
   );
 }
 
-export default TaskCard
+export default TaskCard;

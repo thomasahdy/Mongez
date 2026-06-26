@@ -1,37 +1,41 @@
 import React from 'react'
-import { createDepartmentSchema } from '../../schemas/validationSchemas';
-import { useForm } from 'react-hook-form';
+import { createColumnSchema } from '../../schemas/boardValidationSchemas';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
-const CreateDepartmentModal = ({space, onSubmit, onClose}) => {
+const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
+
     const {
-            register,
-            handleSubmit,
-            formState: { errors, isSubmitting },
-            reset,
-          } = useForm({
-            resolver: zodResolver(createDepartmentSchema),
-            defaultValues: {
-                name: "",
-                description: "", 
-                color: ""
-            },
-          });
-        
-        const handleFormSubmit = async(data)=>{
-            try {
-          await onSubmit(data);
-          reset();
-        } catch (err) {
-          console.error("Form submission failed:", err);
-        }
+                register,
+                handleSubmit,
+                formState: { errors, isSubmitting },
+                reset,
+              } = useForm({
+                resolver: zodResolver(createColumnSchema),
+                defaultValues: {
+                    name:"",
+                    color:"",
+                    wipLimit:20,
+                    position:0
+                },
+              });
             
-            
-        }
-        const handleInvalidSubmit = (valErrors)=>{
-            console.warn("CreateDepartmentModal handleSubmit validation FAILED:", valErrors);
-            
-        }
+            const handleFormSubmit = async(data)=>{
+                data.wipLimit = Number.parseInt(data.wipLimit);
+                data.position = Number.parseInt(data.position);
+                try {
+              await onSubmit(data);
+              reset();
+            } catch (err) {
+              console.error("Form submission failed:", err);
+            }
+                
+                
+            }
+            const handleInvalidSubmit = (valErrors)=>{
+                console.warn("CreateColumnModal handleSubmit validation FAILED:", valErrors);
+                
+            }
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
@@ -46,7 +50,7 @@ const CreateDepartmentModal = ({space, onSubmit, onClose}) => {
         {/* Modal Header */}
         <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900">
           <h2 id="modal-title" className="text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100">
-            Create new department to {space?.name}
+            Create new column 
           </h2>
           <button
             type="button"
@@ -80,24 +84,7 @@ const CreateDepartmentModal = ({space, onSubmit, onClose}) => {
               </p>
             )}
           </div>
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-name">
-              Description
-            </label>
-            <input
-              id="space-name"
-              type="text"
-              placeholder="Information Technology and Infrastructure team"
-              className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
-                ${errors.name ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
-              {...register('description')}
-            />
-            {errors.name && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
-                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.name.message}
-              </p>
-            )}
-          </div>
+          
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-name">
               Color
@@ -110,11 +97,49 @@ const CreateDepartmentModal = ({space, onSubmit, onClose}) => {
                 ${errors.color ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'}`}
                 {...register('color')}
             />
-            <span className="text-sm text-slate-500">Choose department theme color</span>
+            <span className="text-sm text-slate-500">Choose column color</span>
             </div>
-            {errors.name && (
+            {errors.color && (
               <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
-                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.name.message}
+                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.color.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-name">
+              WIP Limit
+            </label>
+            <input
+              id="space-name"
+              type="number"
+              placeholder="20"
+              className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
+                ${errors.wipLimit ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
+              {...register('wipLimit', { valueAsNumber: true })}
+            />
+            {errors.wipLimit && (
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
+                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.wipLimit.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-name">
+              position
+            </label>
+            <input
+              id="space-name"
+              type="number"
+              placeholder="0"
+              className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
+                ${errors.position ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
+              {...register('position', { valueAsNumber: true })}
+            />
+            {errors.position && (
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
+                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.position.message}
               </p>
             )}
           </div>
@@ -136,7 +161,7 @@ const CreateDepartmentModal = ({space, onSubmit, onClose}) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              onClick={() => console.log("CreateDepartmentModal Submit button was clicked directly! isSubmitting:", isSubmitting)}
+              onClick={() => console.log("CreateColumnModal Submit button was clicked directly! isSubmitting:", isSubmitting)}
               className="px-4 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 hover:shadow-md text-white transition-all duration-200 cursor-pointer flex items-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (
@@ -148,7 +173,7 @@ const CreateDepartmentModal = ({space, onSubmit, onClose}) => {
                   Creating...
                 </>
               ) : (
-                "Create Department"
+                "Create Column"
               )}
             </button>
           </div>
@@ -159,4 +184,4 @@ const CreateDepartmentModal = ({space, onSubmit, onClose}) => {
   )
 }
 
-export default CreateDepartmentModal
+export default CreateColumnModal

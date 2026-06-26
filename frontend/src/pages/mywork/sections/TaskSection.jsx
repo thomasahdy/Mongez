@@ -20,7 +20,7 @@ const TaskSection = ({ sectionKey, tasks, completedIds, onComplete }) => {
     };
    
     return (
-      <section className="mb-5" aria-label={cfg.label}>
+      <section className="" aria-label={cfg.label}>
         {/* Header */}
         <button
           onClick={() => setOpen((v) => !v)}
@@ -40,7 +40,7 @@ const TaskSection = ({ sectionKey, tasks, completedIds, onComplete }) => {
    
         {/* Task list — animated collapse */}
         <div
-          className={`flex flex-col gap-1.5 overflow-hidden transition-all duration-300 ${open ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"}`}
+          className={`flex flex-col gap-1.5 overflow-hidden transition-[max-height] duration-300 ${open ? "max-h-[1000px]" : "max-h-0"}`}
           role="list"
           aria-label={`${cfg.label} tasks`}
         >

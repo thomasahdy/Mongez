@@ -133,7 +133,7 @@ function AppContent() {
             <Route path="/" element={<Home path={path} setPath={setPath} />}>
               <Route index element={<Navigate to="/spaces" replace />} />
               <Route path="spaces" element={<SpacesPage setPath={setPath} />} />
-              <Route path="boards/:boardId" element={<KanbanBoard setPath={setPath} />} />
+              <Route path="board/:boardId/kanban" element={<KanbanBoard setPath={setPath} />} />
               <Route path="whiteboard" element={<WhiteBoardPage />} />
               <Route path="ai-assistant" element={<AiAssistantPage />} />
               <Route path="billing" element={<BillingPage />} />
@@ -145,6 +145,7 @@ function AppContent() {
               <Route path="settings/integrations" element={<IntegrationsPage setPath={setPath} />} />
               <Route path="settings/members" element={<SettingsMembersPage setPath={setPath} />} />
               <Route path="reports" element={<ReportsPage setPath={setPath} />} />
+              <Route path="mywork" element={<MyWorkPage setPath={setPath} />} />
               <Route path="search" element={<SearchPage />} />
               <Route path="my-work" element={<MyWorkPage setPath={setPath} />} />
               <Route path="inbox" element={<InboxPage setPath={setPath} />} />
@@ -153,7 +154,7 @@ function AppContent() {
               <Route path="audit-log" element={<AuditLogPage />} />
               <Route path="audit-logs" element={<AuditLogPage setPath={setPath} />} />
               <Route path="/search" element={<SearchPage />} />
-              <Route path="/mywork" element={<MyWorkPage setPath={setPath} />} />
+              
             </Route>
           </Route>
         </Route>

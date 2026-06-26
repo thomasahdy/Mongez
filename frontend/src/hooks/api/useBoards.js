@@ -86,13 +86,32 @@ export function useUpdateBoard() {
  * Hook: useReorderColumns
  * Mutation to save new column sorting. Invalidates the active board.
  */
-export function useReorderColumns() {
+export function useReorderColumns(boardId) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ boardId, columnIds }) => boardsService.reorderColumns(boardId, { columnIds }),
-    onSuccess: (_, { boardId }) => {
+    mutationFn: ({ columns }) => boardsService.reorderColumns(boardId, { columns }),
+    
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boards', boardId] });
     },
+    onError: (error) => {
+      console.error("useReorderColumns mutation failed:", error);
+    }
   });
+}
+
+
+export function useCreateColumn(boardId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    queryKey: ['createColumn'],
+    mutationFn: (data) => boardsService.addColumn(boardId, data),
+    onSuccess: (newColumn) => {
+      queryClient.invalidateQueries({ queryKey: ['boards', newColumn.boardId] });
+    },
+    onError: (error) => {
+      console.error("useCreateColumn onError:", error);
+    },
+  }); 
 }
