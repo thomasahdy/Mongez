@@ -36,11 +36,20 @@ export function useCreateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: tasksService.createTask,
+    // mutationFn accepts a single object, which we destructure into board and taskData
+    mutationFn: ({ board, taskData }) => tasksService.createBoardTask(board, taskData),
+    
     onSuccess: (newTask) => {
-      // Invalidate tasks query list so new task is immediately loaded
+      // Safely updates lists viewing this board's tasks
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      // If your board state caches tasks inside it, invalidate the board too
+      if (newTask?.boardId) {
+        queryClient.invalidateQueries({ queryKey: ['boards', newTask.boardId] });
+      }
     },
+    onError: (error) => {
+      console.error("Failed to create task:", error);
+    }
   });
 }
 

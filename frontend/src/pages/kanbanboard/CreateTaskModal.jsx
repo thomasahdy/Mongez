@@ -1,7 +1,7 @@
 import React from 'react'
-import { createTaskValidationSchema } from '../../schemas/taskValidationSchemas'; // Adjust path as needed
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { createTaskValidationSchema } from '../../schemas/taskValidationSchema';
 
 const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, onClose }) => {
 
@@ -29,7 +29,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
       tags: [],
       assigneeIds: []
     },
-  });
+  });console.log("Current Live Form Errors:", errors);
 
   const handleFormSubmit = async (data) => {
     // Convert numbers explicitly if needed

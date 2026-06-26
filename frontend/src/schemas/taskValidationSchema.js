@@ -17,8 +17,8 @@ export const createTaskValidationSchema = z.object({
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
   type: z.enum(['Bug', 'Feature', 'Task', 'Milestone']).optional(),
   
-  dueDate: z.string().datetime({ offset: true }).optional().or(z.literal('')),
-  startDate: z.string().datetime({ offset: true }).optional().or(z.literal('')),
+  startDate: z.string().optional().or(z.literal('')),
+  dueDate: z.string().optional().or(z.literal('')),
   estimatedHours: z.number().int().min(0).optional(),
   parentId: z.string().optional(),
   tags: z.array(z.string()).optional().default([]),
