@@ -6,6 +6,7 @@ import { useAuthSessionQuery } from "./hooks/useAuthQueries";
 import { AppProvider } from "./pages/AppContext";
 import Home from "./pages/home/Home";
 import { useTranslation } from "react-i18next";
+import AcceptInvitationPage from "./pages/AcceptInvitationPage.jsx/AcceptInvitationPage";
 
 const LandingPage = lazy(() => import("./pages/landing/LandingPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
@@ -109,6 +110,14 @@ function AppContent() {
             </PublicOnlyRoute>
           }
         />
+        <Route 
+          path="/invitation"
+          element={
+            <PublicOnlyRoute authReady={authReady} isAuthenticated={isAuthenticated}>
+              <AcceptInvitationPage />
+            </PublicOnlyRoute>
+          }
+        />
         <Route
           path="/register"
           element={
@@ -154,6 +163,7 @@ function AppContent() {
               <Route path="audit-log" element={<AuditLogPage />} />
               <Route path="audit-logs" element={<AuditLogPage setPath={setPath} />} />
               <Route path="/search" element={<SearchPage />} />
+              <Route path="/invitation" element={<AcceptInvitationPage />} />
               
             </Route>
           </Route>
