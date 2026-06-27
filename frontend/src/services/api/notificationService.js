@@ -2,10 +2,10 @@ import apiClient from "./apiClient";
 
 export const getNotificationSettings = async () => {
     const response = await apiClient.get(
-        "/api/v1/notifications/settings"
+        "/notifications/settings"
     );
 
-    return response.data.data;
+    return response.data;
 };
 
 export const updateNotificationChannel = async (
@@ -14,31 +14,31 @@ export const updateNotificationChannel = async (
     enabled
 ) => {
     const response = await apiClient.patch(
-        `/api/v1/notifications/settings/channels/${id}`,
+        `/notifications/settings/channels/${id}`,
         {
             channel,
             enabled,
         }
     );
 
-    return response.data.data;
+    return response.data;
 };
 
 export const updateQuietHours = async (
     quietHours
 ) => {
     const response = await apiClient.patch(
-        "/api/v1/notifications/settings/quiet-hours",
+        "/notifications/settings/quiet-hours",
         quietHours
     );
 
-    return response.data.data;
+    return response.data;
 };
 
 export const resetNotificationSettings = async () => {
     const response = await apiClient.post(
-        "/api/v1/notifications/settings/reset"
+        "/notifications/settings/reset"
     );
 
-    return response.data.data;
+    return response.data;
 };

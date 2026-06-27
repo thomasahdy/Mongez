@@ -133,7 +133,7 @@ const RegisterContainer = () => {
               onSubmit={handleSubmit}
               loading={loading}
               submitError={submitError}
-              onSkip={() =>{ handleSubmit({ skipInvites: true }); }}
+              
             />
           )}
         </div>

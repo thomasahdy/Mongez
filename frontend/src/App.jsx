@@ -33,6 +33,8 @@ const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
 const SecurityPage = lazy(() => import("./pages/security/SecurityPage"));
 const AuditLogPage = lazy(() => import("./pages/audit-log/AuditLogPage"));
 const KanbanBoard = lazy(() => import("./pages/kanbanboard/KanbanBoard"));
+const NotificationsPage = lazy(() => import("./pages/notifications/NotificationsPage"));
+const OAuthCallbackPage = lazy(() => import("./pages/auth/OAuthCallbackPage"));
 
 function FullScreenLoader() {
   return (
@@ -126,7 +128,8 @@ function AppContent() {
             </PublicOnlyRoute>
           }
         />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/forgot-password" element={<ResetPasswordPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         <Route element={<ProtectedShell authReady={authReady} isAuthenticated={isAuthenticated} />}>
@@ -160,8 +163,8 @@ function AppContent() {
               <Route path="inbox" element={<InboxPage setPath={setPath} />} />
               <Route path="settings" element={<SettingsPage setPath={setPath} />} />
               <Route path="settings/security" element={<SecurityPage setPath={setPath} />} />
-              <Route path="audit-log" element={<AuditLogPage />} />
-              <Route path="audit-logs" element={<AuditLogPage setPath={setPath} />} />
+              <Route path="settings/notifications" element={<NotificationsPage />} />
+              <Route path="settings/audit-log" element={<AuditLogPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/invitation" element={<AcceptInvitationPage />} />
               
