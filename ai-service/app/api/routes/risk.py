@@ -68,7 +68,7 @@ async def analyze_risk(
         result_delta = await risk_detector_node(initial_state)
         result = {**initial_state, **result_delta}
     except Exception as exc:
-        logger.error("[%s] Risk analysis error: %s", trace_id, exc, exc_info=True)
+        logger.error("[%s] Risk analysis error: %s", trace_id, exc)
         raise HTTPException(status_code=500, detail="Risk analysis failed.")
 
     # Extract risk level from the formatted markdown if present

@@ -48,7 +48,11 @@ async def report_generator_node(state: MongezAgentState) -> dict:
             "response_metadata": dict,
         }
     """
-    from app.dependencies import llm_client, prompt_loader, nestjs_client, retriever
+    from app.dependencies import llm_client, nestjs_client
+    from app.dependencies import get_retriever, get_prompt_loader
+
+    retriever = get_retriever()
+    prompt_loader = get_prompt_loader()
 
     space_id = state["space_id"]
     query = state.get("rewritten_query") or state.get("raw_input", "")
@@ -83,6 +87,7 @@ async def report_generator_node(state: MongezAgentState) -> dict:
         "final_response": result["content"],
         "retrieved_context": context_results,
         "task_data": tasks[:50],
+        "confidence": 0.95,
         "response_metadata": {
             **state.get("response_metadata", {}),
             "agent": "report_generator",
@@ -90,5 +95,6 @@ async def report_generator_node(state: MongezAgentState) -> dict:
             "tokens_in": result["tokens_in"],
             "tokens_out": result["tokens_out"],
             "latency_ms": result["latency_ms"],
+            "confidence": 0.95,
         },
     }

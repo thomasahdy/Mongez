@@ -102,7 +102,7 @@ async def analyze_meeting(
         if clean_content.endswith("```"):
             clean_content = clean_content.rsplit("```", 1)[0]
 
-        summary_json = json.loads(clean_content.strip())
+        summary_json = json.loads(clean_content.strip(), strict=False)
     except Exception as exc:
         logger.error("Failed to summarize transcript: %s. Response content: %s", exc, content)
         # Return a fallback JSON structure if parsing fails

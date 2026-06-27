@@ -6,16 +6,29 @@ class Settings(BaseSettings):
     """All configuration for the Mongez AI service.
 
     Values come from environment variables or the .env file.
-    Only GROQ_API_KEY is required — all others have safe local defaults.
     """
 
+    # ── LLM Provider Selection ────────────────────────────────────────────────
+    llm_provider: str = "groq"  # Options: "groq", "nvidia", or "openai"
+
     # ── Groq LLM ──────────────────────────────────────────────────────────────
-    groq_api_key: str                                         # REQUIRED — get from console.groq.com
+    groq_api_key: str | None = None                           # Optional — required only for Groq provider
     groq_model_primary: str = "llama-3.3-70b-versatile"      # Complex tasks: risk, reports, chat
     groq_model_fast: str = "llama-3.1-8b-instant"               # Fast tasks: intent routing, rewriting
 
+    # ── NVIDIA NIM (DeepSeek, etc.) ────────────────────────────────────────────
+    nvidia_api_key: str | None = None                           # NVIDIA NIM API key (nvapi-...)
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+    nvidia_model_primary: str = "deepseek-ai/deepseek-v4-pro"  # High-quality reasoning
+    nvidia_model_fast: str = "deepseek-ai/deepseek-v4-pro"     # Same model for now
+
+    # ── OpenAI ────────────────────────────────────────────────────────────────────
+    openai_api_key: str | None = None                           # OpenAI API key
+    openai_model_primary: str = "gpt-4o"                        # High-quality reasoning
+    openai_model_fast: str = "gpt-4o-mini"                     # Fast tasks
+
     # ── NestJS Backend ────────────────────────────────────────────────────────
-    nestjs_base_url: str = "http://localhost:3000"            # NestJS API URL
+    nestjs_base_url: str = "http://localhost:3000/api/v1"    # NestJS API URL (includes /api/v1 prefix)
     nestjs_service_api_key: str = "dev-key"                   # Matches AI_SERVICE_API_KEY in NestJS
 
     # ── Qdrant Vector DB ──────────────────────────────────────────────────────

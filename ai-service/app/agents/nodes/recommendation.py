@@ -29,7 +29,10 @@ async def recommendation_node(state: MongezAgentState) -> dict:
     Returns:
         {"proposed_action": dict | None, "final_response"?: str}
     """
-    from app.dependencies import llm_client, retriever, nestjs_client
+    from app.dependencies import llm_client, nestjs_client
+    from app.dependencies import get_retriever
+
+    retriever = get_retriever()
 
     space_id = state["space_id"]
     query = state.get("rewritten_query") or state.get("raw_input", "")
@@ -68,7 +71,7 @@ async def recommendation_node(state: MongezAgentState) -> dict:
     result = await llm_client.invoke("primary", _SYSTEM, user_message)
 
     try:
-        action = json.loads(result["content"])
+        action = json.loads(result["content"], strict=False)
     except (json.JSONDecodeError, ValueError) as exc:
         logger.warning("Recommendation JSON parse failed: %s", exc)
         return {

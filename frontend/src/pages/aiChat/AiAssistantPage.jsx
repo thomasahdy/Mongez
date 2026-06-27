@@ -1,23 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext } from "react-router";
+import { useOutletContext, useNavigate } from "react-router";
 import { useAppContext } from "../AppContext";
+import meetingsService from "../../services/api/meetingsService";
 import {
   useAiActionReviewMutation,
-  useAiChatMutation,
-  useAiContextQuery,
   useAiDashboardQuery,
   useAiFeedbackMutation,
   useAiReportMutation,
   useAiRiskMutation,
   useAiStreamingMutation,
 } from "../../hooks/useAiQueries";
-import { useBoard } from "../../hooks/api/useBoards";
-import {
-  useMeetingsQuery,
-  useMeetingUploadMutation,
-  useProposedTaskApproveMutation,
-  useProposedTaskRejectMutation,
-} from "../../hooks/useMeetingsQueries";
 import { extractTextFromPayload } from "../../utils/extractTextFromPayload";
 import { useBoardTasksQuery } from "../../hooks/useTaskListQueries";
 import ErrorBoundary from "../../components/ErrorBoundary";
@@ -125,13 +117,29 @@ function createSessionSnapshot({ sessionId, messages, context }) {
 }
 
 function getUserFriendlyErrorMessage(error) {
-  if (!error) return "An unexpected error occurred. Please try again.";
+  if (!error) return "Workspace data unavailable. I could not access live data right now.";
+
+  // Never expose raw provider errors to users
+  const rawMsg = (typeof error === "string" ? error : error.message || error.toString() || "").toLowerCase();
+  if (rawMsg.includes("429") || rawMsg.includes("rate") || rawMsg.includes("too many") || rawMsg.includes("busy")) {
+    return "AI is temporarily busy. Please wait a moment and try again.";
+  }
+  if (rawMsg.includes("error code:") || rawMsg.includes("{'status'") || rawMsg.includes("status error") || rawMsg.includes("status: 429")) {
+    return "Workspace data unavailable. I could not access live data right now.";
+  }
+
   if (typeof error === "string") return error;
   const status = error.status || error.response?.status;
   const message = error.message || "";
 
-  if (message.toLowerCase().includes("network") || message.toLowerCase().includes("timeout") || error.code === "ECONNABORTED") {
-    return "Connection error or timeout. Check your internet connection and try again.";
+  const isNetworkOrTimeout =
+    message.toLowerCase().includes("network") ||
+    message.toLowerCase().includes("timeout") ||
+    message.toLowerCase().includes("fetch") ||
+    error.code === "ECONNABORTED";
+
+  if (isNetworkOrTimeout || status === 500 || status === 502 || status === 503 || status === 504) {
+    return "Workspace data unavailable. I could not access live data right now.";
   }
 
   switch (status) {
@@ -140,8 +148,7 @@ function getUserFriendlyErrorMessage(error) {
     case 403: return "Access denied. Insufficient workspace permissions.";
     case 404: return "AI resource not found.";
     case 429: return "AI rate limit reached. Please wait a moment.";
-    case 500: return "Internal error in the AI service. Try again later.";
-    default: return message || "An unexpected error occurred.";
+    default: return message || "Workspace data unavailable. I could not access live data right now.";
   }
 }
 
@@ -149,39 +156,323 @@ function FieldLabel({ children }) {
   return <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">{children}</label>;
 }
 
-function ChatBubble({ message, feedbackState, onFeedback, onRetry }) {
+function preprocessMessageContent(text) {
+  if (!text) return "";
+  let cleanText = text.trim();
+  
+  // Strip markdown block markers if LLM leaked them e.g. ```json { "answer": ... } ```
+  if (cleanText.startsWith("```json")) {
+    cleanText = cleanText.substring(7).trim();
+  } else if (cleanText.startsWith("```")) {
+    cleanText = cleanText.substring(3).trim();
+  }
+  if (cleanText.endsWith("```")) {
+    cleanText = cleanText.substring(0, cleanText.length - 3).trim();
+  }
+
+  // If it starts with { and ends with }, let's try to parse it
+  if (cleanText.startsWith("{") && cleanText.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(cleanText);
+      if (parsed && typeof parsed.answer === "string") {
+        return parsed.answer;
+      }
+    } catch (e) {
+      // Not valid JSON
+    }
+  }
+
+  // In case the JSON is partially leaked or starts/ends differently,
+  // search for "answer": "..." using brace matching
+  if (cleanText.includes('"answer"')) {
+    try {
+      const startBrace = cleanText.indexOf('{');
+      const endBrace = cleanText.lastIndexOf('}');
+      if (startBrace !== -1 && endBrace !== -1 && endBrace > startBrace) {
+        const jsonSub = cleanText.substring(startBrace, endBrace + 1);
+        const parsed = JSON.parse(jsonSub);
+        if (parsed && typeof parsed.answer === "string") {
+          return parsed.answer;
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+  
+  return text;
+}
+
+const MarkdownRenderer = ({ content }) => {
+  const processedText = useMemo(() => preprocessMessageContent(content), [content]);
+
+  // Inline formatting helper
+  const formatInline = (text) => {
+    if (!text) return "";
+    
+    const regex = /(\*\*.*?\*\*|`.*?`|\[.*?\]\(.*?\))/g;
+    const parts = text.split(regex);
+    
+    return parts.map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={i} className="font-extrabold text-slate-900 dark:text-white">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return <code key={i} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-indigo-500 dark:text-indigo-400 text-[12px]">{part.slice(1, -1)}</code>;
+      }
+      if (part.startsWith("[") && part.includes("](")) {
+        const closeBrack = part.indexOf("]");
+        const label = part.slice(1, closeBrack);
+        const url = part.slice(closeBrack + 2, -1);
+        return (
+          <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-indigo-650 hover:text-indigo-750 dark:text-indigo-450 dark:hover:text-indigo-300 underline font-semibold transition-colors">
+            {label}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
+  // Block parsing
+  const blocks = useMemo(() => {
+    if (!processedText) return [];
+    
+    const rawLines = processedText.split(/\r?\n/);
+    const resolvedBlocks = [];
+    let currentBlock = null;
+
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      const trimmedLine = line.trim();
+
+      // Code Block parsing
+      if (trimmedLine.startsWith("```")) {
+        if (currentBlock && currentBlock.type === "code") {
+          resolvedBlocks.push(currentBlock);
+          currentBlock = null;
+        } else {
+          if (currentBlock) resolvedBlocks.push(currentBlock);
+          currentBlock = { type: "code", language: trimmedLine.slice(3).trim(), lines: [] };
+        }
+        continue;
+      }
+
+      if (currentBlock && currentBlock.type === "code") {
+        currentBlock.lines.push(line);
+        continue;
+      }
+
+      // Table parsing
+      if (trimmedLine.startsWith("|")) {
+        if (currentBlock && currentBlock.type === "table") {
+          currentBlock.lines.push(line);
+        } else {
+          if (currentBlock) resolvedBlocks.push(currentBlock);
+          currentBlock = { type: "table", lines: [line] };
+        }
+        continue;
+      } else {
+        if (currentBlock && currentBlock.type === "table") {
+          resolvedBlocks.push(currentBlock);
+          currentBlock = null;
+        }
+      }
+
+      // List parsing
+      if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ") || /^\d+\.\s/.test(trimmedLine)) {
+        const isNumbered = /^\d+\.\s/.test(trimmedLine);
+        const listText = isNumbered ? trimmedLine.replace(/^\d+\.\s/, "") : trimmedLine.slice(2);
+        
+        if (currentBlock && currentBlock.type === "list" && currentBlock.numbered === isNumbered) {
+          currentBlock.items.push(listText);
+        } else {
+          if (currentBlock) resolvedBlocks.push(currentBlock);
+          currentBlock = { type: "list", numbered: isNumbered, items: [listText] };
+        }
+        continue;
+      } else {
+        if (currentBlock && currentBlock.type === "list") {
+          resolvedBlocks.push(currentBlock);
+          currentBlock = null;
+        }
+      }
+
+      // Headings
+      if (trimmedLine.startsWith("#")) {
+        if (currentBlock) resolvedBlocks.push(currentBlock);
+        const match = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
+        if (match) {
+          resolvedBlocks.push({ type: "heading", level: match[1].length, text: match[2] });
+          currentBlock = null;
+          continue;
+        }
+      }
+
+      // Paragraph
+      if (trimmedLine === "") {
+        if (currentBlock) {
+          resolvedBlocks.push(currentBlock);
+          currentBlock = null;
+        }
+      } else {
+        if (currentBlock && currentBlock.type === "paragraph") {
+          currentBlock.text += "\n" + line;
+        } else {
+          if (currentBlock) resolvedBlocks.push(currentBlock);
+          currentBlock = { type: "paragraph", text: line };
+        }
+      }
+    }
+
+    if (currentBlock) resolvedBlocks.push(currentBlock);
+    return resolvedBlocks;
+  }, [processedText]);
+
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, bIdx) => {
+        switch (block.type) {
+          case "heading": {
+            const level = Math.min(3, block.level);
+            const text = block.text.trim();
+            
+            let icon = null;
+            if (text.toLowerCase().includes("executive summary") || text.toLowerCase().includes("summary")) {
+              icon = <i className="fa-solid fa-robot text-indigo-500 mr-2 shrink-0" />;
+            } else if (text.toLowerCase().includes("insights") || text.toLowerCase().includes("metrics")) {
+              icon = <i className="fa-solid fa-chart-line text-emerald-500 mr-2 shrink-0" />;
+            } else if (text.toLowerCase().includes("risks") || text.toLowerCase().includes("blockers")) {
+              icon = <i className="fa-solid fa-triangle-exclamation text-rose-500 mr-2 shrink-0" />;
+            } else if (text.toLowerCase().includes("actions") || text.toLowerCase().includes("reminders")) {
+              icon = <i className="fa-solid fa-circle-play text-amber-500 mr-2 shrink-0" />;
+            } else if (text.toLowerCase().includes("sources") || text.toLowerCase().includes("citations")) {
+              icon = <i className="fa-solid fa-folder-open text-sky-500 mr-2 shrink-0" />;
+            }
+
+            const hClasses = {
+              1: "text-md font-extrabold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-1 mt-3 mb-2 flex items-center gap-1.5",
+              2: "text-sm font-bold text-slate-805 dark:text-slate-150 mt-2.5 mb-1.5 flex items-center gap-1.5",
+              3: "text-[12.5px] font-bold text-slate-800 dark:text-slate-200 mt-2 mb-1 flex items-center gap-1.5",
+            };
+            const Tag = `h${level}`;
+            return (
+              <Tag key={bIdx} className={hClasses[level]}>
+                {icon}
+                {formatInline(text)}
+              </Tag>
+            );
+          }
+          case "list": {
+            const ListTag = block.numbered ? "ol" : "ul";
+            return (
+              <ListTag key={bIdx} className={`pl-5 space-y-1 mb-2.5 ${block.numbered ? "list-decimal" : "list-disc"}`}>
+                {block.items.map((item, iIdx) => (
+                  <li key={iIdx} className="text-slate-705 dark:text-slate-300 leading-relaxed font-medium">
+                    {formatInline(item)}
+                  </li>
+                ))}
+              </ListTag>
+            );
+          }
+          case "code": {
+            return (
+              <pre key={bIdx} className="p-3.5 rounded-2xl bg-slate-950 text-slate-200 font-mono text-[11.5px] overflow-x-auto border border-slate-850 my-2.5 leading-relaxed shadow-inner">
+                <code>{block.lines.join("\n")}</code>
+              </pre>
+            );
+          }
+          case "table": {
+            const rows = block.lines
+              .map(line => line.split("|").map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1))
+              .filter(row => row.length > 0);
+
+            if (rows.length === 0) return null;
+
+            const hasSeparator = rows.length > 1 && rows[1].every(cell => /^:-*-:|^:-*-|^ -*:-*|^-+$/.test(cell));
+            const headers = rows[0];
+            const dataRows = hasSeparator ? rows.slice(2) : rows.slice(1);
+
+            return (
+              <div key={bIdx} className="overflow-x-auto border border-slate-150 dark:border-slate-800/80 rounded-2xl shadow-sm my-3">
+                <table className="w-full text-left text-[12px] border-collapse bg-white dark:bg-slate-900">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-850/50 border-b border-slate-150 dark:border-slate-800/80">
+                      {headers.map((h, hIdx) => (
+                        <th key={hIdx} className="px-3.5 py-2.5 font-bold text-slate-800 dark:text-slate-200 tracking-wider">
+                          {formatInline(h)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-808/40">
+                    {dataRows.map((row, rIdx) => (
+                      <tr key={rIdx} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20 transition-colors">
+                        {row.map((cell, cIdx) => (
+                          <td key={cIdx} className="px-3.5 py-2.5 text-slate-655 dark:text-slate-350 leading-relaxed">
+                            {formatInline(cell)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          }
+          case "paragraph":
+          default: {
+            return (
+              <p key={bIdx} className="text-slate-750 dark:text-slate-300 leading-relaxed font-normal whitespace-pre-line mb-2">
+                {formatInline(block.text)}
+              </p>
+            );
+          }
+        }
+      })}
+    </div>
+  );
+};
+
+function ChatBubble({
+  message,
+  feedbackState,
+  onFeedback,
+  onRetry,
+  onCitationClick,
+  onActionDecision,
+  reviewingActionId,
+}) {
   if (message.kind === "welcome") {
     return (
-      <div className="rounded-[24px] rounded-tl-md border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 text-[13px] leading-6 text-slate-650 dark:text-slate-350 shadow-sm">
-        <p className="font-semibold text-slate-800 dark:text-slate-100">{message.text}</p>
+      <div className="rounded-[24px] rounded-tl-md border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 text-[13px] leading-6 text-slate-655 dark:text-slate-350 shadow-sm" dir="auto">
+        <div className="font-semibold text-slate-800 dark:text-slate-100">
+          <MarkdownRenderer content={message.text} />
+        </div>
       </div>
     );
   }
 
   if (message.role === "user") {
     return (
-      <div className="rounded-[24px] rounded-tr-md bg-slate-900 dark:bg-slate-100 px-5 py-4 text-[13px] leading-6 whitespace-pre-wrap text-white dark:text-slate-900 shadow-md font-medium">
+      <div className="rounded-[24px] rounded-tr-md bg-slate-900 dark:bg-slate-100 px-5 py-4 text-[13px] leading-6 whitespace-pre-wrap text-white dark:text-slate-900 shadow-md font-medium" dir="auto">
         {message.text}
       </div>
     );
   }
 
-  return (
-    <div className="rounded-[24px] rounded-tl-md border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 shadow-sm">
-      {message.label && (
-        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-          <i className={`fa-solid ${message.icon || "fa-sparkles"} text-indigo-500`} />
-          <span>{message.label}</span>
-        </div>
-      )}
-
-      <div className="text-[13px] leading-6 whitespace-pre-wrap text-slate-750 dark:text-slate-300">
-        {message.text || (message.loading ? "Thinking..." : "")}
-      </div>
-
-      {message.error && (
-        <div className="mt-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/10 px-3.5 py-2.5 flex items-center justify-between gap-3 border border-rose-100/50 dark:border-rose-900/30">
-          <span className="text-[12px] text-rose-600 dark:text-rose-455 font-bold leading-relaxed">{message.error}</span>
+  // 1. ERROR: Retry Card
+  if (message.error) {
+    return (
+      <div className="rounded-[24px] rounded-tl-md border border-slate-100 dark:border-slate-808 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4" dir="auto">
+        {message.label && (
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            <i className={`fa-solid ${message.icon || "fa-sparkles"} text-indigo-500`} />
+            <span>{message.label}</span>
+          </div>
+        )}
+        <div className="rounded-xl bg-rose-50/50 dark:bg-rose-955/10 px-3.5 py-2.5 flex items-center justify-between gap-3 border border-rose-100/50 dark:border-rose-900/30">
+          <span className="text-[12px] text-rose-605 dark:text-rose-455 font-bold leading-relaxed">⚠️ {message.error}</span>
           <button
             type="button"
             onClick={() => onRetry?.(message.id)}
@@ -191,18 +482,121 @@ function ChatBubble({ message, feedbackState, onFeedback, onRetry }) {
             Retry
           </button>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {message.traceId && !message.loading && (
-        <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-slate-55 dark:border-slate-800/40 pt-2.5">
+  // 2. LOADING: Thinking Steps indicator
+  if (message.loading) {
+    return (
+      <div className="rounded-[24px] rounded-tl-md border border-slate-100 dark:border-slate-808 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4" dir="auto">
+        {message.label && (
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            <i className={`fa-solid ${message.icon || "fa-sparkles"} text-indigo-500`} />
+            <span>{message.label}</span>
+          </div>
+        )}
+        <div className="text-[13px] leading-6 text-slate-750 dark:text-slate-300">
+          <div className="flex items-center gap-2.5 py-1 text-slate-500 dark:text-slate-400">
+            <div className="flex gap-1 items-center shrink-0">
+              <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+              <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+              <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce" />
+            </div>
+            <span className="text-[12.5px] font-semibold tracking-wide animate-pulse">
+              {message.status || "Thinking..."}
+            </span>
+          </div>
+        </div>
+        {message.thinkingSteps && message.thinkingSteps.length > 0 && (
+          <div className="py-2.5 border-l-2 border-slate-100 dark:border-slate-800 pl-4 space-y-2.5">
+            {message.thinkingSteps.map((step, idx) => (
+              <div key={idx} className="flex items-center gap-2.5 text-[11.5px] font-semibold">
+                {step.active ? (
+                  <i className="fa-solid fa-circle-notch fa-spin text-indigo-500 shrink-0 text-[10px]" />
+                ) : step.status.startsWith("✗") || step.status.includes("Failed") ? (
+                  <i className="fa-solid fa-circle-xmark text-rose-500 shrink-0 text-[10px]" />
+                ) : (
+                  <i className="fa-solid fa-circle-check text-emerald-500 shrink-0 text-[10px]" />
+                )}
+                <span className={step.active ? "text-slate-800 dark:text-slate-205" : "text-slate-400 dark:text-slate-500"}>
+                  {step.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const hasActions = message.actions && message.actions.length > 0;
+
+  // 3. PLAN and CHAT layouts
+  return (
+    <div className="space-y-3">
+      <div className={`rounded-[24px] rounded-tl-md px-5 py-4 text-[13px] leading-6 shadow-sm ${
+        hasActions 
+          ? "border border-slate-100 dark:border-slate-808 bg-white dark:bg-slate-900 p-6" 
+          : "bg-slate-100 dark:bg-slate-800/60 text-slate-750 dark:text-slate-300 font-normal"
+      }`} dir="auto">
+        {hasActions && message.label && (
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-4">
+            <i className={`fa-solid ${message.icon || "fa-sparkles"} text-indigo-500`} />
+            <span>{message.label}</span>
+          </div>
+        )}
+        <MarkdownRenderer content={message.text} />
+
+        {/* Suggested Actions for Plan layout */}
+        {hasActions && (
+          <div className="border-t border-slate-100 dark:border-slate-808/40 pt-4 mt-4">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2.5">Suggested Action Tasks</span>
+            <div className="grid grid-cols-1 gap-2.5">
+              {message.actions.map((act, index) => (
+                <div key={index} className="rounded-2xl bg-slate-50 dark:bg-slate-955 p-3.5 border border-slate-150/60 dark:border-slate-808 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm text-left">
+                  <div className="min-w-0 flex-1">
+                    <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-[9px] font-bold text-indigo-655 dark:text-indigo-400 tracking-wide uppercase">
+                      {act.commandType || act.type || "Action"}
+                    </span>
+                    <p className="mt-1 text-[12.5px] font-bold text-slate-808 dark:text-slate-255 leading-relaxed">{act.reason || act.description}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0 w-full md:w-auto">
+                    <button
+                      type="button"
+                      disabled={reviewingActionId === (act.id || act.actionId)}
+                      onClick={() => onActionDecision?.(act.id || act.actionId, "approve")}
+                      className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 px-3.5 py-1.5 text-[11px] font-bold text-white transition disabled:opacity-55 cursor-pointer shadow-sm"
+                    >
+                      <i className="fa-solid fa-check" /> Approve
+                    </button>
+                    <button
+                      type="button"
+                      disabled={reviewingActionId === (act.id || act.actionId)}
+                      onClick={() => onActionDecision?.(act.id || act.actionId, "reject")}
+                      className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 rounded-full border border-rose-200 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-[11px] font-bold text-rose-605 dark:text-rose-455 transition hover:bg-rose-50 dark:hover:bg-rose-955/20 disabled:opacity-55 cursor-pointer"
+                    >
+                      <i className="fa-solid fa-xmark" /> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Message feedback buttons */}
+      {message.traceId && (
+        <div className="flex flex-wrap items-center gap-2 px-1">
           <button
             type="button"
             disabled={feedbackState?.submitting}
             onClick={() => onFeedback(message.traceId, "positive")}
             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold tracking-wide uppercase transition-colors cursor-pointer ${
               feedbackState?.rating === "positive"
-                ? "border-emerald-205 bg-emerald-50/80 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-450"
-                : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-808 dark:bg-slate-900 dark:text-slate-400"
+                ? "border-emerald-205 bg-emerald-50/80 text-emerald-700 dark:bg-emerald-955/20 dark:text-emerald-455"
+                : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-808 dark:border-slate-808 dark:bg-slate-900 dark:text-slate-400"
             }`}
           >
             <i className={`fa-solid ${feedbackState?.submitting ? "fa-spinner fa-spin" : "fa-thumbs-up"}`} />
@@ -214,8 +608,8 @@ function ChatBubble({ message, feedbackState, onFeedback, onRetry }) {
             onClick={() => onFeedback(message.traceId, "negative")}
             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold tracking-wide uppercase transition-colors cursor-pointer ${
               feedbackState?.rating === "negative"
-                ? "border-amber-205 bg-amber-50/80 text-amber-700 dark:bg-amber-950/20 dark:text-amber-450"
-                : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-808 dark:bg-slate-900 dark:text-slate-400"
+                ? "border-amber-205 bg-amber-55/80 text-amber-750 dark:bg-amber-955/20 dark:text-amber-455"
+                : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-808 dark:border-slate-808 dark:bg-slate-900 dark:text-slate-400"
             }`}
           >
             <i className="fa-solid fa-thumbs-down" />
@@ -268,6 +662,7 @@ function ToastContainer({ toasts, onClose }) {
 
 function AiAssistantPage() {
   const { setPath } = useOutletContext();
+  const navigate = useNavigate();
   const { activeSpace, activeBoard, spaces, activeBoards, setActiveSpace, setActiveBoard, user } = useAppContext();
   const [composer, setComposer] = useState("");
   const [contextOpen, setContextOpen] = useState(false);
@@ -291,9 +686,40 @@ function AiAssistantPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [reviewingActionId, setReviewingActionId] = useState("");
   const [messageFeedback, setMessageFeedback] = useState({});
+  const [activeMeetingTranscript, setActiveMeetingTranscript] = useState(null);
+  const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [transcriptModalOpen, setTranscriptModalOpen] = useState(false);
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const chatAbortRef = useRef(null);
+
+  const fetchAndShowTranscript = async (meetingId, title) => {
+    setLoadingTranscript(true);
+    setTranscriptModalOpen(true);
+    setActiveMeetingTranscript({ title, text: "Loading transcript..." });
+    try {
+      const data = await meetingsService.getTranscript(meetingId, contextValues.spaceId);
+      setActiveMeetingTranscript({ title, text: data?.transcript || data || "No transcript content available." });
+    } catch (err) {
+      setActiveMeetingTranscript({ title, text: `Failed to load transcript: ${err?.message || err}` });
+    } finally {
+      setLoadingTranscript(false);
+    }
+  };
+
+  const handleCitationClick = (citation) => {
+    if (citation.entity_type === "task") {
+      navigate(`/tasks/${citation.entity_id}`);
+    } else if (citation.entity_type === "meeting") {
+      void fetchAndShowTranscript(citation.entity_id, citation.title);
+    } else if (citation.entity_type === "decision") {
+      setActiveTab("overview");
+      showToast(`Decision selected: "${citation.title}". Scroll to Decision Register to view details.`, "info");
+    } else if (citation.entity_type === "approval" || citation.entity_type === "workflow") {
+      setActiveTab("approvals");
+      showToast(`Workflow approval selected: "${citation.title}". Check active workflow queue.`, "info");
+    }
+  };
 
   const showToast = (message, type = "success") => {
     const id = makeId("toast");
@@ -345,7 +771,6 @@ function AiAssistantPage() {
 
   const dashboardLoading = dashboardQuery.isLoading || dashboardQuery.isFetching;
 
-  const fallbackChatMutation = useAiChatMutation();
   const streamingChatMutation = useAiStreamingMutation();
   const riskMutation = useAiRiskMutation();
   const reportMutation = useAiReportMutation();
@@ -444,6 +869,12 @@ function AiAssistantPage() {
       return;
     }
 
+    // Validate workspace selection before calling AI
+    if (!chatContext.spaceId || chatContext.spaceId.trim() === "") {
+      showToast("Please select a workspace before asking questions. Use the workspace selector at the top of the page.", "error");
+      return;
+    }
+
     const userMessage = {
       id: makeId("user"),
       role: "user",
@@ -459,6 +890,7 @@ function AiAssistantPage() {
       label: "Intelligence Response",
       icon: "fa-sparkles",
       loading: true,
+      status: "Thinking...",
       error: "",
       traceId: "",
     };
@@ -474,7 +906,7 @@ function AiAssistantPage() {
     chatAbortRef.current = abortController;
 
     try {
-      const { text, traceId } = await streamingChatMutation.mutateAsync({
+      const { text, traceId, citations, confidence, warnings, actions, summary, insights, risks } = await streamingChatMutation.mutateAsync({
         message: trimmedPrompt,
         spaceId: chatContext.spaceId,
         boardId: chatContext.boardId,
@@ -494,6 +926,35 @@ function AiAssistantPage() {
             ),
           );
         },
+        onStatus: (statusInfo) => {
+          setMessages((currentMessages) =>
+            currentMessages.map((message) => {
+              if (message.id !== assistantMessageId) return message;
+              
+              const info = typeof statusInfo === "string" ? { status: statusInfo } : statusInfo;
+              const statusText = info.status || info.message || "Processing...";
+              const steps = message.thinkingSteps || [];
+              
+              let nextSteps = [...steps];
+              if (info.event === "tool_complete" || info.event === "reflection") {
+                nextSteps = steps.map(s => s.active ? { ...s, active: false, status: s.status.startsWith("✓") || s.status.startsWith("✗") ? s.status : `✓ Completed: ${s.status.replace("...", "")}` } : s);
+                nextSteps.push({ event: info.event, status: statusText, active: false });
+              } else {
+                const exists = steps.some(s => s.status === statusText);
+                if (!exists) {
+                  nextSteps = steps.map(s => s.active ? { ...s, active: false, status: s.status.startsWith("✓") || s.status.startsWith("✗") ? s.status : `✓ Resolved: ${s.status.replace("...", "")}` } : s);
+                  nextSteps.push({ event: info.event || "thinking", status: statusText, active: true });
+                }
+              }
+              
+              return {
+                ...message,
+                status: statusText,
+                thinkingSteps: nextSteps
+              };
+            }),
+          );
+        },
       });
 
       setMessages((currentMessages) => {
@@ -504,6 +965,13 @@ function AiAssistantPage() {
                 text: message.text || text || "Done.",
                 loading: false,
                 traceId: message.traceId || traceId || "",
+                citations: citations || [],
+                confidence: confidence !== undefined ? confidence : { score: 1.0, level: "High", reason: "Direct lookup" },
+                warnings: warnings || [],
+                actions: actions || [],
+                summary: summary || "",
+                insights: insights || [],
+                risks: risks || [],
               }
             : message,
         );
@@ -842,16 +1310,15 @@ function AiAssistantPage() {
         </header>
 
         {/* Outer body framework container */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
-          {pageError && (
-            <div className="mb-5 rounded-2xl border border-rose-100 bg-rose-50/50 dark:border-rose-900/20 dark:bg-rose-950/10 px-4 py-3 text-[12px] leading-relaxed text-rose-600 dark:text-rose-455 flex items-center justify-between">
+        <div className={`flex-1 min-h-0 flex flex-col ${activeTab === "chat" ? "overflow-hidden" : "overflow-y-auto px-6 py-6"}`}>
+          {pageError && activeTab !== "chat" && (
+            <div className="mb-5 rounded-2xl border border-rose-100 bg-rose-50/50 dark:border-rose-900/20 dark:bg-rose-950/10 px-4 py-3 text-[12px] leading-relaxed text-rose-605 dark:text-rose-455 flex items-center justify-between">
               <span>{pageError}</span>
-              <button onClick={() => setPageError("")} className="text-rose-400 hover:text-rose-600"><i className="fa-solid fa-xmark" /></button>
+              <button onClick={() => setPageError("")} className="text-rose-405 hover:text-rose-600"><i className="fa-solid fa-xmark" /></button>
             </div>
           )}
 
-          {/* Loader when pulling stats */}
-          {dashboardLoading && (
+          {dashboardLoading && activeTab !== "chat" && (
             <div className="mb-6 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/10 px-4 py-2 text-[11px] font-bold text-indigo-500 animate-pulse flex items-center gap-2">
               <i className="fa-solid fa-spinner fa-spin" />
               <span>Workspace Intelligence updating live...</span>
@@ -1271,7 +1738,13 @@ function AiAssistantPage() {
 
           {/* CHAT TAB: Collapsed conversational intelligence console */}
           {activeTab === "chat" && (
-            <div className="flex flex-1 flex-col overflow-hidden max-w-245 mx-auto bg-white dark:bg-slate-905 rounded-[28px] shadow-sm border border-slate-100 dark:border-slate-800/60 h-[580px] animate-fadeIn">
+            <div className="flex flex-1 flex-col overflow-hidden w-full max-w-245 mx-auto bg-white dark:bg-slate-905 rounded-t-[28px] shadow-sm border-t border-x border-slate-100 dark:border-slate-800/60 h-full animate-fadeIn">
+              {pageError && (
+                <div className="mx-6 mt-4 mb-2 rounded-2xl border border-rose-100 bg-rose-50/50 dark:border-rose-900/20 dark:bg-rose-950/10 px-4 py-3 text-[12px] leading-relaxed text-rose-605 dark:text-rose-455 flex items-center justify-between">
+                  <span>{pageError}</span>
+                  <button onClick={() => setPageError("")} className="text-rose-405 hover:text-rose-600"><i className="fa-solid fa-xmark" /></button>
+                </div>
+              )}
               {/* Messages container */}
               <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5">
                 {filteredMessages.length === 0 ? (
@@ -1314,12 +1787,15 @@ function AiAssistantPage() {
                               <i className="fa-solid fa-robot text-xs" />
                             </div>
                           )}
-                          <div className={`max-w-[85%] ${isUser ? "order-first" : ""}`}>
+                          <div className={`${isUser ? "max-w-[85%] order-first" : "max-w-[850px] w-full h-auto"}`}>
                             <ChatBubble
                               message={message}
                               feedbackState={message.traceId ? messageFeedback[message.traceId] : null}
                               onFeedback={(traceId, rating) => void handleMessageFeedback(traceId, rating)}
                               onRetry={handleRetry}
+                              onCitationClick={handleCitationClick}
+                              onActionDecision={reviewFeedAction}
+                              reviewingActionId={reviewingActionId}
                             />
                           </div>
                           {isUser && (
@@ -1355,89 +1831,159 @@ function AiAssistantPage() {
                   Generate Status Report
                 </button>
               </div>
+
+              {/* Ask Mongez Search Input bar - Rendered ONLY inside chat tab */}
+              <footer className="bg-white dark:bg-slate-900 px-6 py-4 border-t border-slate-100 dark:border-slate-800/60 shadow-[0_-4px_16px_rgba(15,23,42,0.01)] shrink-0">
+                <div className="mx-auto w-full">
+                  {/* Dynamic Suggestion Chips */}
+                  <div className="flex flex-wrap gap-2 mb-3.5 items-center">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">💡 Try asking:</span>
+                    {[
+                      { label: "Blocked tasks", prompt: "Show me all blocked tasks on my board." },
+                      { label: "Weekly report", prompt: "Generate a weekly status report." },
+                      { label: "Overloaded users", prompt: "Who is overloaded right now?" },
+                      { label: "Release risks", prompt: "Are there any risks to our release timeline?" },
+                      { label: "Remind overdue", prompt: "Propose reminders for overdue tasks." },
+                    ].map((chip) => (
+                      <button
+                        key={chip.label}
+                        type="button"
+                        onClick={() => void runChat(chip.prompt)}
+                        className="rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-808 px-3 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-350 transition cursor-pointer shadow-sm"
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="rounded-[24px] border border-slate-202/90 dark:border-slate-808 bg-slate-50 dark:bg-slate-955 p-2 shadow-sm transition focus-within:border-indigo-400">
+                    <div className="flex items-end gap-3">
+                      <textarea
+                        ref={textareaRef}
+                        rows={1}
+                        value={composer}
+                        onChange={(e) => {
+                          setComposer(e.target.value.slice(0, MAX_COMPOSER_LENGTH));
+                          setPageError("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSubmit();
+                          }
+                        }}
+                        placeholder="Ask Mongez Intelligence anything..."
+                        className="min-h-11 flex-1 resize-none border-0 bg-transparent px-3 py-2.5 text-[13px] leading-relaxed text-slate-755 dark:text-slate-350 outline-none placeholder:text-slate-400"
+                      />
+
+                      {isStreaming ? (
+                        <button
+                          type="button"
+                          onClick={() => chatAbortRef.current?.abort()}
+                          className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-rose-500 hover:bg-rose-600 px-3 text-white transition cursor-pointer shadow-sm"
+                          aria-label="Stop streaming response"
+                        >
+                          <i className="fa-solid fa-stop text-xs" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleSubmit}
+                          disabled={!composer.trim()}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-505 text-white transition hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                          aria-label="Send message"
+                        >
+                          <i className="fa-solid fa-arrow-up text-xs" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Character counter */}
+                    <div className="flex justify-end px-2">
+                      <span
+                        className={`text-[10px] font-bold ${
+                          composer.length >= MAX_COMPOSER_LENGTH - 200
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-slate-400 dark:text-slate-500"
+                        }`}
+                      >
+                        {composer.length}/{MAX_COMPOSER_LENGTH}
+                      </span>
+                    </div>
+
+                    {/* Status Context Indicator line */}
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 px-2 border-t border-slate-100 dark:border-slate-850 pt-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                      <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
+                        Space: {activeSpace?.name || "None"}
+                      </span>
+                      <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
+                        Board: {activeBoard?.name || "None"}
+                      </span>
+                      {contextValues.taskId && (
+                        <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
+                          Task: {boardTasks.find(t => t.id === contextValues.taskId)?.title || "Selected"}
+                        </span>
+                      )}
+                      <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
+                        Tone: {contextValues.commentTone}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </footer>
             </div>
           )}
         </div>
+      </main>
 
-        {/* Ask Mongez Search Input bar - Rendered globally at the bottom */}
-        <footer className="bg-white dark:bg-slate-900 px-6 py-4 border-t border-slate-100 dark:border-slate-800/60 shadow-[0_-4px_16px_rgba(15,23,42,0.01)] shrink-0">
-          <div className="mx-auto w-full max-w-245">
-            <div className="rounded-[24px] border border-slate-202/90 dark:border-slate-808 bg-slate-50 dark:bg-slate-955 p-2 shadow-sm transition focus-within:border-indigo-400">
-              <div className="flex items-end gap-3">
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={composer}
-                  onChange={(e) => {
-                    setComposer(e.target.value.slice(0, MAX_COMPOSER_LENGTH));
-                    setPageError("");
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit();
-                    }
-                  }}
-                  placeholder="Ask Mongez Intelligence anything..."
-                  className="min-h-11 flex-1 resize-none border-0 bg-transparent px-3 py-2.5 text-[13px] leading-relaxed text-slate-750 dark:text-slate-350 outline-none placeholder:text-slate-400"
-                />
-
-                {isStreaming ? (
-                  <button
-                    type="button"
-                    onClick={() => chatAbortRef.current?.abort()}
-                    className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-rose-500 hover:bg-rose-600 px-3 text-white transition cursor-pointer shadow-sm"
-                    aria-label="Stop streaming response"
-                  >
-                    <i className="fa-solid fa-stop text-xs" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={!composer.trim()}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white transition hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
-                    aria-label="Send message"
-                  >
-                    <i className="fa-solid fa-arrow-up text-xs" />
-                  </button>
-                )}
+      {/* Meeting Transcript Modal */}
+      {transcriptModalOpen && activeMeetingTranscript && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-808 flex flex-col max-h-[85vh] overflow-hidden animate-slideUp">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-slate-800/80">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Meeting Transcript</span>
+                <h3 className="text-[15px] font-black text-slate-900 dark:text-slate-100 truncate max-w-[450px]">
+                  {activeMeetingTranscript.title}
+                </h3>
               </div>
+              <button
+                type="button"
+                onClick={() => setTranscriptModalOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+              >
+                <i className="fa-solid fa-xmark text-sm" />
+              </button>
+            </div>
 
-              {/* Character counter */}
-              <div className="flex justify-end px-2">
-                <span
-                  className={`text-[10px] font-bold ${
-                    composer.length >= MAX_COMPOSER_LENGTH - 200
-                      ? "text-rose-600 dark:text-rose-400"
-                      : "text-slate-400 dark:text-slate-500"
-                  }`}
-                >
-                  {composer.length}/{MAX_COMPOSER_LENGTH}
-                </span>
-              </div>
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 text-[13px] leading-6 whitespace-pre-wrap text-slate-750 dark:text-slate-350">
+              {loadingTranscript ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-500" />
+                  <span className="text-slate-400 font-bold">Decrypting meeting transcript...</span>
+                </div>
+              ) : (
+                <div className="bg-slate-50 dark:bg-slate-955 p-4.5 rounded-2xl border border-slate-150/50 dark:border-slate-808/60 font-sans">
+                  {activeMeetingTranscript.text}
+                </div>
+              )}
+            </div>
 
-              {/* Status Context Indicator line */}
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 px-2 border-t border-slate-100 dark:border-slate-850 pt-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">
-                <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                  Space: {activeSpace?.name || "None"}
-                </span>
-                <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                  Board: {activeBoard?.name || "None"}
-                </span>
-                {contextValues.taskId && (
-                  <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                    Task: {boardTasks.find(t => t.id === contextValues.taskId)?.title || "Selected"}
-                  </span>
-                )}
-                <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                  Tone: {contextValues.commentTone}
-                </span>
-              </div>
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/80 flex justify-end bg-slate-50/50 dark:bg-slate-955/20">
+              <button
+                type="button"
+                onClick={() => setTranscriptModalOpen(false)}
+                className="rounded-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white px-5 py-2 text-[11.5px] font-bold text-white dark:text-slate-900 transition cursor-pointer shadow-sm"
+              >
+                Close
+              </button>
             </div>
           </div>
-        </footer>
-      </main>
+        </div>
+      )}
 
       <ToastContainer toasts={toasts} onClose={handleToastClose} />
     </div>

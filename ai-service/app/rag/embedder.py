@@ -1,10 +1,10 @@
-"""Embedder — converts text into dense vector representations using BGE-M3.
+"""Embedder — converts text into dense vector representations using all-MiniLM-L6-v2.
 
-BGE-M3 is a multilingual embedding model that runs entirely on CPU.
-It produces 1024-dimensional L2-normalized vectors optimised for cosine similarity.
+all-MiniLM-L6-v2 is an extremely lightweight English embedding model.
+It produces 384-dimensional L2-normalized vectors optimised for cosine similarity.
 
-First load downloads ~2 GB from HuggingFace (cached to ~/.cache/huggingface/).
-Subsequent loads take ~5 seconds to initialise from the local cache.
+First load downloads ~120 MB from HuggingFace (cached to ~/.cache/huggingface/).
+Subsequent loads take <1 second to initialise from the local cache.
 """
 import logging
 from functools import lru_cache
@@ -13,8 +13,8 @@ from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
-# Default embedding model — produces 1024-dim vectors
-DEFAULT_MODEL = "BAAI/bge-m3"
+# Default embedding model — produces 384-dim vectors
+DEFAULT_MODEL = "all-MiniLM-L6-v2"
 
 
 class Embedder:

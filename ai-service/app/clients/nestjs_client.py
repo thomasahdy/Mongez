@@ -77,6 +77,37 @@ class NestJSClient:
         return self._extract_data(resp.json()) or []
 
 
+
+    async def get_task_dependencies(self, space_id: str) -> list[dict]:
+        """Fetch task blocking dependencies in the space graph."""
+        resp = await self._client.get(f"/internal/ai/graph/dependencies/{space_id}")
+        resp.raise_for_status()
+        return self._extract_data(resp.json()) or []
+
+    async def get_blocker_chain(self, space_id: str) -> list[list[dict]]:
+        """Fetch traversed chains of blocked tasks in the space graph."""
+        resp = await self._client.get(f"/internal/ai/graph/blockers/{space_id}")
+        resp.raise_for_status()
+        return self._extract_data(resp.json()) or []
+
+    async def get_workflow_graph(self, space_id: str) -> dict:
+        """Fetch active workflow instances and approval tracks."""
+        resp = await self._client.get(f"/internal/ai/graph/workflows/{space_id}")
+        resp.raise_for_status()
+        return self._extract_data(resp.json()) or {}
+
+    async def get_org_graph(self, space_id: str) -> dict:
+        """Fetch department mappings and space memberships."""
+        resp = await self._client.get(f"/internal/ai/graph/org/{space_id}")
+        resp.raise_for_status()
+        return self._extract_data(resp.json()) or {}
+
+    async def get_decisions(self, space_id: str) -> list[dict]:
+        """Fetch decision records for the space."""
+        resp = await self._client.get(f"/internal/ai/graph/decisions/{space_id}")
+        resp.raise_for_status()
+        return self._extract_data(resp.json()) or []
+
     async def get_schema(self) -> dict:
         """Fetch the simplified DB schema description for Text-to-SQL prompts."""
         resp = await self._client.get("/internal/ai/schema")

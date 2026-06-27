@@ -63,13 +63,31 @@ class QdrantIndexer:
         return f"mongez_{space_id}"
 
     def ensure_collection(self, space_id: str) -> None:
-        """Create the Qdrant collection for a space if it does not exist.
+        """Create the Qdrant collection for a space if it does not exist or has incorrect dimension.
 
         Idempotent — safe to call before every indexing operation.
-        Uses COSINE distance to match L2-normalised BGE-M3 vectors.
         """
         name = self.collection_name(space_id)
-        if not self.client.collection_exists(name):
+        recreate = False
+        if self.client.collection_exists(name):
+            try:
+                info = self.client.get_collection(name)
+                # Check dimension mismatch
+                if info.config.params.vectors.size != self.embedder.dimension:
+                    logger.warning(
+                        "Collection %s exists with incorrect dimension %d (expected %d). Recreating...",
+                        name, info.config.params.vectors.size, self.embedder.dimension
+                    )
+                    self.client.delete_collection(name)
+                    recreate = True
+            except Exception as exc:
+                logger.warning("Failed to check collection %s: %s. Forcing recreate.", name, exc)
+                self.client.delete_collection(name)
+                recreate = True
+        else:
+            recreate = True
+
+        if recreate:
             self.client.create_collection(
                 collection_name=name,
                 vectors_config=VectorParams(

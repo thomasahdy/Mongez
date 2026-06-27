@@ -14,7 +14,7 @@ export function useAiDashboardQuery(spaceId) {
     queryKey: ["ai", "dashboard", spaceId],
     queryFn: () => aiService.fetchAiDashboard(spaceId),
     enabled: Boolean(spaceId),
-    refetchInterval: 30000, // refresh every 30 seconds to keep feed alive
+    refetchInterval: 120000, // refresh every 2 minutes to keep feed alive
   });
 }
 

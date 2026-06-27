@@ -86,7 +86,10 @@ def _build_workload_summary(tasks: list[dict]) -> str:
 
 async def calendar_intelligence_node(state: MongezAgentState) -> dict:
     """LangGraph node to analyze calendar queries, check overlaps, regional holidays, and team overload."""
-    from app.dependencies import llm_client, prompt_loader, nestjs_client
+    from app.dependencies import llm_client, nestjs_client
+    from app.dependencies import get_prompt_loader
+
+    prompt_loader = get_prompt_loader()
 
     space_id = state["space_id"]
     query = state.get("rewritten_query") or state.get("raw_input", "")
@@ -135,7 +138,7 @@ async def calendar_intelligence_node(state: MongezAgentState) -> dict:
         if clean_content.endswith("```"):
             clean_content = clean_content.rsplit("```", 1)[0]
         
-        parsed_json = json.loads(clean_content.strip())
+        parsed_json = json.loads(clean_content.strip(), strict=False)
         if "explanation" in parsed_json:
             final_response = parsed_json["explanation"]
     except Exception as exc:

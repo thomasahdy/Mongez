@@ -20,7 +20,8 @@ async def retrieve_context(
     Returns:
         List of result dicts: [{"text", "score", "metadata"}, ...]
     """
-    from app.dependencies import retriever
+    from app.dependencies import get_retriever
+    retriever = get_retriever()
     return await retriever.retrieve(
         query=query,
         space_id=space_id,

@@ -60,7 +60,7 @@ async def generate_report(
         result_delta = await report_generator_node(initial_state)
         result = {**initial_state, **result_delta}
     except Exception as exc:
-        logger.error("[%s] Report generation error: %s", trace_id, exc, exc_info=True)
+        logger.error("[%s] Report generation error: %s", trace_id, exc)
         raise HTTPException(status_code=500, detail="Report generation failed.")
 
     return ReportResponse(

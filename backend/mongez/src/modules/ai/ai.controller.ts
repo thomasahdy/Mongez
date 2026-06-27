@@ -23,6 +23,8 @@ import { FeedbackDto } from './dto/feedback.dto';
 import { ApprovalActionDto } from './dto/approval-action.dto';
 import { SubscriptionGateGuard } from '../subscriptions/guards/subscription-gate.guard';
 import { RequiresFeature } from '../subscriptions/decorators/requires-feature.decorator';
+import { AIMemoryProfileService } from './memory/ai-memory-profile.service';
+import { UpdateMemoryProfileDto } from './dto/memory-profile.dto';
 
 /**
  * Public AI API surface — all routes require user JWT authentication.
@@ -34,6 +36,7 @@ export class AIController {
   constructor(
     private readonly aiService: AIService,
     private readonly aiGateway: AIGatewayService,
+    private readonly memoryProfileService: AIMemoryProfileService,
   ) {}
 
   /** GET /ai/dashboard?spaceId=xxx — Fetch workspace intelligence dashboard stats */
@@ -52,7 +55,7 @@ export class AIController {
   @HttpCode(HttpStatus.OK)
   async chat(@Body() dto: ChatDto, @Req() req: Request) {
     const userId = (req as any).user?.userId;
-    return this.aiGateway.chat(userId, dto);
+    return this.aiService.chat(userId, dto);
   }
 
   /**
@@ -71,7 +74,7 @@ export class AIController {
     const userId = (req as any).user?.userId;
 
     try {
-      const { traceId, stream } = await this.aiGateway.streamChat(userId, dto);
+      const { traceId, stream } = await this.aiService.chatStream(userId, dto);
 
       // Set SSE headers
       res.setHeader('Content-Type', 'text/event-stream');
@@ -188,5 +191,25 @@ export class AIController {
   ) {
     const userId = (req as any).user?.userId;
     return this.aiService.getHistory(userId, parseInt(page, 10), parseInt(limit, 10));
+  }
+
+  // ─── Memory Profile ────────────────────────────────────────────────────────
+
+  /** GET /ai/memory — Fetch raw memory profile for current user */
+  @Get('memory')
+  async getMemoryProfile(@Req() req: Request) {
+    const userId = (req as any).user?.userId;
+    return this.memoryProfileService.getMemoryProfileDirect(userId);
+  }
+
+  /** POST /ai/memory — Update user memory profile preferences */
+  @Post('memory')
+  @HttpCode(HttpStatus.OK)
+  async updateMemoryProfile(
+    @Body() dto: UpdateMemoryProfileDto,
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId;
+    return this.memoryProfileService.updateMemoryProfileDirect(userId, dto);
   }
 }

@@ -3,6 +3,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
+import json
+
 # Ensure GROQ_API_KEY is present before config is imported
 os.environ["GROQ_API_KEY"] = "mock-key-for-testing"
 os.environ["SERVICE_API_KEY"] = "test-key"
@@ -16,7 +18,7 @@ from app.rag.indexer import QdrantIndexer
 
 # 1. Mock LLMClient methods
 class MockLLMClient:
-    async def invoke(self, tier: str, system_prompt: str, user_message: str):
+    async def invoke(self, tier: str, system_prompt: str, user_message: str, token_queue = None):
         system_prompt_lower = system_prompt.lower()
         user_message_lower = user_message.lower()
 
@@ -40,13 +42,51 @@ class MockLLMClient:
                 content = user_message
             return {"content": content, "model": "mock-fast-model", "latency_ms": 10, "tokens_in": 15, "tokens_out": 15}
 
+        # Master Planner mock
+        if "master planner" in system_prompt_lower:
+            content = '{"need_more_data": false, "steps": [], "reasoning": "We have sufficient information."}'
+        # Quality Control Reflector mock
+        elif "quality control reflector" in system_prompt_lower:
+            content = '{"need_more_data": false, "reflection": "Mocked reflection", "confidence_estimate": 1.0}'
+        # Lead Aggregator mock
+        elif "lead aggregator" in system_prompt_lower:
+            # Extract user query from system prompt to avoid matching the instructions template
+            query_line = ""
+            for line in system_prompt_lower.splitlines():
+                if "user query:" in line:
+                    query_line = line
+                    break
+            
+            if "risk" in query_line or "delay" in query_line:
+                answer = "Mocked risk report. Risk Level: HIGH. Delays detected."
+                actions = []
+            elif "report" in query_line or "summary" in query_line:
+                answer = "# Project Status Report\n- All tasks on track."
+                actions = []
+            elif "assign" in query_line or "reassign" in query_line:
+                answer = "I will reassign this task."
+                actions = [{
+                    "command_type": "AssignTask",
+                    "payload": {"taskId": "task-1", "assigneeId": "user-2"},
+                    "reason": "Reassign requested"
+                }]
+            else:
+                answer = "Mocked assistant response stream."
+                actions = []
+            content = f'{{"answer": {json.dumps(answer)}, "confidence": 0.95, "citations": [], "warnings": [], "actions": {json.dumps(actions)}}}'
         # Content generation nodes mock
-        if "risk analyst" in system_prompt_lower:
+        elif "risk analyst" in system_prompt_lower or "risk detector" in system_prompt_lower:
             content = '{"risk": "HIGH", "reason": "delay detected", "confidence": 0.9, "issues": [{"type": "overdue", "description": "delayed", "severity": "HIGH"}], "suggested_actions": ["reassign"]}'
-        elif "report writer" in system_prompt_lower:
+        elif "report writer" in system_prompt_lower or "report generator" in system_prompt_lower:
             content = "# Project Status Report\n- All tasks on track."
         else:
             content = "Mocked assistant response for general chat."
+
+        if token_queue is not None:
+            # Chunk the content and feed to the queue
+            chunk_size = max(1, len(content) // 5)
+            for i in range(0, len(content), chunk_size):
+                await token_queue.put(content[i:i+chunk_size])
 
         return {
             "content": content,
@@ -99,15 +139,15 @@ NestJSClient.update_ai_request = mock_update_ai_request
 NestJSClient.close = mock_close
 
 # 3. Mock Embedder constructor and methods
-def mock_embedder_init(self, model_name="BAAI/bge-m3"):
-    self.dimension = 1024
+def mock_embedder_init(self, model_name="all-MiniLM-L6-v2"):
+    self.dimension = 384
     self.model_name = model_name
 
 def mock_embed(self, texts):
-    return [[0.0] * 1024 for _ in texts]
+    return [[0.0] * 384 for _ in texts]
 
 def mock_embed_single(self, text):
-    return [0.0] * 1024
+    return [0.0] * 384
 
 Embedder.__init__ = mock_embedder_init
 Embedder.embed = mock_embed
@@ -189,9 +229,24 @@ def setup_dependencies():
     """Setup dependencies mock objects to prevent calling external APIs."""
     # Ensure they are correctly set in dependencies module
     settings = get_settings()
-    deps.llm_client = LLMClient(settings)
-    deps.nestjs_client = NestJSClient(settings)
-    deps.embedder = Embedder()
+    
+    # Set app reference and initialize state for lazy-loading in tests
+    deps._app = app
+    app.state.llm = LLMClient(settings)
+    app.state.nestjs = NestJSClient(settings)
+    app.state.embedder = Embedder()
+    app.state.retriever = DenseRetriever(settings.qdrant_url, app.state.embedder)
+    app.state.indexer = QdrantIndexer(settings.qdrant_url, app.state.embedder)
+    app.state.prompt_loader = PromptLoader()
+    
+    deps.llm_client = app.state.llm
+    deps.nestjs_client = app.state.nestjs
+    deps.embedder = app.state.embedder
+    deps.retriever = app.state.retriever
+    deps.indexer = app.state.indexer
+    
+    # Real prompt loader is offline and fast
+    deps.prompt_loader = app.state.prompt_loader
     
     # Reset class-level mocks so their call history is cleared
     if hasattr(DenseRetriever.retrieve, "reset_mock"):
@@ -199,11 +254,6 @@ def setup_dependencies():
     if hasattr(QdrantIndexer.index, "reset_mock"):
         QdrantIndexer.index.reset_mock()
 
-    deps.retriever = DenseRetriever(settings.qdrant_url, deps.embedder)
-    deps.indexer = QdrantIndexer(settings.qdrant_url, deps.embedder)
-    
-    # Real prompt loader is offline and fast
-    deps.prompt_loader = PromptLoader()
     yield deps
 
 

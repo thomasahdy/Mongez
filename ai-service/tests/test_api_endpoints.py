@@ -51,15 +51,26 @@ def test_chat_stream_success(client):
     res = client.post(
         "/chat/stream",
         headers={"X-Service-API-Key": "test-key"},
-        json={"message": "hello", "space_id": "s1", "user_id": "u1"},
+        json={"message": "What tasks do we have?", "space_id": "s1", "user_id": "u1"},
     )
     assert res.status_code == 200
     assert "text/event-stream" in res.headers["content-type"]
     
     # Read tokens from stream
     body = res.text
-    assert "Mocked" in body
-    assert "stream" in body
+    tokens = []
+    for line in body.splitlines():
+        if line.startswith("data:"):
+            try:
+                import json
+                data = json.loads(line[5:])
+                if "token" in data:
+                    tokens.append(data["token"])
+            except Exception:
+                pass
+    reconstructed = "".join(tokens)
+    assert "Mocked" in reconstructed
+    assert "stream" in reconstructed
     assert '"done": true' in body
 
 

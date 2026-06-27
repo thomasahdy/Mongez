@@ -3,6 +3,7 @@ import { ServiceApiKeyGuard } from './guards/service-api-key.guard';
 import { AIDataProviderService } from './ai-data-provider.service';
 import { AIActionRepository } from './repositories/ai-action.repository';
 import { CalendarService } from '../calendar/services/calendar.service';
+import { WorkspaceGraphService } from './services/workspace-graph.service';
 
 /**
  * Internal API for the Python AI service.
@@ -16,6 +17,7 @@ export class AIDataProviderController {
     private readonly dataProvider: AIDataProviderService,
     private readonly actionRepo: AIActionRepository,
     private readonly calendarService: CalendarService,
+    private readonly graphService: WorkspaceGraphService,
   ) {}
 
   /**
@@ -99,6 +101,46 @@ export class AIDataProviderController {
     return this.calendarService.getUnifiedFeed(spaceId, start, end, undefined, {
       sources: ['MONGEZ', 'GOOGLE', 'HOLIDAY', 'MEETING', 'APPROVAL', 'ESCALATION'],
     });
+  }
+
+  /**
+   * GET /internal/ai/graph/dependencies/:spaceId
+   */
+  @Get('graph/dependencies/:spaceId')
+  async getTaskDependencies(@Param('spaceId') spaceId: string) {
+    return this.graphService.getTaskDependencies(spaceId);
+  }
+
+  /**
+   * GET /internal/ai/graph/blockers/:spaceId
+   */
+  @Get('graph/blockers/:spaceId')
+  async getBlockerChain(@Param('spaceId') spaceId: string) {
+    return this.graphService.getBlockerChain(spaceId);
+  }
+
+  /**
+   * GET /internal/ai/graph/workflows/:spaceId
+   */
+  @Get('graph/workflows/:spaceId')
+  async getWorkflowGraph(@Param('spaceId') spaceId: string) {
+    return this.graphService.getWorkflowGraph(spaceId);
+  }
+
+  /**
+   * GET /internal/ai/graph/org/:spaceId
+   */
+  @Get('graph/org/:spaceId')
+  async getOrgGraph(@Param('spaceId') spaceId: string) {
+    return this.graphService.getOrgGraph(spaceId);
+  }
+
+  /**
+   * GET /internal/ai/graph/decisions/:spaceId
+   */
+  @Get('graph/decisions/:spaceId')
+  async getDecisions(@Param('spaceId') spaceId: string) {
+    return this.graphService.getDecisions(spaceId);
   }
 }
 
