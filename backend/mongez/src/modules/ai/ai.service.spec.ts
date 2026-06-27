@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { AIGatewayService } from './ai-gateway.service';
 import { AIRequestRepository } from './repositories/ai-request.repository';
@@ -48,7 +48,11 @@ describe('AIService', () => {
 
     prisma = {
       membership: {
-        findUnique: jest.fn().mockResolvedValue({ userId: 'user-1', spaceId: 'space-1' } as any),
+        findUnique: jest.fn().mockResolvedValue({
+          userId: 'user-1',
+          spaceId: 'space-1',
+          role: { name: 'OWNER', permissions: [] },
+        } as any),
       },
       task: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -156,6 +160,18 @@ describe('AIService', () => {
       expect(aiGateway.executeApprovedAction).toHaveBeenCalledWith('action-1', 'reviewer-1');
       expect(result).toEqual(mockExecResult);
     });
+
+    it('should throw ForbiddenException if user is a regular MEMBER and has no permissions', async () => {
+      prisma.membership.findUnique.mockResolvedValue({
+        userId: 'reviewer-1',
+        spaceId: 'space-1',
+        role: { name: 'MEMBER', permissions: [] },
+      } as any);
+
+      await expect(
+        service.approveAction('action-1', 'reviewer-1', {} as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 
   describe('rejectAction()', () => {
@@ -168,12 +184,31 @@ describe('AIService', () => {
     });
 
     it('should reject action and record reviewer note', async () => {
+      // Restore default mock in case it was altered
+      prisma.membership.findUnique.mockResolvedValue({
+        userId: 'reviewer-1',
+        spaceId: 'space-1',
+        role: { name: 'OWNER', permissions: [] },
+      } as any);
       actionRepo.findById.mockResolvedValue({ id: 'action-1', spaceId: 'space-1' } as any);
       actionRepo.reject.mockResolvedValue({ id: 'action-1', status: 'REJECTED' } as any);
 
       await service.rejectAction('action-1', 'reviewer-1', { reviewNote: 'Not safe' } as any);
 
       expect(actionRepo.reject).toHaveBeenCalledWith('action-1', 'reviewer-1', 'Not safe');
+    });
+
+    it('should throw ForbiddenException if user is a regular MEMBER and has no permissions', async () => {
+      prisma.membership.findUnique.mockResolvedValue({
+        userId: 'reviewer-1',
+        spaceId: 'space-1',
+        role: { name: 'MEMBER', permissions: [] },
+      } as any);
+      actionRepo.findById.mockResolvedValue({ id: 'action-1', spaceId: 'space-1' } as any);
+
+      await expect(
+        service.rejectAction('action-1', 'reviewer-1', { reviewNote: 'Not safe' } as any),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

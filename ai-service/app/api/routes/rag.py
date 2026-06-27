@@ -63,7 +63,7 @@ async def index_document(
             
         return IndexResponse(success=True, points_indexed=points_indexed)
     except Exception as exc:
-        logger.error("Failed to index task %s in space %s: %s", req.task_id, req.space_id, exc, exc_info=True)
+        logger.error("Failed to index task %s in space %s: %s", req.task_id, req.space_id, exc)
         raise HTTPException(status_code=500, detail=f"Indexing failed: {str(exc)}")
 
 
@@ -83,5 +83,5 @@ async def retrieve_context(
         xml_context = dependencies.retriever.format_as_xml_context(results)
         return RetrieveResponse(context=xml_context)
     except Exception as exc:
-        logger.error("Failed to retrieve context for query '%s' in space %s: %s", req.query, req.space_id, exc, exc_info=True)
+        logger.error("Failed to retrieve context for query '%s' in space %s: %s", req.query, req.space_id, exc)
         raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(exc)}")

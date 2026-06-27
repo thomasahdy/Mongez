@@ -75,12 +75,26 @@ class DenseRetriever:
         """
         col = self.collection_name(space_id)
 
+        # Check dimension mismatch and delete if incorrect
+        if self.client.collection_exists(col):
+            try:
+                info = self.client.get_collection(col)
+                if info.config.params.vectors.size != self.embedder.dimension:
+                    logger.warning(
+                        "Collection %s exists with incorrect dimension %d (expected %d). Deleting to force recreate...",
+                        col, info.config.params.vectors.size, self.embedder.dimension
+                    )
+                    self.client.delete_collection(col)
+            except Exception as exc:
+                logger.warning("Failed to check collection dimension for %s: %s", col, exc)
+
         # Guard: if collection doesn't exist, attempt to index on the fly
         if not self.client.collection_exists(col):
             logger.info("Collection %s not found — space not yet indexed. Attempting on-the-fly indexing...", col)
             try:
                 from app import dependencies
-                if dependencies.nestjs_client and dependencies.indexer:
+                indexer = dependencies.get_indexer()
+                if dependencies.nestjs_client and indexer:
                     import asyncio
                     tasks_coro = dependencies.nestjs_client.get_tasks(space_id)
                     audit_coro = dependencies.nestjs_client.get_audit_log(space_id)
@@ -88,12 +102,12 @@ class DenseRetriever:
                     
                     tasks, audit_logs, comments = await asyncio.gather(tasks_coro, audit_coro, comments_coro)
 
-                    dependencies.indexer.index_tasks(space_id, tasks)
-                    dependencies.indexer.index_audit_logs(space_id, audit_logs)
-                    dependencies.indexer.index_comments(space_id, comments)
+                    indexer.index_tasks(space_id, tasks)
+                    indexer.index_audit_logs(space_id, audit_logs)
+                    indexer.index_comments(space_id, comments)
                     logger.info("On-the-fly indexing successful for space: %s", space_id)
             except Exception as e:
-                logger.error("Failed on-the-fly indexing for space %s: %s", space_id, e, exc_info=True)
+                logger.error("Failed on-the-fly indexing for space %s: %s", space_id, e)
 
         if not self.client.collection_exists(col):
             logger.warning(
@@ -167,6 +181,20 @@ class DenseRetriever:
         primary implementation — retrieve() just wraps it in an async signature.
         """
         col = self.collection_name(space_id)
+
+        # Check dimension mismatch and delete if incorrect
+        if self.client.collection_exists(col):
+            try:
+                info = self.client.get_collection(col)
+                if info.config.params.vectors.size != self.embedder.dimension:
+                    logger.warning(
+                        "Collection %s exists with incorrect dimension %d (expected %d). Deleting to force recreate...",
+                        col, info.config.params.vectors.size, self.embedder.dimension
+                    )
+                    self.client.delete_collection(col)
+            except Exception as exc:
+                logger.warning("Failed to check collection dimension for %s: %s", col, exc)
+
         if not self.client.collection_exists(col):
             return []
 

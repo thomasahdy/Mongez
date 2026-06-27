@@ -65,7 +65,11 @@ async def risk_detector_node(state: MongezAgentState) -> dict:
             "response_metadata": dict,
         }
     """
-    from app.dependencies import llm_client, prompt_loader, nestjs_client, retriever
+    from app.dependencies import llm_client, nestjs_client
+    from app.dependencies import get_retriever, get_prompt_loader
+
+    retriever = get_retriever()
+    prompt_loader = get_prompt_loader()
 
     space_id = state["space_id"]
     query = state.get("rewritten_query") or state.get("raw_input", "")
@@ -95,8 +99,10 @@ async def risk_detector_node(state: MongezAgentState) -> dict:
 
     # 5. Parse and validate JSON output
     response_text: str
+    confidence_val = 0.7
     try:
         assessment = RiskAssessment.model_validate_json(result["content"])
+        confidence_val = assessment.confidence
         risk_emoji = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(assessment.risk, "⚪")
         lines = [
             f"## {risk_emoji} Risk Level: {assessment.risk}\n",
@@ -120,6 +126,7 @@ async def risk_detector_node(state: MongezAgentState) -> dict:
         "final_response": response_text,
         "retrieved_context": context_results,
         "task_data": tasks[:30],
+        "confidence": confidence_val,
         "response_metadata": {
             **state.get("response_metadata", {}),
             "agent": "risk_detector",
@@ -127,5 +134,6 @@ async def risk_detector_node(state: MongezAgentState) -> dict:
             "tokens_in": result["tokens_in"],
             "tokens_out": result["tokens_out"],
             "latency_ms": result["latency_ms"],
+            "confidence": confidence_val,
         },
     }

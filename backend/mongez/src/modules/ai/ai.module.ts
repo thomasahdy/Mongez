@@ -22,6 +22,7 @@ import { AILlmService } from './services/ai-llm.service';
 import { AIRagService } from './services/ai-rag.service';
 import { AIRiskService } from './services/ai-risk.service';
 import { AISchedulerService } from './scheduler/ai-scheduler.service';
+import { WorkspaceGraphService } from './services/workspace-graph.service';
 
 // External modules
 import { TasksModule } from '../tasks/tasks.module';
@@ -65,7 +66,8 @@ import { QUEUE_NAMES } from '../../infrastructure/queue/queue.constants';
     AIRagService,
     AIRiskService,
     AISchedulerService,
+    WorkspaceGraphService,
   ],
-  exports: [AIService, AIGatewayService, AIExecutorService, AIMemoryProfileService, AIRagService, AIRiskService],
+  exports: [AIService, AIGatewayService, AIExecutorService, AIMemoryProfileService, AIRagService, AIRiskService, WorkspaceGraphService],
 })
 export class AIModule {}

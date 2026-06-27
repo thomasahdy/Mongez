@@ -4,7 +4,7 @@ Every node reads from and writes to this TypedDict.
 LangGraph merges the returned dict into the running state automatically,
 so nodes only need to return the keys they change.
 """
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, Any
 
 
 class MongezAgentState(TypedDict, total=False):
@@ -13,6 +13,7 @@ class MongezAgentState(TypedDict, total=False):
     Fields are marked total=False so nodes can return partial updates
     without providing every key. Required fields are documented below.
     """
+    token_queue: Any                # asyncio.Queue for streaming tokens in real-time
 
     # ── Session Context (set once by the API layer) ────────────────────────────
     user_id: str           # Who is asking (for audit logging)
@@ -39,5 +40,15 @@ class MongezAgentState(TypedDict, total=False):
     proposed_action: dict | None    # If intent=action, the proposed command
     approval_status: str | None     # 'pending' | 'approved' | 'rejected' | None
 
+    # ── Planner & Reflection State Machine ──────────────────────────────────────
+    plan: list[str]                 # Execution steps remaining in plan
+    executed_tools: list[str]       # History of executed tools
+    tool_results: list[dict]        # Collected outputs of tool executions
+    reflection: str                 # Self-reflection notes / gap analysis
+    iterations: int                 # Count of execution steps run
+    remaining_budget: float         # Remaining cost budget for this query
+
     # ── Metadata (for logging and evaluation) ──────────────────────────────────
     response_metadata: dict         # model, tokens_in, tokens_out, latency_ms, agent
+    confidence: float               # Evaluated response confidence (0.0 to 1.0)
+

@@ -43,7 +43,11 @@ async def chat_responder_node(state: MongezAgentState) -> dict:
             "response_metadata": dict,
         }
     """
-    from app.dependencies import llm_client, prompt_loader, nestjs_client, retriever
+    from app.dependencies import llm_client, nestjs_client
+    from app.dependencies import get_retriever, get_prompt_loader
+
+    retriever = get_retriever()
+    prompt_loader = get_prompt_loader()
 
     space_id = state["space_id"]
     query = state.get("rewritten_query") or state.get("raw_input", "")

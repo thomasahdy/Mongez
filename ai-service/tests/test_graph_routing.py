@@ -58,7 +58,7 @@ async def test_graph_routing_action():
     assert result["intent"] == "action"
     # Action node routes to recommendation and then human_gate
     # Since we mock LLM, recommendation returns proposed action and human_gate returns it
-    assert result["approval_status"] is None or result["approval_status"] == "PENDING"
+    assert result.get("approval_status") is None or result.get("approval_status").upper() == "PENDING"
 
 
 @pytest.mark.asyncio

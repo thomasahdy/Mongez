@@ -171,6 +171,17 @@ export class AIExecutorService {
               throw new Error('Missing taskDto or spaceId in payload');
             }
 
+            // Fallback: If columnId is missing, resolve the first column of the board
+            if (!taskDto.columnId && taskDto.boardId) {
+              const column = await tx.column.findFirst({
+                where: { boardId: taskDto.boardId, deletedAt: null },
+                orderBy: { position: 'asc' },
+              });
+              if (column) {
+                taskDto.columnId = column.id;
+              }
+            }
+
             // Call standard createTask via TasksService
             result = await this.tasksService.createTask(taskDto, reviewerId, spaceId, spacePrefix);
             break;

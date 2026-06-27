@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { AIClientService } from '../ai-client.service';
 import { randomUUID } from 'crypto';
+import { UpdateMemoryProfileDto } from '../dto/memory-profile.dto';
 
 @Injectable()
 export class AIMemoryProfileService {
@@ -122,20 +123,114 @@ ${conversationText}
   }
 
   /**
-   * Fetch a user's memory profile preferences as a formatted bulleted list.
+   * Fetch a user's memory profile preferences as a formatted list.
    */
   async getMemoryProfile(userId: string): Promise<string> {
     const profile = await this.prisma.aiMemoryProfile.findUnique({
       where: { userId },
     });
 
-    if (!profile || !profile.preferences) {
-      return '';
+    if (!profile) return '';
+
+    // Asynchronously update access stats and boost importance score
+    this.prisma.aiMemoryProfile.update({
+      where: { userId },
+      data: {
+        lastAccessed: new Date(),
+        accessCount: { increment: 1 },
+        importanceScore: { increment: 0.1 },
+      },
+    }).catch((err) => this.logger.warn(`Failed to update memory profile metrics: ${err.message}`));
+
+    const lines: string[] = [];
+    if (profile.language) lines.push(`Preferred Language: ${profile.language}`);
+    if (profile.preferredReportStyle) lines.push(`Preferred Report Style: ${profile.preferredReportStyle}`);
+    if (profile.timezone) lines.push(`Timezone: ${profile.timezone}`);
+    if (profile.favoriteBoardIds && (profile.favoriteBoardIds as any).length > 0) {
+      lines.push(`Favorite Board IDs: ${JSON.stringify(profile.favoriteBoardIds)}`);
     }
 
-    const preferencesList = profile.preferences as string[];
-    if (preferencesList.length === 0) return '';
+    if (profile.preferences) {
+      const preferencesList = profile.preferences as string[];
+      if (preferencesList.length > 0) {
+        lines.push('User Habits / Preferences:');
+        lines.push(...preferencesList.map((pref) => `- ${pref}`));
+      }
+    }
 
-    return preferencesList.map((pref) => `- ${pref}`).join('\n');
+    return lines.join('\n');
+  }
+
+  /**
+   * Decay memory profile importance scores daily and clean up stale profiles.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async decayAndCleanupMemoryProfiles() {
+    this.logger.log('Starting daily memory profile decay and cleanup...');
+    try {
+      // 1. Decay importance score by multiplying by 0.9
+      await this.prisma.$executeRawUnsafe(
+        'UPDATE ai_memory_profiles SET "importanceScore" = "importanceScore" * 0.9',
+      );
+
+      // 2. Delete stale memory profiles: importanceScore < 0.2 OR lastAccessed older than 30 days
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+      const deleteResult = await this.prisma.aiMemoryProfile.deleteMany({
+        where: {
+          OR: [
+            { importanceScore: { lt: 0.2 } },
+            { lastAccessed: { lt: thirtyDaysAgo } }
+          ]
+        }
+      });
+      
+      this.logger.log(`Cleaned up ${deleteResult.count} stale memory profiles.`);
+    } catch (err: any) {
+      this.logger.error(`Failed to decay and cleanup memory profiles: ${err.message}`);
+    }
+  }
+
+  /**
+   * Fetch the raw memory profile object for a user.
+   */
+  async getMemoryProfileDirect(userId: string) {
+    const profile = await this.prisma.aiMemoryProfile.findUnique({
+      where: { userId },
+    });
+    if (profile) {
+      this.prisma.aiMemoryProfile.update({
+        where: { userId },
+        data: {
+          lastAccessed: new Date(),
+          accessCount: { increment: 1 },
+          importanceScore: { increment: 0.1 },
+        },
+      }).catch((err) => this.logger.warn(`Failed to update memory profile metrics: ${err.message}`));
+    }
+    return profile;
+  }
+
+  /**
+   * Update or create a user's memory profile settings directly.
+   */
+  async updateMemoryProfileDirect(userId: string, dto: UpdateMemoryProfileDto) {
+    return this.prisma.aiMemoryProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        language: dto.language || 'en',
+        preferredReportStyle: dto.preferredReportStyle,
+        timezone: dto.timezone || 'UTC',
+        favoriteBoardIds: dto.favoriteBoardIds || [],
+        preferences: dto.preferences || [],
+      },
+      update: {
+        language: dto.language,
+        preferredReportStyle: dto.preferredReportStyle,
+        timezone: dto.timezone,
+        favoriteBoardIds: dto.favoriteBoardIds,
+        preferences: dto.preferences,
+      },
+    });
   }
 }

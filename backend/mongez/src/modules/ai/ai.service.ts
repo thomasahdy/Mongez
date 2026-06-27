@@ -346,17 +346,49 @@ export class AIService {
     return this.actionRepo.findPending(spaceId);
   }
 
+  async checkActionReviewPermission(reviewerId: string, spaceId: string, actionId: string): Promise<void> {
+    const membership = await this.prisma.membership.findUnique({
+      where: { userId_spaceId: { userId: reviewerId, spaceId } },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('You do not have access to this workspace.');
+    }
+
+    const roleName = membership.role?.name?.toUpperCase() || '';
+    const hasExplicitPerm = membership.role?.permissions?.some(
+      (rp) => rp.permission?.action === 'approve' && rp.permission?.resource === 'ai_action',
+    ) || false;
+
+    const isAuthorized = ['OWNER', 'ADMIN', 'HEAD'].includes(roleName) || hasExplicitPerm;
+    if (!isAuthorized) {
+      this.logger.warn(`Privilege escalation attempt: user ${reviewerId} (role: ${roleName}) tried to resolve AIProposedAction ${actionId}`);
+      throw new ForbiddenException('You do not have permission to approve/reject AI proposed actions.');
+    }
+  }
+
   async approveAction(actionId: string, reviewerId: string, dto: ApprovalActionDto) {
     const action = await this.actionRepo.findById(actionId);
     if (!action) throw new NotFoundException(`AI proposed action ${actionId} not found`);
-    await this.checkSpaceMembership(reviewerId, action.spaceId);
+    await this.checkActionReviewPermission(reviewerId, action.spaceId, actionId);
     return this.aiGateway.executeApprovedAction(actionId, reviewerId);
   }
 
   async rejectAction(actionId: string, reviewerId: string, dto: ApprovalActionDto) {
     const action = await this.actionRepo.findById(actionId);
     if (!action) throw new NotFoundException(`AI proposed action ${actionId} not found`);
-    await this.checkSpaceMembership(reviewerId, action.spaceId);
+    await this.checkActionReviewPermission(reviewerId, action.spaceId, actionId);
     return this.actionRepo.reject(actionId, reviewerId, dto.reviewNote);
   }
 

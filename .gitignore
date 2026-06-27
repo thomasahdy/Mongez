@@ -135,3 +135,18 @@ TEST-PLAN.md
 /fiiiles
 /frontend-refactor-plan
 docs.rar
+/documentation
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PYTHON & TESTING CACHES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+UsersThomasCodeMongez*
+last__files
