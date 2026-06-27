@@ -57,6 +57,7 @@ export const archiveBoard = async (boardId) => {
  * @param {string} data.name - Column name
  * @param {string} [data.color] - Hex color code for indicators
  * @param {number} [data.wipLimit] - Work in progress limit
+ * @param {number} [data.position] - position of the column in the board
  * @returns {Promise<Object>} Created column details
  */
 export const addColumn = async (boardId, data) => {
@@ -69,7 +70,7 @@ export const addColumn = async (boardId, data) => {
  * Sends the full array of ordered column IDs to the backend.
  * @param {string} boardId - Board ID
  * @param {Object} data - Reorder payload
- * @param {string[]} data.columnIds - Ordered column ID strings
+ * @param {string[]} data.columns - Ordered column objects with IDs and positions
  * @returns {Promise<Object>} Reordered board details
  */
 export const reorderColumns = async (boardId, data) => {

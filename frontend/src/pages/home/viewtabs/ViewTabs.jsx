@@ -8,7 +8,7 @@ function ViewTabs() {
   const boardId = routeBoardId || activeBoard?.id;
 
   const tabs = [
-    { icon: "fa-table-columns", label: "Board" },
+    { to: boardId ? `/board/${boardId}/kanban` : "", icon: "fa-table-columns", label: "Board" },
     { icon: "fa-list", label: "List" },
     { to: "/calendar", icon: "fa-calendar", label: "Calendar", match: "/calendar", regular: true },
     { to: boardId ? `/board/${boardId}/timeline` : "", icon: "fa-bars-staggered", label: "Gantt", match: "/timeline" },

@@ -165,7 +165,11 @@ export default function MyWorkPage({ userName = "Basmala" , setPath}) {
     <>
   
       
+        <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans">
         
+        
+        {/* Main column */}
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Scrollable content */}
           <main className="flex-1 overflow-y-auto px-6 py-6" aria-label="My Work">
             <div className="max-w-[1200px] mx-auto">
@@ -220,6 +224,8 @@ export default function MyWorkPage({ userName = "Basmala" , setPath}) {
               </div>
             </div>
           </main>
+          </div>
+          </div>
         
           
     </>

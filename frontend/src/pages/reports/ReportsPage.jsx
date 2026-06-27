@@ -137,10 +137,9 @@ const FLOW_DATA = [
 const ReportsPage = ({setPath}) => {
   useEffect(()=>{
       setPath(path)
-    }, [path]);
+    }, []);
   return (
-    <>
-      
+
 
       <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans">
         
@@ -199,7 +198,6 @@ const ReportsPage = ({setPath}) => {
           </main>
         </div>
       </div>
-    </>
   );
 }
 

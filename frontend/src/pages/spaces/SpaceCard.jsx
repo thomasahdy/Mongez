@@ -3,6 +3,7 @@ import SpaceCardHeader from './SpaceCardHeader';
 import DepartmentRow from './DepartmentRow';
 import { useInviteMember } from '../../hooks/api/useMembers';
 import { useCreateDepartment, useSpaceDepartments } from '../../hooks/api/useSpaces';
+import CreateDepartmentCard from './CreateDepartmentCard';
 
 /**
  * Component: SpaceCard
@@ -136,6 +137,8 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
               No departments registered in this space. Click settings to configure departments.
             </p>
           )}
+
+          <CreateDepartmentCard onClick={handleCreateDepartment}/>
         </div>
       </div>
     </article>
