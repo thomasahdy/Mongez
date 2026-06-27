@@ -127,12 +127,13 @@ const RegisterContainer = () => {
 
           {step === 4 && (
             <InviteStep
-              invites={values.invites}
-              onChange={setInvites}
-              onBack={() => goToStep(3)}
-              onSubmit={handleSubmit}
-              loading={loading}
-              submitError={submitError}
+            invites={values.invites}
+            onChange={setInvites}
+            onBack={() => goToStep(3)}
+            onSubmit={handleSubmit}
+            onSkip={() => handleSubmit({ skipInvites: true })}
+            loading={loading}
+            submitError={submitError}
             />
           )}
         </div>

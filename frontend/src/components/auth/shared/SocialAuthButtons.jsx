@@ -11,6 +11,7 @@ const providerConfig = {
     label: "Microsoft",
     icon: FaMicrosoft,
     iconColor: "#00a8e8",
+    disabled: true,
     oauthUrl: "/api/v1/auth/google", // Use Google for now, add Microsoft later
   },
   whatsapp: {
@@ -47,6 +48,7 @@ const SocialAuthButtons = ({
             key={provider}
             type="button"
             onClick={handleClick}
+            disabled={config.disabled}
             className="w-full flex items-center justify-center gap-2.5 py-[11px] px-4 border-[1.5px] border-border rounded-lg bg-white text-text-primary font-medium text-[13px] transition-all hover:-translate-y-px hover:shadow-sm"
             aria-label={`Continue with ${config.label}`}
           >

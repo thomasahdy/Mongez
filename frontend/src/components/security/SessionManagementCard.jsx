@@ -11,18 +11,6 @@ const SessionManagementCard = () => {
     const [success, setSuccess] = useState("");
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        loadingSetting();
-    }, []);
-
-    if(loading) {
-        return (
-            <div className="rounded-xl border border-gray-200 bg-white p-6">
-                Loading session settings...
-            </div>
-        );
-    }
-
     const loadingSetting = async () => {
         setLoading(true);
         setError("");
@@ -36,6 +24,18 @@ const SessionManagementCard = () => {
             setLoading(false);  
         }
     };
+
+    useEffect(() => {
+        loadingSetting();
+    }, []);
+
+    if(loading) {
+        return (
+            <div className="rounded-xl border border-gray-200 bg-white p-6">
+                Loading session settings...
+            </div>
+        );
+    }
 
     const handleSaveSettings = async () => {
         setSaving(true);
@@ -90,7 +90,9 @@ const SessionManagementCard = () => {
                 
                 <button
                 type="button"
-                onClick={() => setPersistentLogin(prev => !prev)}
+                aria-pressed={persistentLogin}
+                aria-label="Toggle persistent login"
+                onClick={() => setPersistentLogin((prev) => !prev)}
                 className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${persistentLogin ? "bg-green-500" : "bg-gray-300"}`}>
                     <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${persistentLogin ? "translate-x-6" : "translate-x-1"}`}/>
                 </button>

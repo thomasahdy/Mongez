@@ -63,7 +63,7 @@ const NotificationsPage = () => {
 
     return (
         <div className="flex gap-8">
-            <SettingsSidebar activeId="notification" />
+            <SettingsSidebar activeId="notifications" />
 
             <div className="settings-content-area">
                 <div className="settings-content-max space-y-6">
