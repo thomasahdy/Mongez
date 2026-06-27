@@ -40,26 +40,29 @@ const TaskSection = ({ sectionKey, tasks, completedIds, onComplete }) => {
    
         {/* Task list — animated collapse */}
         <div
-          className={`flex flex-col gap-1.5 overflow-hidden transition-[max-height] duration-300 ${open ? "max-h-[1000px]" : "max-h-0"}`}
-          role="list"
-          aria-label={`${cfg.label} tasks`}
-        >
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              leftBorder={cfg.leftBorder}
-              dueColor={dueColors[sectionKey]}
-              completed={completedIds.has(task.id)}
-              onComplete={onComplete}
-            />
-          ))}
-          {activeTasks.length === 0 && tasks.length > 0 && (
-            <p className="text-center text-[12px] text-slate-400 py-3">
-              🎉 All done in this section!
-            </p>
-          )}
-        </div>
+  className={`flex flex-col gap-1.5  transition-all duration-300 ${
+    open ? "block" : "hidden"
+  }`}
+  role="list"
+>
+  {activeTasks.map((task) => (
+    
+    <TaskRow
+      key={task.id}
+      task={task}
+      leftBorder={cfg.leftBorder}
+      dueColor={dueColors[sectionKey]}
+      completed={completedIds.has(task.id)}
+      onComplete={onComplete}
+    />
+  ))}
+
+  {activeTasks.length === 0 && tasks.length > 0 && (
+    <p className="text-center text-[12px] text-slate-400 py-3">
+      🎉 All done in this section!
+    </p>
+  )}
+</div>
       </section>
     );
 }

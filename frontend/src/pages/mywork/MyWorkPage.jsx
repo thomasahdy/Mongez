@@ -184,11 +184,11 @@ export default function MyWorkPage({ userName = "Basmala" , setPath}) {
               </p>
  
               {/* Focus banner */}
-              <FocusBanner
+              {/* <FocusBanner
                 criticalTask={criticalTask}
                 onFocusStart={() => console.info("Focus mode started for:", criticalTask.id)}
               />
- 
+  */}
               {/* Stats */}
               <section
                 className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"
