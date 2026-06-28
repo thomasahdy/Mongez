@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
-import Button from '../../components/ui/Button'
+import { useTranslation } from "react-i18next";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, Legend,
 } from "recharts";
-import TrendBadge from "../../components/reports/TrendBadge";
-import ChartCard from "../../components/reports/ChartCard";
 import ReportsToolbar from "./ReportsToolbar";
-import MetricCard from "../../components/reports/MetricCard";
 import AIInsightsPanel from "./AIInsightsPanel";
 import TaskVolumeChart from "./TaskVolumeChart";
 import TopPerformersList from "./TopPerformersList";
 import PriorityBreakdown from "./PriorityBreakdown";
 import CumulativeFlowChart from "./CumulativeFlowChart";
 import StatsSection from "./StatsSection";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 // ─────────────────────────────────────────────
 // CONSTANTS / DATA
@@ -60,6 +58,8 @@ const FLOW_DATA = [
 
 
 const ReportsPage = ({setPath}) => {
+  const { t } = useTranslation();
+  const { dir, isRtl } = useLocaleDirection();
   const [selectedSpace, setSelectedSpace] = useState({});
   
 
@@ -81,14 +81,20 @@ const ReportsPage = ({setPath}) => {
       'Tasks in the "Design Review" column are averaging 4.2 days to resolution, which is 2× slower than the workspace average.',
   },])
   useEffect(()=>{
-      setPath(path)
-    }, []);
+      setPath([
+        path[0],
+        {
+          ...path[1],
+          name: t("reportsPage.breadcrumb"),
+        },
+      ])
+    }, [setPath, t]);
 
 
   return (
 
 
-      <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans">
+      <div className={`flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans ${isRtl ? "text-right" : "text-left"}`} dir={dir}>
         
         
         {/* Main column */}
@@ -96,17 +102,19 @@ const ReportsPage = ({setPath}) => {
           
 
           {/* Scrollable body */}
-          <main className="flex-1 overflow-y-auto" aria-label="Analytics and reports">
+          <main className="flex-1 overflow-y-auto" aria-label={t("reportsPage.aria")}>
             <div className="px-6 py-6 max-w-[1400px] mx-auto">
 
               {/* Page title */}
               <div className="flex items-end justify-between gap-4 mb-6">
                 <div>
                   <h1 className="text-[22px] font-extrabold tracking-tight text-slate-900 dark:text-slate-50 mb-1.5">
-                    Workspace Analytics
+                    {t("reportsPage.title")}
                   </h1>
                   <p className="text-[14px] text-slate-500 dark:text-slate-400 max-w-xl">
-                    Monitor team performance, task velocity, and resource allocation across Al-Noor Foundation.
+                    {t("reportsPage.description", {
+                      workspace: selectedSpace?.name || t("common.workspace"),
+                    })}
                   </p>
                 </div>
               </div>

@@ -1,7 +1,9 @@
 import React, { useCallback, useRef } from 'react'
+import { useTranslation } from "react-i18next";
 import Button from '../ui/Button';
 
 const AvatarUpload = ({ initials = "TH", src, onFileSelect, onRemove }) => {
+  const { t } = useTranslation();
   const fileRef = useRef(null);
 
   const handleChange = useCallback((e) => {
@@ -15,10 +17,10 @@ const AvatarUpload = ({ initials = "TH", src, onFileSelect, onRemove }) => {
         type="button"
         onClick={() => fileRef.current?.click()}
         className="relative w-20 h-20 rounded-full shrink-0 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
-        aria-label="Upload avatar photo"
+        aria-label={t("settingsProfilePage.uploadAvatarPhoto")}
       >
         {src ? (
-          <img src={src} alt="Profile avatar" className="w-full h-full object-cover" />
+          <img src={src} alt={t("settingsProfilePage.profileAvatar")} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-sky-500 to-indigo-500 text-white text-[28px] font-bold select-none">
             {initials}
@@ -41,7 +43,7 @@ const AvatarUpload = ({ initials = "TH", src, onFileSelect, onRemove }) => {
 
       <div className="flex gap-3">
         <Button variant="outline" size="md" onClick={() => fileRef.current?.click()}>
-          Upload Avatar
+          {t("settingsProfilePage.uploadAvatar")}
         </Button>
         <Button
           variant="ghost"
@@ -49,7 +51,7 @@ const AvatarUpload = ({ initials = "TH", src, onFileSelect, onRemove }) => {
           onClick={onRemove}
           className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20"
         >
-          Remove
+          {t("settingsProfilePage.remove")}
         </Button>
       </div>
     </div>

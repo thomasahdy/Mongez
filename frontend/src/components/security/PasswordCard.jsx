@@ -1,7 +1,11 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { changePassword } from "../../services/api/securityService";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const PasswordCard = () => {
+const { t } = useTranslation();
+const { dir } = useLocaleDirection();
 const [currentPassword, setCurrentPassword] = useState("");
 const [newPassword, setNewPassword] = useState("");
 const [confirmPassword, setConfirmPassword] = useState("");
@@ -18,19 +22,19 @@ const handleSubmit = async (e) => {
     const newErrors = {};
     
     if (!currentPassword.trim()) {
-        newErrors.currentPassword = "Current password is required.";
+        newErrors.currentPassword = t("securityPage.password.currentRequired");
     }
     
     if (!newPassword.trim()) {
-        newErrors.newPassword = "New password is required.";
+        newErrors.newPassword = t("securityPage.password.nextRequired");
     } else if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword)) {
-        newErrors.newPassword = "Password must be at least 8 characters and contain an uppercase letter, a lowercase letter, and a number.";
+        newErrors.newPassword = t("securityPage.password.rules");
     }
     
     if (!confirmPassword.trim()) {
-        newErrors.confirmPassword = "Confirm password is required.";
+        newErrors.confirmPassword = t("securityPage.password.confirmRequired");
     } else if (newPassword !== confirmPassword) {
-        newErrors.confirmPassword = "Passwords do not match.";
+        newErrors.confirmPassword = t("securityPage.password.mismatch");
     }
     
     if (Object.keys(newErrors).length > 0) {
@@ -42,7 +46,7 @@ const handleSubmit = async (e) => {
 
     try{
         await changePassword(currentPassword, newPassword);
-        setSuccess("Password updated successfully.");
+        setSuccess(t("securityPage.password.success"));
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
@@ -50,7 +54,7 @@ const handleSubmit = async (e) => {
     } catch (error) {
         console.error(error);
 
-        const msg = error.response?.data?.error?.message || "Something went wrong. Please try again.";
+        const msg = error.response?.data?.error?.message || t("securityPage.password.genericError");
 
         if (msg.toLowerCase().includes("current password") || msg.toLowerCase().includes("incorrect")) {
             setErrors({ currentPassword: msg });
@@ -64,17 +68,17 @@ const handleSubmit = async (e) => {
     }
 };
 return (
-    <div className="security-section">
+    <div className="security-section" dir={dir}>
         <form onSubmit={handleSubmit}>
             <div className="security-section-title">
                 <i className="fa-solid fa-key channel-email"></i>
-                Password
+                {t("securityPage.password.title")}
             </div>
             
             <div className="form-group">
-                <label className="form-label">Current Password</label>
+                <label className="form-label">{t("securityPage.password.current")}</label>
                 
-                <input type="password" placeholder="Enter your current password" className="form-input"
+                <input type="password" placeholder={t("securityPage.password.currentPlaceholder")} className="form-input"
                 
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}/>
@@ -82,21 +86,21 @@ return (
             </div>
 
             <div className="form-group">
-                <label className="form-label">New Password</label>
+                <label className="form-label">{t("securityPage.password.next")}</label>
                 
-                <input type="password" placeholder="Create a new password" className="form-input"
+                <input type="password" placeholder={t("securityPage.password.nextPlaceholder")} className="form-input"
                 
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}/>
                 
                 {errors.newPassword && ( <p className="form-error">{errors.newPassword}</p>)}
-                <p className="form-hint">Must be at least 8 characters long and contain an uppercase letter, lowercase letter, and a number.</p>
+                <p className="form-hint">{t("securityPage.password.hint")}</p>
             </div>
             
             <div className="form-group">
-                <label className="form-label">Confirm New Password</label>
+                <label className="form-label">{t("securityPage.password.confirm")}</label>
                 
-                <input type="password" placeholder="Confirm your new password" className="form-input"
+                <input type="password" placeholder={t("securityPage.password.confirmPlaceholder")} className="form-input"
                 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}/>
@@ -109,7 +113,7 @@ return (
             
             <div style={{ marginTop: 16 }}>
             <button type="submit" disabled={loading} className="btn btn-primary">
-                {loading ? "Updating..." : "Update Password"}
+                {loading ? t("securityPage.password.updating") : t("securityPage.password.update")}
             </button>
             </div>
         </form>

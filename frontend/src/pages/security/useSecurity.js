@@ -20,7 +20,7 @@ const useSecurity = () => {
             setSessions(data);
         } catch (err) {
             console.error(err);
-            setError("Failed to load sessions. Please try again.");
+            setError("securityPage.sessions.loadFailed");
         } finally {
             setLoading(false);
         }
@@ -35,7 +35,7 @@ const useSecurity = () => {
             setSessions((prev) => prev.filter((session) => session.id !== sessionId));
         } catch (err) {
             console.error(err);
-            setError("Failed to terminate the session. Please try again.");
+            setError("securityPage.sessions.terminateFailed");
         } finally {
             setActionLoading(false);
         }
@@ -50,7 +50,7 @@ const useSecurity = () => {
             setSessions((prev) => prev.filter((session) => session.isCurrent));
         } catch (err) {
             console.error(err);
-            setError("Failed to terminate all sessions. Please try again.");
+            setError("securityPage.sessions.terminateAllFailed");
         } finally {
             setActionLoading(false);
         }

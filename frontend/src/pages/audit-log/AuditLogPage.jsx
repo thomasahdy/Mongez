@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import AuditHeader from "../../components/audit-log/AuditHeader"
 import AuditFilters from "../../components/audit-log/AuditFilters"
 import AuditTable from "../../components/audit-log/AuditTable"
 import AuditEmptyState from "../../components/audit-log/AuditEmptyState"
 import { getAuditLogs } from "../../services/api/auditService"
+import useLocaleDirection from "../../hooks/useLocaleDirection"
 
 const INITIAL_FILTERS = {
     action: "all",
@@ -59,15 +61,17 @@ const normalizeAuditLogResponse = (response) => {
     }
 }
 
-const getErrorMessage = (error) => {
+const getErrorMessage = (error, fallbackMessage) => {
     return (
         error?.response?.data?.message ??
         error?.message ??
-        "Failed to load audit logs."
+        fallbackMessage
     )
 }
 
 const AuditLogPage = () => {
+    const { t } = useTranslation()
+    const { dir, isRtl } = useLocaleDirection()
     const [filters, setFilters] = useState(INITIAL_FILTERS)
     const [logs, setLogs] = useState([])
     const [pagination, setPagination] = useState(INITIAL_PAGINATION)
@@ -113,7 +117,7 @@ const AuditLogPage = () => {
 
                 setLogs([])
                 setPagination(INITIAL_PAGINATION)
-                setError(getErrorMessage(requestError))
+                setError(getErrorMessage(requestError, t("auditLogPage.failedLoad")))
             } finally {
                 if (isMounted) {
                     setLoading(false)
@@ -167,7 +171,7 @@ const AuditLogPage = () => {
     const hasLogs = logs.length > 0
 
 return (
-    <main className="audit-content">
+    <main className={`audit-content ${isRtl ? "text-right" : "text-left"}`} dir={dir}>
         <div className="audit-max">
             <AuditHeader />
             <AuditFilters

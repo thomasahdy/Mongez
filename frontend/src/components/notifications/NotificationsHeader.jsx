@@ -1,8 +1,11 @@
+import { useTranslation } from "react-i18next";
+
 const NotificationsHeader = () => {
+const { t } = useTranslation();
 return (
     <div className="settings-header">
-        <h1 className="settings-title">Notification Preferences</h1>
-        <p className="settings-subtitle">Choose what you get notified about and where you receive them.</p>
+        <h1 className="settings-title">{t("notificationsPage.title")}</h1>
+        <p className="settings-subtitle">{t("notificationsPage.subtitle")}</p>
     </div>
 );
 };

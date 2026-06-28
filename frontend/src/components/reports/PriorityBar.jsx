@@ -1,8 +1,11 @@
-import React from 'react'
+import React from "react";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const PriorityBar = ({ item }) => {
+  const { dir } = useLocaleDirection();
+
   return (
-    <div>
+    <div dir={dir}>
       <div className="flex items-center justify-between mb-1.5 text-[13px] font-medium text-slate-700 dark:text-slate-200">
         <span className="flex items-center gap-2">
           <span

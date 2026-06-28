@@ -1,12 +1,16 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from "react-i18next";
 import TaskCard from './TaskCard';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import CreateTaskModal from './CreateTaskModal';
 import { useAppContext } from '../AppContext'; // 1. Import your actual context hook
 import { useCreateTask } from '../../hooks/api/useTasks';
+import useLocaleDirection from '../../hooks/useLocaleDirection';
 
 const BoardColumn = ({ column, tasks = [], isLoading, isError }) => {
+  const { t } = useTranslation();
+  const { dir } = useLocaleDirection();
   const { id, name, color, boardId } = column;
   const [showCreateTaskModal, setShowCreateTaskModal] = React.useState(false);
   
@@ -32,7 +36,7 @@ const BoardColumn = ({ column, tasks = [], isLoading, isError }) => {
 
 
   return (
-    <section ref={setNodeRef} style={style} className="w-[300px] min-w-[300px] flex flex-col gap-2 shrink-0">
+    <section ref={setNodeRef} style={style} className="w-[300px] min-w-[300px] flex flex-col gap-2 shrink-0" dir={dir}>
       
       {/* Column Header handles dragging */}
       <div {...attributes} {...listeners} className="flex items-center justify-between cursor-grab active:cursor-grabbing select-none mb-2">
@@ -54,7 +58,7 @@ const BoardColumn = ({ column, tasks = [], isLoading, isError }) => {
         className="py-2 rounded-lg text-[12px] text-slate-400 border border-dashed border-slate-200 hover:border-sky-400 hover:text-sky-500 transition-all cursor-pointer"
         onClick={() => setShowCreateTaskModal(true)}
       >
-        <i className="fa-solid fa-plus" /> Add Task
+        <i className="fa-solid fa-plus" /> {t("kanbanPage.addTask")}
       </button>
 
       {/* 3. Pass values from activeSpace object safely down to the modal */}

@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 import MicroProgress from "../../components/ui/MicroProgress";
 import Tag from "../../components/ui/Tag";
 import AvatarGroup from "../../components/ui/AvatarGroup";
@@ -10,6 +11,7 @@ import { useSortable } from "@dnd-kit/sortable";
 
 const TaskCard = ({ task }) => {
   const navigate = useNavigate();
+  const { dir, isRtl } = useLocaleDirection();
 
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: task.id });
@@ -69,7 +71,7 @@ const TaskCard = ({ task }) => {
   const combinedStyle = {
     transition,
     transform: CSS.Transform.toString(transform),
-    borderLeftColor: priorityColor,
+    ...(isRtl ? { borderRightColor: priorityColor } : { borderLeftColor: priorityColor }),
   };
 
   return (
@@ -82,12 +84,13 @@ const TaskCard = ({ task }) => {
         bg-white dark:bg-slate-800 rounded-xl p-3.5 border border-slate-200 dark:border-slate-700
         transition-all duration-200 cursor-pointer hover:-translate-y-0.5
         hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.1)]
-        relative border-l-[3px]
+        relative ${isRtl ? "border-r-[3px]" : "border-l-[3px]"}
       `}
       role="listitem"
       tabIndex={0}
       onClick={() => navigate(`/tasks/${id}`)}
       onKeyDown={(e) => e.key === "Enter" && navigate(`/tasks/${id}`)}
+      dir={dir}
     >
       {/* Progress */}
       {progressValue !== undefined && (

@@ -1,12 +1,16 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import SessionRow from "./SessionRow";
 import SecurityEmptyState from "./SecurityEmptyState";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const SessionTable = ({ sessions, onTerminate, loading, actionLoading }) => {
+    const { t } = useTranslation();
+    const { dir } = useLocaleDirection();
     if (loading) {
         return (
             <div className="security-section">
-                Loading sessions...
+                {t("securityPage.sessions.loading")}
             </div>
         );
     }
@@ -15,22 +19,22 @@ const SessionTable = ({ sessions, onTerminate, loading, actionLoading }) => {
         return (
             <SecurityEmptyState
                 icon="fa-solid fa-laptop"
-                title="No active sessions"
-                description="You don't have any active sessions right now."
+                title={t("securityPage.sessions.emptyTitle")}
+                description={t("securityPage.sessions.emptyDescription")}
             />
         );
     }
 
     return (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" dir={dir}>
             <table className="sessions-table">
                 <thead>
                     <tr>
-                        <th>Device & Location</th>
+                        <th>{t("securityPage.sessions.deviceLocation")}</th>
                             
-                        <th>IP Address</th>
+                        <th>{t("securityPage.sessions.ipAddress")}</th>
                             
-                        <th>Last Active</th>
+                        <th>{t("securityPage.sessions.lastActive")}</th>
                             
                         <th></th>
                     </tr>

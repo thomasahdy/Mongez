@@ -1,7 +1,8 @@
-import React from 'react'
-import PriorityBar from '../../components/reports/PriorityBar';
-import ChartCard from '../../components/reports/ChartCard';
-import { usePriorityBreakdown } from '../../hooks/api/useAnalytics';
+import React from "react";
+import { useTranslation } from "react-i18next";
+import PriorityBar from "../../components/reports/PriorityBar";
+import ChartCard from "../../components/reports/ChartCard";
+import { usePriorityBreakdown } from "../../hooks/api/useAnalytics";
 
 const normalizePriority = (data = []) => {
   const total = data.reduce((sum, i) => sum + i.count, 0);
@@ -15,6 +16,7 @@ const normalizePriority = (data = []) => {
 };
 
 const PriorityBreakdown = ({ spaceId }) => {
+  const { t } = useTranslation();
   const {data, isLoading, error} = usePriorityBreakdown(spaceId)
   const priorities = normalizePriority(Array.isArray(data) ? data : []);
 
@@ -41,11 +43,11 @@ if (error) {
       </div>
 
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-        Failed to load priority breakdown
+        {t("reportsPage.priorityFailedTitle")}
       </p>
 
       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-        Please try again later
+        {t("reportsPage.priorityFailedDescription")}
       </p>
     </div>
   );
@@ -58,17 +60,17 @@ if (!data || data.length === 0) {
       </div>
 
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-        No priority data available
+        {t("reportsPage.priorityEmptyTitle")}
       </p>
 
       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-        Tasks will appear once created
+        {t("reportsPage.priorityEmptyDescription")}
       </p>
     </div>
   );
 }
   return (
-    <ChartCard title="Tasks by Priority">
+    <ChartCard title={t("reportsPage.priorityTitle")}>
       <div className="flex flex-col gap-5">
         {priorities.map((p) => (
           <PriorityBar key={p.label} item={p} />

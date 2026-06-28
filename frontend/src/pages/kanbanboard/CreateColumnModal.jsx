@@ -1,9 +1,13 @@
 import React from 'react'
+import { useTranslation } from "react-i18next";
 import { createColumnSchema } from '../../schemas/boardValidationSchemas';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import useLocaleDirection from '../../hooks/useLocaleDirection';
 
 const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
+    const { t } = useTranslation();
+    const { dir } = useLocaleDirection();
 
     const {
                 register,
@@ -42,6 +46,7 @@ const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
+      dir={dir}
     >
       <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden animate-fadeIn">
         {/* Top subtle decorative gradient */}
@@ -50,13 +55,13 @@ const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
         {/* Modal Header */}
         <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900">
           <h2 id="modal-title" className="text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100">
-            Create new column 
+            {t("kanbanPage.createColumn")}
           </h2>
           <button
             type="button"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
-            aria-label="Close dialog"
+            aria-label={t("kanbanPage.closeDialog")}
           >
             <i className="fa-solid fa-xmark text-[16px]" />
           </button>
@@ -68,12 +73,12 @@ const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
           {/* Name input */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-name">
-              Name
+              {t("kanbanPage.name")}
             </label>
             <input
               id="space-name"
               type="text"
-              placeholder="IT"
+              placeholder={t("kanbanPage.namePlaceholder")}
               className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
                 ${errors.name ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
               {...register('name')}
@@ -87,7 +92,7 @@ const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
           
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-name">
-              Color
+              {t("kanbanPage.color")}
             </label>
             <div className="flex items-center gap-3">
             <input
@@ -97,7 +102,7 @@ const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
                 ${errors.color ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'}`}
                 {...register('color')}
             />
-            <span className="text-sm text-slate-500">Choose column color</span>
+            <span className="text-sm text-slate-500">{t("kanbanPage.colorHint")}</span>
             </div>
             {errors.color && (
               <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
@@ -108,7 +113,7 @@ const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-name">
-              WIP Limit
+              {t("kanbanPage.wipLimit")}
             </label>
             <input
               id="space-name"
@@ -127,7 +132,7 @@ const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-name">
-              position
+              {t("kanbanPage.position")}
             </label>
             <input
               id="space-name"
@@ -156,7 +161,7 @@ const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
               onClick={onClose}
               className="px-4 py-2 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
             >
-              Cancel
+              {t("kanbanPage.cancel")}
             </button>
             <button
               type="submit"
@@ -170,10 +175,10 @@ const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Creating...
+                  {t("kanbanPage.creating")}
                 </>
               ) : (
-                "Create Column"
+                t("kanbanPage.createColumnButton")
               )}
             </button>
           </div>

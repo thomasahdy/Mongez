@@ -29,6 +29,8 @@ const AuditPagination = ({
     currentPage = 1,
     onPageChange,
 }) => {
+    const { t } = useTranslation()
+    const { dir, isRtl } = useLocaleDirection()
     const total = Number(pagination.total ?? 0)
     const pageSize = Number(pagination.pageSize ?? 10)
     const totalPages = Number(pagination.totalPages ?? (pageSize > 0 ? Math.max(1, Math.ceil(total / pageSize)) : 1))
@@ -40,9 +42,9 @@ const AuditPagination = ({
     const canGoNext = page < totalPages
 
 return (
-    <div className="audit-pagination">
+    <div className="audit-pagination" dir={dir}>
         <p className="page-info">
-            Showing {start}-{end} of {total} entries
+            {t("auditLogPage.pagination.showing", { start, end, total })}
         </p>
 
         <div className="page-btns">
@@ -51,9 +53,9 @@ return (
                 onClick={() => onPageChange?.(page - 1)}
                 disabled={!canGoPrevious}
                 className="page-btn"
-                aria-label="Previous page"
+                aria-label={t("auditLogPage.pagination.previous")}
             >
-                <i className="fa-solid fa-chevron-left"></i>
+                <i className={`fa-solid ${isRtl ? "fa-chevron-right" : "fa-chevron-left"}`}></i>
             </button>
 
             {pages.map((item, index) =>
@@ -83,9 +85,9 @@ return (
                 onClick={() => onPageChange?.(page + 1)}
                 disabled={!canGoNext}
                 className="page-btn"
-                aria-label="Next page"
+                aria-label={t("auditLogPage.pagination.next")}
             >
-                <i className="fa-solid fa-chevron-right"></i>
+                <i className={`fa-solid ${isRtl ? "fa-chevron-left" : "fa-chevron-right"}`}></i>
             </button>
         </div>
     </div>
@@ -93,3 +95,5 @@ return (
 };
 
 export default AuditPagination;
+import { useTranslation } from "react-i18next"
+import useLocaleDirection from "../../hooks/useLocaleDirection"

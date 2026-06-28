@@ -1,3 +1,7 @@
+import React from "react"
+import { useTranslation } from "react-i18next"
+import useLocaleDirection from "../../hooks/useLocaleDirection"
+
 const AVATAR_COLORS = ["00a8e8", "10b981", "f59e0b", "ef4444", "6366f1", "0ea5e9"]
 
 const getAvatarColor = (name) => {
@@ -8,9 +12,9 @@ const getAvatarColor = (name) => {
     return AVATAR_COLORS[hash % AVATAR_COLORS.length]
 }
 
-const humanizeValue = (value) => {
+const humanizeValue = (value, unknownLabel = "Unknown") => {
     if (value === null || value === undefined || value === "") {
-        return "Unknown"
+        return unknownLabel
     }
 
     if (typeof value === "string") {
@@ -22,7 +26,7 @@ const humanizeValue = (value) => {
     }
 
     if (Array.isArray(value)) {
-        return value.map(humanizeValue).join(", ")
+        return value.map((item) => humanizeValue(item, unknownLabel)).join(", ")
     }
 
     if (typeof value === "object") {
@@ -33,11 +37,11 @@ const humanizeValue = (value) => {
             value.label ??
             value.email ??
             value.id ??
-            "Unknown"
+            unknownLabel
         )
     }
 
-    return "Unknown"
+    return unknownLabel
 }
 
 const formatText = (value) => {
@@ -91,7 +95,7 @@ const getActionMeta = (rawAction = "") => {
     }
 }
 
-const getActorName = (log) => {
+const getActorName = (log, unknownUserLabel) => {
     return (
         log?.user?.fullName ??
         log?.user?.name ??
@@ -100,7 +104,7 @@ const getActorName = (log) => {
         log?.actor ??
         log?.userName ??
         log?.user?.email ??
-        "Unknown user"
+        unknownUserLabel
     )
 }
 
@@ -135,16 +139,16 @@ const getResourceLabel = (log) => {
     return formatText(resource)
 }
 
-const formatTimestamp = (value) => {
-    if (!value) return "Unknown"
+const formatTimestamp = (value, locale, unknownLabel) => {
+    if (!value) return unknownLabel
 
     const date = value instanceof Date ? value : new Date(value)
 
     if (Number.isNaN(date.getTime())) {
-        return humanizeValue(value)
+        return humanizeValue(value, unknownLabel)
     }
 
-    return new Intl.DateTimeFormat("en", {
+    return new Intl.DateTimeFormat(locale, {
         month: "short",
         day: "numeric",
         hour: "numeric",
@@ -219,7 +223,7 @@ const formatDetailParts = (value) => {
     return <>{humanizeValue(value)}</>
 }
 
-const getDetailContent = (log) => {
+const getDetailContent = (log, emptyLabel) => {
     const candidates = [
         log?.details,
         log?.message,
@@ -236,18 +240,33 @@ const getDetailContent = (log) => {
         }
     }
 
-    return <>No additional details</>
+    return <>{emptyLabel}</>
 }
 
 const AuditTableRow = ({ log = {} }) => {
-    const actorName = getActorName(log)
+    const { t, i18n } = useTranslation()
+    const { dir } = useLocaleDirection()
+    const locale = i18n.language?.startsWith("ar") ? "ar" : "en"
+    const actorName = getActorName(log, t("auditLogPage.labels.unknownUser"))
     const actionMeta = getActionMeta(log?.action ?? log?.type ?? log?.event)
     const resourceLabel = getResourceLabel(log)
-    const timestamp = formatTimestamp(log?.timestamp ?? log?.createdAt ?? log?.date)
-    const ipAddress = log?.ipAddress ?? log?.ip ?? "N/A"
+    const timestamp = formatTimestamp(
+        log?.timestamp ?? log?.createdAt ?? log?.date,
+        locale,
+        t("auditLogPage.labels.unknown"),
+    )
+    const ipAddress = log?.ipAddress ?? log?.ip ?? t("auditLogPage.labels.notAvailable")
+    const actionLabels = {
+        Delete: t("auditLogPage.labels.delete"),
+        Create: t("auditLogPage.labels.create"),
+        Login: t("auditLogPage.labels.login"),
+        Permission: t("auditLogPage.labels.permission"),
+        Update: t("auditLogPage.labels.update"),
+        Activity: t("auditLogPage.labels.activity"),
+    }
 
 return (
-    <tr>
+    <tr dir={dir}>
         <td>
             <div className="log-actor">
                 <img
@@ -260,14 +279,14 @@ return (
         <td>
             <span className={`log-action-badge ${actionMeta.className}`}>
                 <i className={`fa-solid ${actionMeta.icon}`}></i>
-                {actionMeta.label}
+                {actionLabels[actionMeta.label] ?? actionMeta.label}
             </span>
         </td>
         <td className="log-target">
             {resourceLabel}
         </td>
         <td>
-            {getDetailContent(log)}
+            {getDetailContent(log, t("auditLogPage.labels.noDetails"))}
         </td>
         <td className="log-ip">
             {ipAddress}

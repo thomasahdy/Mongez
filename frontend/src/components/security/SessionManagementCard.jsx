@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getSessionSettings, updateSessionSettings } from "../../services/api/securityService";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const SessionManagementCard = () => {
+    const { t } = useTranslation();
+    const { dir } = useLocaleDirection();
 
     const [sessionTimeout, setSessionTimeout] = useState("30");
     const [persistentLogin, setPersistentLogin] = useState(true);
@@ -19,7 +23,7 @@ const SessionManagementCard = () => {
             setSessionTimeout(String(settings.sessionTimeout));
             setPersistentLogin(settings.persistentLogin);
         } catch (err) {
-            setError("Failed to load session settings.");
+            setError(t("securityPage.sessionManagement.loadFailed"));
         } finally {
             setLoading(false);  
         }
@@ -32,7 +36,7 @@ const SessionManagementCard = () => {
     if(loading) {
         return (
             <div className="security-section">
-                Loading session settings...
+                {t("securityPage.sessionManagement.loading")}
             </div>
         );
     }
@@ -46,46 +50,46 @@ const SessionManagementCard = () => {
                 sessionTimeout,
                 persistentLogin,
             });
-            setSuccess("Settings saved successfully.");
+            setSuccess(t("securityPage.sessionManagement.saveSuccess"));
         } catch (err) {
-            setError("Failed to save settings. Please try again.");
+            setError(t("securityPage.sessionManagement.saveFailed"));
         } finally {
             setSaving(false);
         }
     };
 
     return (
-    <div className="security-section">
+    <div className="security-section" dir={dir}>
         <div>
             <div className="security-section-title">
                 <i className="fa-solid fa-clock" style={{ color: "var(--warning)" }}></i>
-                Session Management
+                {t("securityPage.sessionManagement.title")}
             </div>
             
             <div className="toggle-row">
                 <div className="toggle-info">
-                    <h4>Session Timeout</h4>
+                    <h4>{t("securityPage.sessionManagement.timeout")}</h4>
                     
-                    <p>Automatically sign out inactive sessions after a period of time. Recommended for shared devices.</p>
+                    <p>{t("securityPage.sessionManagement.timeoutDescription")}</p>
                 </div>
                 
                 <select 
                 value={sessionTimeout}
                 onChange={(e) => setSessionTimeout(e.target.value)}
                 className="time-select">
-                    <option value="15">15 minutes</option>
-                    <option value="30">30 minutes</option>
-                    <option value="60">1 hour</option>
-                    <option value="240">4 hours</option>
-                    <option value="1440">24 hours</option>
-                    <option value="never">Never</option>
+                    <option value="15">{t("securityPage.sessionManagement.minutes15")}</option>
+                    <option value="30">{t("securityPage.sessionManagement.minutes30")}</option>
+                    <option value="60">{t("securityPage.sessionManagement.hour1")}</option>
+                    <option value="240">{t("securityPage.sessionManagement.hours4")}</option>
+                    <option value="1440">{t("securityPage.sessionManagement.hours24")}</option>
+                    <option value="never">{t("securityPage.sessionManagement.never")}</option>
                 </select>
             </div>
             
             <div className="toggle-row">
                 <div className="toggle-info">
-                    <h4>Persistent Login (30-day)</h4>
-                    <p>Allow users to stay signed in for up to 30 days on trusted devices.</p>
+                    <h4>{t("securityPage.sessionManagement.persistentLogin")}</h4>
+                    <p>{t("securityPage.sessionManagement.persistentLoginDescription")}</p>
                 </div>
                 
                 <label className="toggle-switch">
@@ -100,7 +104,7 @@ const SessionManagementCard = () => {
 
             <div style={{ marginTop: 16 }}>
                 <button type="button" onClick={handleSaveSettings} disabled={saving} className="btn btn-primary">
-                    {saving ? "Saving..." : "Save Changes"}
+                    {saving ? t("securityPage.sessionManagement.saving") : t("securityPage.sessionManagement.save")}
                 </button>
             </div>
 

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from "react-i18next";
 import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
 import Board from './Board';
 import TaskBoardSkeleton from '../../components/loading/TaskBoardSkeleton';
 import { useParams } from 'react-router';
 import { useBoard } from '../../hooks/api/useBoards';
+import useLocaleDirection from '../../hooks/useLocaleDirection';
 
 
 let path=[
@@ -25,6 +27,8 @@ let path=[
   },
 ]
 const KanbanBoard = ({setPath}) => {
+  const { t } = useTranslation();
+  const { dir, isRtl } = useLocaleDirection();
   const [activeTab, setActiveTab] = useState("board");
   const {boardId} = useParams();
 
@@ -32,13 +36,20 @@ const KanbanBoard = ({setPath}) => {
   const {columns} = boardData || {columns: []};
 
   useEffect(() => {
-    setPath(path);
-  }, [setPath]);
+    setPath([
+      path[0],
+      path[1],
+      {
+        ...path[2],
+        name: t("kanbanPage.breadcrumb"),
+      },
+    ]);
+  }, [setPath, t]);
 
   // ── Loading State ──
   if (boardLoading) {
     return (
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className={`flex flex-col h-full overflow-hidden ${isRtl ? "text-right" : "text-left"}`} dir={dir}>
         <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} />
         <Toolbar />
         <TaskBoardSkeleton />
@@ -51,13 +62,13 @@ const KanbanBoard = ({setPath}) => {
     const status = error?.response?.status;
     const message =
       status === 404
-        ? "This board doesn't exist or has been deleted."
+        ? t("kanbanPage.boardMissing")
         : status === 403
-          ? "You don't have permission to view this board."
-          : error?.response?.data?.message || error?.message || "Failed to load board data.";
+          ? t("kanbanPage.boardDenied")
+          : error?.response?.data?.message || error?.message || t("kanbanPage.boardFailed");
 
     return (
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className={`flex flex-col h-full overflow-hidden ${isRtl ? "text-right" : "text-left"}`} dir={dir}>
         <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} />
         <Toolbar />
         <div className="flex-1 flex items-center justify-center p-8">
@@ -68,7 +79,7 @@ const KanbanBoard = ({setPath}) => {
               </svg>
             </div>
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">
-              {status === 404 ? 'Board Not Found' : 'Unable to Load Board'}
+              {status === 404 ? t("kanbanPage.boardNotFound") : t("kanbanPage.boardLoadTitle")}
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               {message}
@@ -78,7 +89,7 @@ const KanbanBoard = ({setPath}) => {
               onClick={() => refetch()}
               className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-bold hover:opacity-90 transition-opacity cursor-pointer"
             >
-              Try Again
+              {t("kanbanPage.tryAgain")}
             </button>
           </div>
         </div>
@@ -87,7 +98,7 @@ const KanbanBoard = ({setPath}) => {
   }
 
   return (
-    <div className='flex flex-col overflow-hidden'>
+    <div className={`flex flex-col overflow-hidden ${isRtl ? "text-right" : "text-left"}`} dir={dir}>
       <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} />
       <Toolbar />
       <Board id={boardId} columns={columns} />

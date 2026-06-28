@@ -1,8 +1,11 @@
 import React from "react";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const SecurityEmptyState = ({ icon, title, description }) => {
+    const { dir } = useLocaleDirection();
+
     return (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center" dir={dir}>
             <div className="flex flex-col items-center gap-3">
                 {icon && (
                     <div className="text-gray-400">

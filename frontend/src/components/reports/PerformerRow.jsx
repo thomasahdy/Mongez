@@ -1,15 +1,19 @@
-import React from 'react'
+import React from "react";
+import { useTranslation } from "react-i18next";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const PerformerRow = ({ performer, rank }) => {
+  const { t } = useTranslation();
+  const { dir } = useLocaleDirection();
   const rankColors = ["text-amber-500", "text-slate-400", "text-amber-700"];
   const rankIcons  = ["fa-trophy", "fa-medal", "fa-medal"];
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-slate-700/60 last:border-none last:pb-0">
+    <div className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-slate-700/60 last:border-none last:pb-0" dir={dir}>
       {/* Rank */}
       <span className={`text-[12px] w-5 text-center ${rankColors[rank] ?? "text-slate-300"}`}>
         {rank < 3
-          ? <i className={`fa-solid ${rankIcons[rank]}`} aria-label={`Rank ${rank + 1}`} />
+          ? <i className={`fa-solid ${rankIcons[rank]}`} aria-label={t("reportsPage.rank", { count: rank + 1 })} />
           : <span className="text-slate-400 text-[11px]">{rank + 1}</span>
         }
       </span>
@@ -31,7 +35,7 @@ const PerformerRow = ({ performer, rank }) => {
       {/* Task count */}
       <div className="flex items-center gap-1.5 text-[14px] font-bold text-slate-800 dark:text-slate-100 shrink-0">
         {performer.tasks}
-        <i className="fa-solid fa-check text-[10px] text-emerald-500" aria-label="tasks completed" />
+        <i className="fa-solid fa-check text-[10px] text-emerald-500" aria-label={t("reportsPage.tasksCompleted")} />
       </div>
     </div>
   );

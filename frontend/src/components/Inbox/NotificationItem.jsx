@@ -1,13 +1,17 @@
 import React from 'react'
+import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import NotifIconBadge from './NotifIconBadge';
 import NotifActionButton from './NotifActionButton';
 
 const NotificationItem = ({ notif, selected, onSelect, onAction, onClick }) => {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   return (
     <article
       className={`group flex gap-3 px-4 py-3.5 rounded-xl border transition-all duration-150 cursor-pointer
         ${notif.unread
-          ? "border-l-[3px] border-l-sky-500 border-slate-200 dark:border-slate-700 bg-sky-50/60 dark:bg-sky-900/10"
+          ? `${isRTL ? "border-r-[3px] border-r-sky-500" : "border-l-[3px] border-l-sky-500"} border-slate-200 dark:border-slate-700 bg-sky-50/60 dark:bg-sky-900/10`
           : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600"
         }
         hover:shadow-sm`}
@@ -24,7 +28,7 @@ const NotificationItem = ({ notif, selected, onSelect, onAction, onClick }) => {
           checked={selected}
           onChange={(e) => onSelect(e.target.checked)}
           className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-600 accent-sky-500 cursor-pointer"
-          aria-label={`Select notification: ${notif.title}`}
+          aria-label={t("inboxPage.selectNotification", { title: notif.title })}
         />
       </div>
 
@@ -38,7 +42,7 @@ const NotificationItem = ({ notif, selected, onSelect, onAction, onClick }) => {
           {notif.unread && (
             <span
               className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0"
-              aria-label="Unread"
+              aria-label={t("inboxPage.unread")}
             />
           )}
           <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 truncate">
@@ -65,7 +69,7 @@ const NotificationItem = ({ notif, selected, onSelect, onAction, onClick }) => {
       {/* Actions — visible on group hover or focus-within */}
       <div
         className="flex flex-col gap-1 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
-        aria-label="Notification actions"
+        aria-label={t("inboxPage.actionsAria")}
         role="group"
       >
         {notif.actions.map((action) => (

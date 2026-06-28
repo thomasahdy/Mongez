@@ -1,11 +1,13 @@
 import React from 'react'
+import { useTranslation } from "react-i18next";
 
 const InboxFilterTabs = ({ tabs, activeId, onChange }) => {
+  const { t } = useTranslation();
   return (
     <div
       className="flex gap-0.5 bg-slate-100 dark:bg-slate-700/60 rounded-lg p-1 mb-4 w-fit overflow-x-auto"
       role="tablist"
-      aria-label="Filter notifications"
+      aria-label={t("inboxPage.filtersAria")}
     >
       {tabs.map((tab) => (
         <button

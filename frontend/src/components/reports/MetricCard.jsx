@@ -1,17 +1,19 @@
-import React from 'react'
-import TrendBadge from './TrendBadge';
+import React from "react";
+import TrendBadge from "./TrendBadge";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const MetricCard = ({ metric }) => {
+  const { dir, isRtl } = useLocaleDirection();
   const { title, value, unit, icon, trend, accentColor, iconBg, iconColor } = metric;
 
   return (
     <article
       className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
       aria-label={`${title}: ${value}${unit ?? ""}`}
+      dir={dir}
     >
-      {/* Left accent bar */}
       <div
-        className="absolute top-0 left-0 w-1 h-full rounded-l-xl"
+        className={`absolute top-0 ${isRtl ? "right-0 rounded-r-xl" : "left-0 rounded-l-xl"} w-1 h-full`}
         style={{ background: accentColor }}
         aria-hidden="true"
       />

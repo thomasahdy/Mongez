@@ -1,14 +1,16 @@
 import React from 'react'
+import { useTranslation } from "react-i18next";
 import Button from '../../../components/ui/Button';
 
 const BulkActionBar = ({ total, selectedCount, allSelected, onSelectAll, onMarkRead, onArchive }) => {
+  const { t } = useTranslation();
   const hasSelection = selectedCount > 0;
 
   return (
     <div
       className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl mb-3 shadow-xs"
       role="toolbar"
-      aria-label="Bulk actions"
+      aria-label={t("inboxPage.bulkAria")}
     >
       {/* Select all checkbox */}
       <input
@@ -17,11 +19,11 @@ const BulkActionBar = ({ total, selectedCount, allSelected, onSelectAll, onMarkR
         ref={(el) => { if (el) el.indeterminate = hasSelection && !allSelected; }}
         onChange={(e) => onSelectAll(e.target.checked)}
         className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-600 accent-sky-500 cursor-pointer"
-        aria-label="Select all notifications"
+        aria-label={t("inboxPage.selectAllNotifications")}
       />
 
       <span className="flex-1 text-[12px] text-slate-400 dark:text-slate-500">
-        {hasSelection ? `${selectedCount} of ${total} selected` : "Select all"}
+        {hasSelection ? t("inboxPage.selectedSummary", { selected: selectedCount, total }) : t("inboxPage.selectAll")}
       </span>
 
       {/* Bulk action buttons */}
@@ -31,10 +33,10 @@ const BulkActionBar = ({ total, selectedCount, allSelected, onSelectAll, onMarkR
         onClick={onMarkRead}
         disabled={!hasSelection}
         className="disabled:opacity-40"
-        aria-label="Mark selected as read"
+        aria-label={t("inboxPage.markRead")}
       >
         <i className="fa-solid fa-check text-[10px]" aria-hidden="true" />
-        Mark read
+        {t("inboxPage.markRead")}
       </Button>
       <Button
         variant="outline"
@@ -42,10 +44,10 @@ const BulkActionBar = ({ total, selectedCount, allSelected, onSelectAll, onMarkR
         onClick={onArchive}
         disabled={!hasSelection}
         className="disabled:opacity-40"
-        aria-label="Archive selected"
+        aria-label={t("inboxPage.archive")}
       >
         <i className="fa-solid fa-box-archive text-[10px]" aria-hidden="true" />
-        Archive
+        {t("inboxPage.archive")}
       </Button>
     </div>
   );

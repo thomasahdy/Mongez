@@ -1,5 +1,6 @@
 import SettingsSection from "../../../components/settings/SettingsSection";
 import FormField from "../../../components/ui/FormField";
+import { useTranslation } from "react-i18next";
 
 const TIMEZONES = [
   { value: "UTC", label: "UTC" },
@@ -10,12 +11,13 @@ const TIMEZONES = [
 ];
 
 const ContactSection = ({ form, onChange }) => {
+  const { t } = useTranslation();
   return (
-    <SettingsSection title="Account Contact" icon="fa-regular fa-envelope" iconColor="text-indigo-500">
+    <SettingsSection title={t("settingsProfilePage.accountContact")} icon="fa-regular fa-envelope" iconColor="text-indigo-500">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <FormField
           id="email"
-          label="Email Address"
+          label={t("settingsProfilePage.emailAddress")}
           type="email"
           value={form.email}
           readOnly
@@ -24,7 +26,7 @@ const ContactSection = ({ form, onChange }) => {
         />
         <FormField
           id="timezone"
-          label="Timezone"
+          label={t("settingsProfilePage.timezone")}
           as="select"
           value={form.timezone}
           onChange={(event) => onChange("timezone", event.target.value)}

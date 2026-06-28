@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next";
 import { get2FAStatus } from "../../services/api/securityService";
 import EnableTwoFactorModal from "./EnableTwoFactorModal";
 import DisableTwoFactorModal from "./DisableTwoFactorModal";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const TwoFactorCard = () => {
 const { t } = useTranslation();
+const { dir } = useLocaleDirection();
 
 const [enabled, setEnabled] = useState(false);
 const [loading, setLoading] = useState(false);
@@ -21,7 +23,7 @@ const loadStatus = async () => {
         setEnabled(Boolean(status?.enabled));
     } catch (err) {
         console.error(err);
-        setError(t("securityUi.loadFailed"));
+        setError(t("securityPage.twoFactor.loadFailed"));
     } finally {
         setLoading(false);
     }
@@ -41,20 +43,20 @@ const handleToggle2FA = async () => {
 
 return (
     <>
-    <div className="security-section">
+    <div className="security-section" dir={dir}>
         <div>
             <div className="security-section-title">
                 <i className="fa-solid fa-shield-halved" style={{ color: "var(--success)" }}></i>
-                Two-Factor Authentication (2FA)
+                {t("securityPage.twoFactor.title")}
             </div>
             
             <div className="toggle-row">
                 <div className="toggle-info">
-                    <h4>Require Authenticator App</h4>
-                    <p>Protect your account with an extra layer of security. We will ask for a 2FA code every time you sign in on a new device.</p>
+                    <h4>{t("securityPage.twoFactor.requireApp")}</h4>
+                    <p>{t("securityPage.twoFactor.description")}</p>
                 </div>
                 
-                <button type="button" className="btn btn-outline" style={{ background: "white", borderColor: "var(--success)", color: "var(--success)" }} disabled={loading} onClick={handleToggle2FA}> {loading ? "Please wait..." : enabled ? "Disable 2FA" : "Enable 2FA" } </button>
+                <button type="button" className="btn btn-outline" style={{ background: "white", borderColor: "var(--success)", color: "var(--success)" }} disabled={loading} onClick={handleToggle2FA}> {loading ? t("securityPage.twoFactor.waiting") : enabled ? t("securityPage.twoFactor.disable") : t("securityPage.twoFactor.enable")} </button>
             </div>
             {error && <p className="form-error">{error}</p>}
         </div>

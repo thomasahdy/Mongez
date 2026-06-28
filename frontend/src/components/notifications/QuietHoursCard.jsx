@@ -1,4 +1,5 @@
 import ToggleSwitch from "./ToggleSwitch";
+import { useTranslation } from "react-i18next";
 
 const QuietHoursCard = ({
     settings,
@@ -8,23 +9,23 @@ const QuietHoursCard = ({
     onToggleWeekend,
     loading,
 }) => {
+    const { t } = useTranslation();
     return (
         <div className="notif-section">
             <div className="notif-section-title">
                 <i className="fa-solid fa-moon channel-inapp"></i>
-                Quiet Hours & Focus
+                {t("notificationsPage.quietHoursTitle")}
             </div>
 
             <div className="notif-section-desc">
-                Pause non-urgent notifications during off-hours to stay focused.
+                {t("notificationsPage.quietHoursDescription")}
             </div>
 
             <div className="dnd-row pt-0">
                 <div className="dnd-info">
-                    <h4>Enable Quiet Hours</h4>
+                    <h4>{t("notificationsPage.enableQuietHours")}</h4>
                     <p>
-                        Silence all notifications except urgent task assignments
-                        and overdue alerts.
+                        {t("notificationsPage.enableQuietHoursDescription")}
                     </p>
                 </div>
 
@@ -37,10 +38,9 @@ const QuietHoursCard = ({
 
             <div className="dnd-row">
                 <div className="dnd-info">
-                    <h4>Quiet Hours Schedule</h4>
+                    <h4>{t("notificationsPage.quietHoursSchedule")}</h4>
                     <p>
-                        Notifications will be held and delivered when quiet
-                        hours end.
+                        {t("notificationsPage.quietHoursScheduleDescription")}
                     </p>
                 </div>
 
@@ -59,7 +59,7 @@ const QuietHoursCard = ({
                         <option value="11:00 PM">11:00 PM</option>
                     </select>
 
-                    <span className="text-gray-500">to</span>
+                    <span className="text-gray-500">{t("notificationsPage.between")}</span>
 
                     <select
                         value={settings.endTime}
@@ -78,10 +78,9 @@ const QuietHoursCard = ({
 
             <div className="dnd-row">
                 <div className="dnd-info">
-                    <h4>Weekend Notifications</h4>
+                    <h4>{t("notificationsPage.weekendNotifications")}</h4>
                     <p>
-                        Receive notifications on Friday & Saturday (Egyptian
-                        weekend).
+                        {t("notificationsPage.weekendDescription")}
                     </p>
                 </div>
 

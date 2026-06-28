@@ -1,5 +1,17 @@
+import { useTranslation } from "react-i18next";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
+
 const SessionRow = ({ session, onTerminate, disabled }) => {
-    const {id, device = "Unknown Device", ipAddress = "Unknown", lastActive = "Unknown", location = "Unknown Location", isCurrent} = session;
+    const { t } = useTranslation();
+    const { dir, isRtl } = useLocaleDirection();
+    const {
+        id,
+        device = t("securityPage.sessions.unknownDevice"),
+        ipAddress = t("securityPage.sessions.unknown"),
+        lastActive = t("securityPage.sessions.unknown"),
+        location = t("securityPage.sessions.unknownLocation"),
+        isCurrent,
+    } = session;
 
     const deviceLower = device.toLowerCase();
 
@@ -15,7 +27,7 @@ const SessionRow = ({ session, onTerminate, disabled }) => {
     else if (isLinux) iconClass = "fa-brands fa-linux";
 
     return (
-        <tr>
+        <tr dir={dir}>
             <td>
                 <div className="device-info">
                     <div className="device-icon">
@@ -28,7 +40,7 @@ const SessionRow = ({ session, onTerminate, disabled }) => {
                             
                             {isCurrent && (
                                 <span className="current-session-badge">
-                                    Current Session
+                                    {t("securityPage.sessions.currentSession")}
                                 </span>
                             )}
                             
@@ -42,7 +54,7 @@ const SessionRow = ({ session, onTerminate, disabled }) => {
             
             <td>{lastActive}</td>
             
-            <td style={{ textAlign: "right" }}>
+            <td style={{ textAlign: isRtl ? "left" : "right" }}>
                 {!isCurrent && (
                     <button
                         type="button"
@@ -51,7 +63,7 @@ const SessionRow = ({ session, onTerminate, disabled }) => {
                         className="btn btn-outline"
                         style={{ fontSize: 11, padding: "4px 10px" }}
                     >
-                        Sign Out
+                        {t("securityPage.sessions.signOut")}
                     </button>
                 )}
             </td>

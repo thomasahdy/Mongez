@@ -1,8 +1,12 @@
 import SessionTable from "./SessionTable";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import useSecurity from "../../pages/security/useSecurity";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const SessionsCard = () => {
+    const { t } = useTranslation();
+    const { dir, isRtl } = useLocaleDirection();
     const {
         sessions,
         loading,
@@ -13,12 +17,12 @@ const SessionsCard = () => {
     } = useSecurity();
 
     return (
-        <div className="security-section">
+        <div className="security-section" dir={dir}>
             <div>
                 <div className="security-section-title" style={{ justifyContent: "space-between" }}>
                     <span>
-                        <i className="fa-solid fa-laptop" style={{ color: "var(--accent)", marginRight: 8 }}></i>
-                        Active Sessions
+                        <i className="fa-solid fa-laptop" style={isRtl ? { color: "var(--accent)", marginLeft: 8 } : { color: "var(--accent)", marginRight: 8 }}></i>
+                        {t("securityPage.sessions.title")}
                     </span>
 
                     <button
@@ -28,13 +32,13 @@ const SessionsCard = () => {
                         className="btn btn-outline"
                         style={{ fontSize: 11, padding: "4px 10px", color: "var(--danger)", borderColor: "rgba(239, 68, 68, 0.3)" }}
                     >
-                        {actionLoading ? "Signing out..." : "Sign out of all other sessions"}
+                        {actionLoading ? t("securityPage.sessions.signingOutOthers") : t("securityPage.sessions.signOutOthers")}
                     </button>
                 </div>
 
                 {error && (
                     <div className="form-error">
-                        {error}
+                        {error.includes(".") ? error : t(error)}
                     </div>
                 )}
 

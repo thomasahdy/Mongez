@@ -1,10 +1,14 @@
 import React from 'react'
+import { useTranslation } from "react-i18next";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { createTaskValidationSchema } from '../../schemas/taskValidationSchema';
 import { useMembers } from '../../hooks/api/useMembers';
+import useLocaleDirection from '../../hooks/useLocaleDirection';
 
 const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, onClose, defaultValues = {} }) => {
+  const { t } = useTranslation();
+  const { dir } = useLocaleDirection();
   const { data: members = [] } = useMembers(spaceId);
   const [selectedAssignees, setSelectedAssignees] = React.useState(defaultValues.assigneeIds || []);
   const [tagsText, setTagsText] = React.useState((defaultValues.tags || []).join(", "));
@@ -72,6 +76,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
+      dir={dir}
     >
       <div className="w-full max-w-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden animate-fadeIn">
         {/* Top subtle decorative gradient */}
@@ -80,13 +85,13 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
         {/* Modal Header */}
         <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900">
           <h2 id="modal-title" className="text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100">
-            Create new task
+            {t("kanbanPage.createTask")}
           </h2>
           <button
             type="button"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
-            aria-label="Close dialog"
+            aria-label={t("kanbanPage.closeDialog")}
           >
             <i className="fa-solid fa-xmark text-[16px]" />
           </button>
@@ -104,12 +109,12 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
           {/* Title Input */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-title">
-              Title *
+              {t("kanbanPage.title")} *
             </label>
             <input
               id="task-title"
               type="text"
-              placeholder="Fix navbar rendering bug"
+              placeholder={t("kanbanPage.titlePlaceholder")}
               className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
                 ${errors.title ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
               {...register('title')}
@@ -124,12 +129,12 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
           {/* Description Textarea */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-desc">
-              Description
+              {t("kanbanPage.description")}
             </label>
             <textarea
               id="task-desc"
               rows={3}
-              placeholder="Provide details about this task..."
+              placeholder={t("kanbanPage.descriptionPlaceholder")}
               className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm resize-none
                 ${errors.description ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
               {...register('description')}
@@ -140,38 +145,38 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-type">
-                Type
+                {t("kanbanPage.type")}
               </label>
               <select
                 id="task-type"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent dark:bg-slate-950 outline-none focus:ring-2 focus:ring-sky-400 text-sm"
                 {...register('type')}
               >
-                <option value="Task">Task</option>
-                <option value="Bug">Bug</option>
-                <option value="Feature">Feature</option>
-                <option value="Milestone">Milestone</option>
+                <option value="Task">{t("kanbanPage.types.task")}</option>
+                <option value="Bug">{t("kanbanPage.types.bug")}</option>
+                <option value="Feature">{t("kanbanPage.types.feature")}</option>
+                <option value="Milestone">{t("kanbanPage.types.milestone")}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-priority">
-                Priority
+                {t("kanbanPage.priority")}
               </label>
               <select
                 id="task-priority"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent dark:bg-slate-950 outline-none focus:ring-2 focus:ring-sky-400 text-sm"
                 {...register('priority')}
               >
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
+                <option value="LOW">{t("kanbanPage.priorities.low")}</option>
+                <option value="MEDIUM">{t("kanbanPage.priorities.medium")}</option>
+                <option value="HIGH">{t("kanbanPage.priorities.high")}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-status">
-                Status
+                {t("kanbanPage.status")}
               </label>
               <input
                 id="task-status"
@@ -187,7 +192,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-start-date">
-                Start Date
+                {t("kanbanPage.startDate")}
               </label>
               <input
                 id="task-start-date"
@@ -199,7 +204,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-due-date">
-                Due Date
+                {t("kanbanPage.dueDate")}
               </label>
               <input
                 id="task-due-date"
@@ -213,7 +218,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
           {/* Assignees Selection */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Assignees
+              {t("kanbanPage.assignees")}
             </label>
             <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/30">
               {members.map((member) => {
@@ -236,7 +241,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
                 );
               })}
               {members.length === 0 && (
-                <span className="text-xs text-slate-400 italic">No members in space.</span>
+                <span className="text-xs text-slate-400 italic">{t("kanbanPage.noMembers")}</span>
               )}
             </div>
           </div>
@@ -244,12 +249,12 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
           {/* Tags Input */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-tags">
-              Tags (comma-separated)
+              {t("kanbanPage.tags")}
             </label>
             <input
               id="task-tags"
               type="text"
-              placeholder="frontend, bug, high-priority"
+              placeholder={t("kanbanPage.tagsPlaceholder")}
               value={tagsText}
               onChange={(e) => setTagsText(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent outline-none text-sm focus:ring-2 focus:ring-sky-400"
@@ -260,7 +265,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-estimate">
-                Estimated Hours
+                {t("kanbanPage.estimatedHours")}
               </label>
               <input
                 id="task-estimate"
@@ -279,12 +284,12 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-parent">
-                Parent Task ID (Subtasks)
+                {t("kanbanPage.parentTaskId")}
               </label>
               <input
                 id="task-parent"
                 type="text"
-                placeholder="Optional parent ID"
+                placeholder={t("kanbanPage.parentTaskPlaceholder")}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent outline-none text-sm"
                 {...register('parentId')}
               />
@@ -298,7 +303,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
               onClick={onClose}
               className="px-4 py-2 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
             >
-              Cancel
+              {t("kanbanPage.cancel")}
             </button>
             <button
               type="submit"
@@ -311,10 +316,10 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Creating...
+                  {t("kanbanPage.creating")}
                 </>
               ) : (
-                "Create Task"
+                t("kanbanPage.createTaskButton")
               )}
             </button>
           </div>

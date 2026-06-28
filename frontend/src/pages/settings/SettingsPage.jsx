@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import SettingsSidebar from "./sections/SettingsSidebar";
 import StickyFooter from "./sections/StickyFooter";
 import DangerZone from "./sections/DangerZone";
@@ -12,6 +13,7 @@ import {
   useUpdateProfileMutation,
   useUploadAvatarMutation,
 } from "../../hooks/useSettingsQueries";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const INITIAL_FORM = {
   firstName: "",
@@ -24,11 +26,6 @@ const INITIAL_FORM = {
   weekStart: "MON",
   avatarUrl: "",
 };
-
-const settingsPath = [
-  { name: "Settings", color: "text-slate-400", ref: "/settings" },
-  { name: "My Profile", color: "text-slate-800", ref: "/settings" },
-];
 
 function splitName(name) {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
@@ -61,6 +58,8 @@ function haveDifferentValues(left, right) {
 
 export default function SettingsPage({ setPath }) {
   const sessionUser = useSelector((state) => state.users?.user || null);
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const settingsQuery = useSettingsProfileQuery();
   const updateProfileMutation = useUpdateProfileMutation();
   const updatePreferencesMutation = useUpdatePreferencesMutation();
@@ -70,8 +69,11 @@ export default function SettingsPage({ setPath }) {
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
-    setPath?.(settingsPath);
-  }, [setPath]);
+    setPath?.([
+      { name: t("settingsProfilePage.breadcrumbSettings"), color: "text-slate-400", ref: "/settings" },
+      { name: t("settingsProfilePage.breadcrumbProfile"), color: "text-slate-800", ref: "/settings" },
+    ]);
+  }, [setPath, t]);
 
   const serverForm = useMemo(() => {
     if (!settingsQuery.data) {
@@ -89,13 +91,13 @@ export default function SettingsPage({ setPath }) {
 
   const isSaving = updateProfileMutation.isPending || updatePreferencesMutation.isPending;
   const isDirty = haveDifferentValues(form, serverForm);
-  const displayName = `${form.firstName} ${form.lastName}`.trim() || sessionUser?.name || sessionUser?.fullName || "Profile";
+  const displayName = `${form.firstName} ${form.lastName}`.trim() || sessionUser?.name || sessionUser?.fullName || t("settingsProfilePage.profileFallback");
 
   useEffect(() => {
     if (settingsQuery.isError) {
-      setPageError(settingsQuery.error?.message || "Unable to load your settings.");
+      setPageError(settingsQuery.error?.message || t("settingsProfilePage.loadFailed"));
     }
-  }, [settingsQuery.error?.message, settingsQuery.isError]);
+  }, [settingsQuery.error?.message, settingsQuery.isError, t]);
 
   const handleFieldChange = (field, value) => {
     setForm((current) => ({
@@ -113,9 +115,9 @@ export default function SettingsPage({ setPath }) {
         setPageError("");
         setSuccessMessage("");
         await updateProfileMutation.mutateAsync({ avatarUrl: "" });
-        setSuccessMessage("Avatar removed successfully.");
+        setSuccessMessage(t("settingsProfilePage.removeAvatarSuccess"));
       } catch (error) {
-        setPageError(error.message || "Failed to remove avatar.");
+        setPageError(error.message || t("settingsProfilePage.removeAvatarFailed"));
       }
       return;
     }
@@ -125,9 +127,9 @@ export default function SettingsPage({ setPath }) {
       setPageError("");
       setSuccessMessage("");
       await uploadAvatarMutation.mutateAsync(fileOrEvent);
-      setSuccessMessage("Avatar uploaded successfully.");
+      setSuccessMessage(t("settingsProfilePage.uploadAvatarSuccess"));
     } catch (error) {
-      setPageError(error.message || "Failed to upload avatar.");
+      setPageError(error.message || t("settingsProfilePage.uploadAvatarFailed"));
     }
   };
 
@@ -141,7 +143,7 @@ export default function SettingsPage({ setPath }) {
     const trimmedName = `${form.firstName} ${form.lastName}`.trim();
 
     if (!trimmedName || trimmedName.length < 2) {
-      setPageError("Enter at least a first and last name before saving.");
+      setPageError(t("settingsProfilePage.nameValidation"));
       return;
     }
 
@@ -173,7 +175,7 @@ export default function SettingsPage({ setPath }) {
     }
 
     if (!Object.keys(profilePayload).length && !Object.keys(preferencesPayload).length) {
-      setSuccessMessage("Your settings are already up to date.");
+      setSuccessMessage(t("settingsProfilePage.alreadyUpToDate"));
       return;
     }
 
@@ -186,9 +188,9 @@ export default function SettingsPage({ setPath }) {
         Object.keys(preferencesPayload).length ? updatePreferencesMutation.mutateAsync(preferencesPayload) : Promise.resolve(null),
       ]);
       await settingsQuery.refetch();
-      setSuccessMessage("Profile and preferences saved.");
+      setSuccessMessage(t("settingsProfilePage.saveSuccess"));
     } catch (error) {
-      setPageError(error.message || "Unable to save your settings.");
+      setPageError(error.message || t("settingsProfilePage.saveFailed"));
     }
   };
 
@@ -197,25 +199,25 @@ export default function SettingsPage({ setPath }) {
       <div className="flex flex-1 overflow-hidden">
         <SettingsSidebar activeId="profile" />
         <main className="flex flex-1 items-center justify-center bg-slate-50 px-6 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-          Loading your profile settings...
+          {t("settingsProfilePage.loading")}
         </main>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-1 overflow-hidden" dir={isRTL ? "rtl" : "ltr"}>
       <SettingsSidebar activeId="profile" />
 
-      <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900" aria-label="Profile settings">
+      <main className={`flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 ${isRTL ? "text-right" : "text-left"}`} aria-label={t("settingsProfilePage.title")}>
         <div className="mx-auto max-w-[760px] px-6 py-6">
           <div className="mb-8">
-            <h1 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-slate-50">My Profile</h1>
+            <h1 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-slate-50">{t("settingsProfilePage.title")}</h1>
             <p className="mt-1.5 text-[14px] text-slate-500 dark:text-slate-400">
-              Manage the profile and personal preferences currently supported by the live user API.
+              {t("settingsProfilePage.description")}
             </p>
             <p className="mt-2 text-xs font-semibold text-slate-400 dark:text-slate-500">
-              Signed in as <span className="text-slate-600 dark:text-slate-300">{displayName}</span>
+              {t("settingsProfilePage.signedInAs", { name: displayName })} <span className="text-slate-600 dark:text-slate-300">{""}</span>
             </p>
           </div>
 
@@ -239,9 +241,9 @@ export default function SettingsPage({ setPath }) {
           <ContactSection form={form} onChange={handleFieldChange} />
           <PreferencesSection form={form} onChange={handleFieldChange} />
           <DangerZone
-            title="Account Actions"
-            description="Account deletion is not exposed by the current API contract yet, so this section stays read-only for now."
-            actionLabel="Deletion Unavailable"
+            title={t("settingsProfilePage.accountActions")}
+            description={t("settingsProfilePage.accountActionsDescription")}
+            actionLabel={t("settingsProfilePage.deletionUnavailable")}
             disabled
           />
 
@@ -251,7 +253,7 @@ export default function SettingsPage({ setPath }) {
             hasChanges={isDirty}
             discardDisabled={!isDirty || isSaving}
             saveDisabled={!isDirty || isSaving}
-            saveLabel={isSaving ? "Saving..." : "Save Changes"}
+            saveLabel={isSaving ? t("settingsProfilePage.saving") : t("settingsProfilePage.saveChanges")}
           />
         </div>
       </main>

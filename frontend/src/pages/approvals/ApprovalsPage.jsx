@@ -1,31 +1,33 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import approvalsService from "../../services/api/approvalsService";
 import { useAppContext } from "../AppContext";
-
-let path = [
-  {
-    name: "Workspace",
-    color: "text-slate-400",
-    ref: "/dashboard"
-  },
-  {
-    name: "Approvals Hub",
-    color: "text-slate-800",
-    ref: ""
-  },
-];
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 export default function ApprovalsPage() {
   const { setPath } = useOutletContext() || {};
   const queryClient = useQueryClient();
-  const { user } = useAppContext();
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
+  useAppContext();
   const [notes, setNotes] = useState({});
 
   useEffect(() => {
-    setPath?.(path);
-  }, [setPath]);
+    setPath?.([
+      {
+        name: t("common.workspace"),
+        color: "text-slate-400",
+        ref: "/dashboard",
+      },
+      {
+        name: t("approvalsPage.breadcrumb"),
+        color: "text-slate-800",
+        ref: "",
+      },
+    ]);
+  }, [setPath, t]);
 
   // Fetch pending approvals for the current user
   const { data: approvalsData, isLoading, isError, error } = useQuery({
@@ -67,7 +69,7 @@ export default function ApprovalsPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          <span className="text-sm text-slate-500">Loading pending approvals...</span>
+          <span className="text-sm text-slate-500">{t("approvalsPage.loading")}</span>
         </div>
       </div>
     );
@@ -77,38 +79,38 @@ export default function ApprovalsPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-700 max-w-md">
-          <h3 className="font-bold text-lg mb-2">Failed to load approvals</h3>
-          <p className="text-sm">{error?.message || "Approvals service is temporarily unavailable."}</p>
+          <h3 className="font-bold text-lg mb-2">{t("approvalsPage.failedTitle")}</h3>
+          <p className="text-sm">{error?.message || t("approvalsPage.unavailable")}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans">
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans" dir={isRTL ? "rtl" : "ltr"}>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto px-6 py-6" aria-label="Approvals Hub">
+        <main className={`flex-1 overflow-y-auto px-6 py-6 ${isRTL ? "text-right" : "text-left"}`} aria-label={t("approvalsPage.aria")}>
           <div className="max-w-[1000px] mx-auto">
             <h1 className="flex items-center gap-2.5 text-[20px] font-bold text-slate-800 dark:text-slate-100 mb-1">
               <i className="fa-solid fa-stamp text-indigo-500" aria-hidden="true" />
-              Approvals Hub
+              {t("approvalsPage.title")}
             </h1>
             <p className="text-[13px] text-slate-400 dark:text-slate-500 mb-6">
-              Review and sign off on tasks assigned to you. You have {pendingApprovals.length} pending requests.
+              {t("approvalsPage.description", { count: pendingApprovals.length })}
             </p>
 
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-1">Pending Sign-off</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-1">{t("approvalsPage.pendingSignoff")}</div>
                 <div className="text-2xl font-black text-amber-500">{pendingApprovals.length}</div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-1">Approved This Week</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-1">{t("approvalsPage.approvedThisWeek")}</div>
                 <div className="text-2xl font-black text-emerald-500">0</div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-                <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-1">Decisions Made</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-1">{t("approvalsPage.decisionsMade")}</div>
                 <div className="text-2xl font-black text-slate-500">0</div>
               </div>
             </div>
@@ -120,8 +122,8 @@ export default function ApprovalsPage() {
                   <div className="rounded-full bg-slate-50 p-4 mb-4 dark:bg-slate-900">
                     <i className="fa-solid fa-stamp text-slate-300 text-3xl" />
                   </div>
-                  <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-1">Inbox cleared!</h3>
-                  <p className="text-xs text-slate-400">You do not have any pending approval requests.</p>
+                  <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-1">{t("approvalsPage.emptyTitle")}</h3>
+                  <p className="text-xs text-slate-400">{t("approvalsPage.emptyDescription")}</p>
                 </div>
               ) : (
                 pendingApprovals.map((approval) => (
@@ -132,22 +134,22 @@ export default function ApprovalsPage() {
                     <div className="flex-1 space-y-3">
                       <div>
                         <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                          Pending Review
+                          {t("approvalsPage.pendingReview")}
                         </span>
                       </div>
                       <div>
                         <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-                          {approval.task?.title || "Untitled Task"}
+                          {approval.task?.title || t("approvalsPage.untitledTask")}
                         </h3>
                         <p className="text-xs text-slate-400 mt-1">
-                          Requested by {approval.requester?.name || "Workspace member"}
+                          {t("approvalsPage.requestedBy", { name: approval.requester?.name || t("approvalsPage.workspaceMember") })}
                         </p>
                       </div>
                       
                       {/* Optional Note Input */}
                       <div className="pt-2">
                         <textarea
-                          placeholder="Add approval/rejection note (optional)..."
+                          placeholder={t("approvalsPage.notePlaceholder")}
                           value={notes[approval.id] || ""}
                           onChange={(e) =>
                             setNotes((prev) => ({ ...prev, [approval.id]: e.target.value }))
@@ -165,7 +167,7 @@ export default function ApprovalsPage() {
                         className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition"
                       >
                         <i className="fa-solid fa-check" />
-                        Approve
+                        {t("approvalsPage.approve")}
                       </button>
                       <button
                         type="button"
@@ -174,7 +176,7 @@ export default function ApprovalsPage() {
                         className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition"
                       >
                         <i className="fa-solid fa-xmark" />
-                        Reject
+                        {t("approvalsPage.reject")}
                       </button>
                     </div>
                   </div>

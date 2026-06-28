@@ -1,4 +1,5 @@
-import React from 'react'
+import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, Legend,
@@ -6,8 +7,10 @@ import {
 import ChartCard from '../../components/reports/ChartCard';
 import AreaTooltip from '../../components/reports/AreaToolTip';
 const CumulativeFlowChart = ({ data }) => {
+  const { t } = useTranslation();
+
   return (
-    <ChartCard title="Cumulative Flow Diagram">
+    <ChartCard title={t("reportsPage.cumulativeFlow")}>
       <ResponsiveContainer width="100%" height={220}>
         <AreaChart data={data}>
           <defs>
@@ -39,9 +42,9 @@ const CumulativeFlowChart = ({ data }) => {
           />
           <Tooltip content={<AreaTooltip />} />
           <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-          <Area type="monotone" dataKey="todo"     name="To Do"      stroke="#f59e0b" fill="url(#gradTodo)"     strokeWidth={2} />
-          <Area type="monotone" dataKey="progress" name="In Progress" stroke="#00a8e8" fill="url(#gradProgress)" strokeWidth={2} />
-          <Area type="monotone" dataKey="done"     name="Done"       stroke="#10b981" fill="url(#gradDone)"     strokeWidth={2} />
+          <Area type="monotone" dataKey="todo"     name={t("reportsPage.todo")}      stroke="#f59e0b" fill="url(#gradTodo)"     strokeWidth={2} />
+          <Area type="monotone" dataKey="progress" name={t("reportsPage.inProgress")} stroke="#00a8e8" fill="url(#gradProgress)" strokeWidth={2} />
+          <Area type="monotone" dataKey="done"     name={t("reportsPage.done")}       stroke="#10b981" fill="url(#gradDone)"     strokeWidth={2} />
         </AreaChart>
       </ResponsiveContainer>
     </ChartCard>

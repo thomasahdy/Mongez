@@ -1,10 +1,12 @@
 import NotificationChannelsTable from "./NotificationChannelTable";
+import { useTranslation } from "react-i18next";
 
 const NotificationChannelsCard = ({ settings, onToggle, loading, }) => {
+    const { t } = useTranslation();
     if(loading){
         return (
             <div className="notif-section">
-                Loading...
+                {t("notificationsPage.channelsLoading")}
             </div>
         );
     }
@@ -13,11 +15,11 @@ const NotificationChannelsCard = ({ settings, onToggle, loading, }) => {
         <div className="notif-section">
             <div className="notif-section-title">
                 <i className="fa-solid fa-sliders channel-email"></i>
-                Delivery Channels
+                {t("notificationsPage.channelsTitle")}
             </div>
 
             <div className="notif-section-desc">
-                Toggle which channels receive each notification type. External channels require integration setup.
+                {t("notificationsPage.channelsDescription")}
             </div>
 
             <div className="overflow-x-auto">

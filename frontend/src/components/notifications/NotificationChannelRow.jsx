@@ -1,14 +1,16 @@
 import ToggleSwitch from "./ToggleSwitch";
+import { useTranslation } from "react-i18next";
 
 const labelOverrides = {
-  TASK_ASSIGNED: "Task assigned to me",
-  COMMENT_MENTION: "@mentioned in a comment",
-  TASK_UPDATED: "Task status changed",
-  TASK_DUE: "Deadline approaching (24h)",
-  FILE_UPLOADED: "File uploaded/updated",
+  TASK_ASSIGNED: "notificationsPage.events.TASK_ASSIGNED",
+  COMMENT_MENTION: "notificationsPage.events.COMMENT_MENTION",
+  TASK_UPDATED: "notificationsPage.events.TASK_UPDATED",
+  TASK_DUE: "notificationsPage.events.TASK_DUE",
+  FILE_UPLOADED: "notificationsPage.events.FILE_UPLOADED",
 };
 
 const NotificationChannelsRow = ({setting, onToggle }) => {
+  const { t } = useTranslation();
   const {
     id,
     label,
@@ -21,7 +23,7 @@ const NotificationChannelsRow = ({setting, onToggle }) => {
   return (
     <tr>
       <td>
-        {labelOverrides[id] ?? label}
+        {labelOverrides[id] ? t(labelOverrides[id]) : label}
       </td>
 
       <td>

@@ -23,24 +23,40 @@ const AuditFilters = ({
     dateRangeOptions = DEFAULT_DATE_RANGES,
     loading = false,
 }) => {
+    const { t } = useTranslation()
+    const { dir } = useLocaleDirection()
     const searchValue = filters?.search ?? ""
     const actionValue = filters?.action ?? "all"
     const userValue = filters?.user ?? "all"
     const dateRangeValue = filters?.dateRange ?? "30d"
+    const actionLabels = {
+        all: t("auditLogPage.filters.allActions"),
+        create: t("auditLogPage.filters.create"),
+        update: t("auditLogPage.filters.update"),
+        delete: t("auditLogPage.filters.delete"),
+        login: t("auditLogPage.filters.login"),
+        permission: t("auditLogPage.filters.permission"),
+    }
+    const dateLabels = {
+        "7d": t("auditLogPage.filters.last7Days"),
+        "30d": t("auditLogPage.filters.last30Days"),
+        "90d": t("auditLogPage.filters.last90Days"),
+        custom: t("auditLogPage.filters.customRange"),
+    }
 
 return (
-    <div className="audit-filters">
+    <div className="audit-filters" dir={dir}>
         <label>
             <select
                 value={actionValue}
                 onChange={(event) => onFilterChange?.("action", event.target.value)}
                 disabled={loading}
                 className="filter-select"
-                aria-label="Action"
+                aria-label={t("auditLogPage.filters.action")}
             >
                 {actionOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                        {option.label}
+                        {actionLabels[option.value] ?? option.label}
                     </option>
                 ))}
             </select>
@@ -52,9 +68,9 @@ return (
                 onChange={(event) => onFilterChange?.("user", event.target.value)}
                 disabled={loading}
                 className="filter-select"
-                aria-label="User"
+                aria-label={t("auditLogPage.filters.user")}
             >
-                <option value="all">All Users</option>
+                <option value="all">{t("auditLogPage.filters.allUsers")}</option>
                 {userOptions.map((user) => {
                     const value = typeof user === "string" ? user : user.value
                     const label = typeof user === "string" ? user : user.label
@@ -74,11 +90,11 @@ return (
                 onChange={(event) => onFilterChange?.("dateRange", event.target.value)}
                 disabled={loading}
                 className="filter-select"
-                aria-label="Date Range"
+                aria-label={t("auditLogPage.filters.dateRange")}
             >
                 {dateRangeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                        {option.label}
+                        {dateLabels[option.value] ?? option.label}
                     </option>
                 ))}
             </select>
@@ -93,8 +109,8 @@ return (
                     onChange={(event) => onFilterChange?.("search", event.target.value)}
                     disabled={loading}
                     className="filter-search"
-                    placeholder="Search by resource, IP, or details..."
-                    aria-label="Search audit logs"
+                    placeholder={t("auditLogPage.filters.searchPlaceholder")}
+                    aria-label={t("auditLogPage.filters.searchAria")}
                 />
             </div>
         </label>
@@ -105,10 +121,12 @@ return (
             disabled={loading}
             className="btn btn-outline"
         >
-            Reset
+            {t("auditLogPage.filters.reset")}
         </button>
     </div>
 );
 };
 
 export default AuditFilters;
+import { useTranslation } from "react-i18next"
+import useLocaleDirection from "../../hooks/useLocaleDirection"
