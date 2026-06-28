@@ -167,8 +167,8 @@ const AuditLogPage = () => {
     const hasLogs = logs.length > 0
 
 return (
-    <main>
-        <div className="space-y-6 p-6">
+    <main className="audit-content">
+        <div className="audit-max">
             <AuditHeader />
             <AuditFilters
                 filters={filters}
@@ -179,7 +179,7 @@ return (
             />
 
             {error ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="security-section form-error">
                     {error}
                 </div>
             ) : null}

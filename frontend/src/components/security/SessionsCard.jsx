@@ -13,26 +13,27 @@ const SessionsCard = () => {
     } = useSecurity();
 
     return (
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-            <div className="space-y-5">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-                        <i className="fa-solid fa-laptop text-blue-600"></i>
-                        <span>Active Sessions</span>
-                    </div>
+        <div className="security-section">
+            <div>
+                <div className="security-section-title" style={{ justifyContent: "space-between" }}>
+                    <span>
+                        <i className="fa-solid fa-laptop" style={{ color: "var(--accent)", marginRight: 8 }}></i>
+                        Active Sessions
+                    </span>
 
                     <button
                         type="button"
                         onClick={removeAllOtherSessions}
                         disabled={actionLoading || sessions.filter((s) => !s.isCurrent).length === 0}
-                        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="btn btn-outline"
+                        style={{ fontSize: 11, padding: "4px 10px", color: "var(--danger)", borderColor: "rgba(239, 68, 68, 0.3)" }}
                     >
                         {actionLoading ? "Signing out..." : "Sign out of all other sessions"}
                     </button>
                 </div>
 
                 {error && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    <div className="form-error">
                         {error}
                     </div>
                 )}

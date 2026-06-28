@@ -9,22 +9,20 @@ const QuietHoursCard = ({
     loading,
 }) => {
     return (
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-            <div className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-                <i className="fa-solid fa-moon text-indigo-500"></i>
-                <span>Quiet Hours & Focus</span>
+        <div className="notif-section">
+            <div className="notif-section-title">
+                <i className="fa-solid fa-moon channel-inapp"></i>
+                Quiet Hours & Focus
             </div>
 
-            <p className="mt-2 text-sm text-gray-500">
+            <div className="notif-section-desc">
                 Pause non-urgent notifications during off-hours to stay focused.
-            </p>
+            </div>
 
-            <div className="flex items-center justify-between border-b border-gray-100 py-5">
-                <div>
-                    <h4 className="font-medium text-gray-900">
-                        Enable Quiet Hours
-                    </h4>
-                    <p className="text-sm text-gray-500">
+            <div className="dnd-row pt-0">
+                <div className="dnd-info">
+                    <h4>Enable Quiet Hours</h4>
+                    <p>
                         Silence all notifications except urgent task assignments
                         and overdue alerts.
                     </p>
@@ -37,12 +35,10 @@ const QuietHoursCard = ({
                 />
             </div>
 
-            <div className="flex items-center justify-between border-b border-gray-100 py-5">
-                <div>
-                    <h4 className="font-medium text-gray-900">
-                        Quiet Hours Schedule
-                    </h4>
-                    <p className="text-sm text-gray-500">
+            <div className="dnd-row">
+                <div className="dnd-info">
+                    <h4>Quiet Hours Schedule</h4>
+                    <p>
                         Notifications will be held and delivered when quiet
                         hours end.
                     </p>
@@ -55,7 +51,7 @@ const QuietHoursCard = ({
                             onChangeStartTime(e.target.value)
                         }
                         disabled={loading}
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="time-select"
                     >
                         <option value="8:00 PM">8:00 PM</option>
                         <option value="9:00 PM">9:00 PM</option>
@@ -71,7 +67,7 @@ const QuietHoursCard = ({
                             onChangeEndTime(e.target.value)
                         }
                         disabled={loading}
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="time-select"
                     >
                         <option value="7:00 AM">7:00 AM</option>
                         <option value="8:00 AM">8:00 AM</option>
@@ -80,12 +76,10 @@ const QuietHoursCard = ({
                 </div>
             </div>
 
-            <div className="flex items-center justify-between pt-5">
-                <div>
-                    <h4 className="font-medium text-gray-900">
-                        Weekend Notifications
-                    </h4>
-                    <p className="text-sm text-gray-500">
+            <div className="dnd-row">
+                <div className="dnd-info">
+                    <h4>Weekend Notifications</h4>
+                    <p>
                         Receive notifications on Friday & Saturday (Egyptian
                         weekend).
                     </p>

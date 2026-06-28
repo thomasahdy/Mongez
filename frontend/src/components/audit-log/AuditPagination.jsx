@@ -40,17 +40,17 @@ const AuditPagination = ({
     const canGoNext = page < totalPages
 
 return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-gray-500">
+    <div className="audit-pagination">
+        <p className="page-info">
             Showing {start}-{end} of {total} entries
         </p>
 
-        <div className="flex items-center gap-2">
+        <div className="page-btns">
             <button
                 type="button"
                 onClick={() => onPageChange?.(page - 1)}
                 disabled={!canGoPrevious}
-                className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                className="page-btn"
                 aria-label="Previous page"
             >
                 <i className="fa-solid fa-chevron-left"></i>
@@ -60,7 +60,7 @@ return (
                 item === "..." ? (
                     <span
                         key={`ellipsis-${index}`}
-                        className="flex h-9 w-9 items-center justify-center text-gray-400"
+                        className="page-btn"
                         aria-hidden="true"
                     >
                         ...
@@ -70,11 +70,7 @@ return (
                         type="button"
                         key={item}
                         onClick={() => onPageChange?.(item)}
-                        className={`flex h-9 w-9 items-center justify-center rounded-md border text-sm font-medium transition ${
-                            item === page
-                                ? "border-blue-600 bg-blue-600 text-white"
-                                : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                        }`}
+                        className={`page-btn ${item === page ? "active" : ""}`}
                         aria-current={item === page ? "page" : undefined}
                     >
                         {item}
@@ -86,7 +82,7 @@ return (
                 type="button"
                 onClick={() => onPageChange?.(page + 1)}
                 disabled={!canGoNext}
-                className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                className="page-btn"
                 aria-label="Next page"
             >
                 <i className="fa-solid fa-chevron-right"></i>
