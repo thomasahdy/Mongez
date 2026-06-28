@@ -75,14 +75,16 @@ function ProtectedShell({ isAuthenticated, authReady }) {
 
 function AppContent() {
   const [path, setPath] = useState([]);
-  const [language, setLanguage] = useState("en");
   const { i18n } = useTranslation();
+  const [language, setLanguage] = useState(() => (i18n.resolvedLanguage || i18n.language || "en").slice(0, 2));
   const authSession = useAuthSessionQuery();
   const authReady = !authSession.isLoading;
   const isAuthenticated = Boolean(authSession.data?.isAuthenticated);
 
   useEffect(() => {
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+    document.documentElement.lang = language;
+    window.localStorage.setItem("mongez.language", language);
     void i18n.changeLanguage(language);
   }, [i18n, language]);
 

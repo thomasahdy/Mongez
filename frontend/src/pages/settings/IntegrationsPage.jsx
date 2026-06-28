@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import SettingsSidebar from "./sections/SettingsSidebar";
 import { useAppContext } from "../AppContext";
 import {
@@ -12,100 +13,90 @@ import {
 const SUPPORTED_PROVIDERS = [
   {
     id: "google-drive",
-    name: "Google Drive",
-    category: "File Storage",
+    key: "drive",
     icon: "fa-brands fa-google-drive",
     color: "from-emerald-400 to-sky-500",
-    description: "Attach Drive files to tasks and keep linked documents available from Mongez.",
     backend: "drive",
   },
   {
     id: "google-calendar",
-    name: "Google Calendar",
-    category: "Calendar",
+    key: "calendar",
     icon: "fa-regular fa-calendar-check",
     color: "from-blue-500 to-cyan-400",
-    description: "Authorize Google Calendar for the active workspace and trigger a manual sync when needed.",
     backend: "calendar",
   },
   {
     id: "whatsapp",
-    name: "WhatsApp",
-    category: "Messaging",
+    key: "whatsapp",
     icon: "fa-brands fa-whatsapp",
     color: "from-green-400 to-emerald-600",
-    description: "See whether WhatsApp messaging is configured for the active workspace.",
     backend: "whatsapp",
   },
   {
     id: "telegram",
-    name: "Telegram",
-    category: "Messaging",
+    key: "telegram",
     icon: "fa-brands fa-telegram",
     color: "from-sky-400 to-blue-600",
-    description: "See whether the Telegram bot is configured for the active workspace.",
     backend: "telegram",
   },
 ];
-
-const FILTERS = ["All Apps", ...new Set(SUPPORTED_PROVIDERS.map((provider) => provider.category))];
 
 const integrationPath = [
   { name: "Settings", color: "text-slate-400", ref: "/settings" },
   { name: "Integrations", color: "text-slate-800", ref: "/settings/integrations" },
 ];
 
-function getStatus(provider, statuses, activeSpaceId) {
+function getStatus(provider, statuses, activeSpaceId, t) {
   if (provider.backend === "drive") {
     return statuses.googleDriveConnected
-      ? { label: "Connected", tone: "green", detail: "Drive authorization is active for the signed-in user." }
-      : { label: "Not connected", tone: "slate", detail: "Authorize Google Drive to attach files from tasks." };
+      ? { label: t("integrations.providers.drive.connected"), tone: "green", detail: t("integrations.providers.drive.connectedDetail") }
+      : { label: t("integrations.providers.drive.notConnected"), tone: "slate", detail: t("integrations.providers.drive.notConnectedDetail") };
   }
 
   if (provider.backend === "calendar") {
     return activeSpaceId
-      ? { label: "Authorization required", tone: "blue", detail: "Open the Google authorization flow in a separate window, then return here to run a manual sync." }
-      : { label: "Select a space", tone: "amber", detail: "Choose a workspace before starting Google Calendar authorization." };
+      ? { label: t("integrations.providers.calendar.authRequired"), tone: "blue", detail: t("integrations.providers.calendar.authRequiredDetail") }
+      : { label: t("integrations.providers.selectSpace"), tone: "amber", detail: t("integrations.providers.calendar.selectSpaceDetail") };
   }
 
   if (provider.backend === "whatsapp") {
     if (!activeSpaceId) {
-      return { label: "Select a space", tone: "amber", detail: "Workspace-scoped messaging needs an active space." };
+      return { label: t("integrations.providers.selectSpace"), tone: "amber", detail: t("integrations.providers.whatsapp.workspaceDetail") };
     }
 
     if (!statuses.whatsapp) {
-      return { label: "Status unavailable", tone: "slate", detail: "The workspace status endpoint did not return WhatsApp details." };
+      return { label: t("integrations.providers.whatsapp.statusUnavailable"), tone: "slate", detail: t("integrations.providers.whatsapp.statusUnavailableDetail") };
     }
 
     if (statuses.whatsapp.configured) {
       return {
-        label: statuses.whatsapp.isActive ? "Configured" : "Inactive",
+        label: statuses.whatsapp.isActive ? t("integrations.providers.whatsapp.configured") : t("integrations.providers.whatsapp.inactive"),
         tone: statuses.whatsapp.isActive ? "green" : "amber",
-        detail: statuses.whatsapp.displayName || "Workspace account found.",
+        detail: statuses.whatsapp.displayName || t("common.selected"),
       };
     }
 
-    return { label: "Not configured", tone: "slate", detail: "No WhatsApp workspace account is configured yet." };
+    return { label: t("integrations.providers.whatsapp.notConfigured"), tone: "slate", detail: t("integrations.providers.whatsapp.notConfiguredDetail") };
   }
 
   if (provider.backend === "telegram") {
     if (!activeSpaceId) {
-      return { label: "Select a space", tone: "amber", detail: "Workspace-scoped messaging needs an active space." };
+      return { label: t("integrations.providers.selectSpace"), tone: "amber", detail: t("integrations.providers.telegram.workspaceDetail") };
     }
 
     if (!statuses.telegram) {
-      return { label: "Status unavailable", tone: "slate", detail: "The workspace status endpoint did not return Telegram details." };
+      return { label: t("integrations.providers.telegram.statusUnavailable"), tone: "slate", detail: t("integrations.providers.telegram.statusUnavailableDetail") };
     }
 
     if (statuses.telegram.configured) {
       return {
-        label: statuses.telegram.isActive ? "Configured" : "Inactive",
+        label: statuses.telegram.isActive ? t("integrations.providers.telegram.configured") : t("integrations.providers.telegram.inactive"),
         tone: statuses.telegram.isActive ? "green" : "amber",
-        detail: statuses.telegram.botUsername ? `Bot ${statuses.telegram.botUsername}` : "Workspace bot found.",
+        detail: statuses.telegram.botUsername ? t("integrations.providers.telegram.bot", { value: statuses.telegram.botUsername }) : t("common.selected"),
       };
     }
 
-    return { label: "Not configured", tone: "slate", detail: "No Telegram workspace bot is configured yet." };
+    return { label: t("integrations.providers.telegram.notConfigured"), tone: "slate", detail: t("integrations.providers.telegram.notConfiguredDetail") };
   }
 
   return { label: "Unknown", tone: "slate", detail: "" };
@@ -146,6 +137,7 @@ function ProviderAction({
   onCalendarConnect,
   onCalendarSync,
 }) {
+  const { t } = useTranslation();
   const busy = busyAction === provider.id;
 
   if (provider.backend === "drive") {
@@ -156,7 +148,7 @@ function ProviderAction({
         disabled={busy}
         className="rounded-2xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-wait disabled:opacity-60 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-500/10"
       >
-        {busy ? "Disconnecting..." : "Disconnect"}
+        {busy ? t("integrations.buttons.disconnecting") : t("integrations.buttons.disconnect")}
       </button>
     ) : (
       <button
@@ -164,7 +156,7 @@ function ProviderAction({
         onClick={onDriveConnect}
         className="rounded-2xl bg-sky-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-400"
       >
-        Connect
+        {t("integrations.buttons.connect")}
       </button>
     );
   }
@@ -178,7 +170,7 @@ function ProviderAction({
           disabled={!activeSpaceId || busy}
           className="rounded-2xl bg-sky-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700"
         >
-          {busy ? "Opening..." : "Authorize"}
+          {busy ? t("integrations.buttons.opening") : t("integrations.buttons.authorize")}
         </button>
         <button
           type="button"
@@ -186,7 +178,7 @@ function ProviderAction({
           disabled={!activeSpaceId || busy}
           className="rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
         >
-          Manual sync
+          {t("integrations.buttons.manualSync")}
         </button>
       </div>
     );
@@ -198,17 +190,18 @@ function ProviderAction({
       disabled
       className="rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-400 opacity-70 dark:border-slate-700"
     >
-      Status only
+      {t("integrations.buttons.statusOnly")}
     </button>
   );
 }
 
 export default function IntegrationsPage({ setPath }) {
   const { activeSpace, activeSpaceId } = useAppContext();
+  const { t } = useTranslation();
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All Apps");
+  const [filter, setFilter] = useState("allApps");
   const [busyAction, setBusyAction] = useState("");
   const popupWatcherRef = useRef(null);
   const statusesQuery = useIntegrationStatusesQuery(activeSpaceId);
@@ -222,6 +215,44 @@ export default function IntegrationsPage({ setPath }) {
     telegram: null,
   };
   const loading = statusesQuery.isLoading || statusesQuery.isFetching;
+  const filters = useMemo(
+    () => [
+      { key: "allApps", label: t("integrations.filters.allApps") },
+      { key: "fileStorage", label: t("integrations.filters.fileStorage") },
+      { key: "calendar", label: t("integrations.filters.calendar") },
+      { key: "messaging", label: t("integrations.filters.messaging") },
+    ],
+    [t],
+  );
+  const providerMeta = useMemo(
+    () => ({
+      drive: {
+        name: t("integrations.providers.drive.name"),
+        category: t("integrations.providers.drive.category"),
+        description: t("integrations.providers.drive.description"),
+        filterKey: "fileStorage",
+      },
+      calendar: {
+        name: t("integrations.providers.calendar.name"),
+        category: t("integrations.providers.calendar.category"),
+        description: t("integrations.providers.calendar.description"),
+        filterKey: "calendar",
+      },
+      whatsapp: {
+        name: t("integrations.providers.whatsapp.name"),
+        category: t("integrations.providers.whatsapp.category"),
+        description: t("integrations.providers.whatsapp.description"),
+        filterKey: "messaging",
+      },
+      telegram: {
+        name: t("integrations.providers.telegram.name"),
+        category: t("integrations.providers.telegram.category"),
+        description: t("integrations.providers.telegram.description"),
+        filterKey: "messaging",
+      },
+    }),
+    [t],
+  );
 
   useEffect(() => {
     setPath?.(integrationPath);
@@ -237,9 +268,9 @@ export default function IntegrationsPage({ setPath }) {
 
   useEffect(() => {
     if (statusesQuery.isError) {
-      setError(statusesQuery.error?.message || "Unable to load integration statuses.");
+      setError(statusesQuery.error?.message || t("integrations.errors.loadFailed"));
     }
-  }, [statusesQuery.error?.message, statusesQuery.isError]);
+  }, [statusesQuery.error?.message, statusesQuery.isError, t]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -247,7 +278,7 @@ export default function IntegrationsPage({ setPath }) {
     const authError = params.get("error");
 
     if (connected === "google") {
-      setSuccessMessage("Google Drive connected successfully.");
+      setSuccessMessage(t("integrations.success.driveConnected"));
       params.delete("connected");
       const nextQuery = params.toString();
       window.history.replaceState({}, "", `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`);
@@ -266,26 +297,27 @@ export default function IntegrationsPage({ setPath }) {
     const query = search.trim().toLowerCase();
 
     return SUPPORTED_PROVIDERS.filter((provider) => {
-      const matchesFilter = filter === "All Apps" || provider.category === filter;
-      const matchesSearch = !query || `${provider.name} ${provider.category} ${provider.description}`.toLowerCase().includes(query);
+      const meta = providerMeta[provider.key];
+      const matchesFilter = filter === "allApps" || meta.filterKey === filter;
+      const matchesSearch = !query || `${meta.name} ${meta.category} ${meta.description}`.toLowerCase().includes(query);
       return matchesFilter && matchesSearch;
     });
-  }, [filter, search]);
+  }, [filter, providerMeta, search]);
 
   const connectedCount = useMemo(() => {
     return SUPPORTED_PROVIDERS.reduce((count, provider) => {
-      const status = getStatus(provider, statuses, activeSpaceId);
+      const status = getStatus(provider, statuses, activeSpaceId, t);
       return status.tone === "green" ? count + 1 : count;
     }, 0);
-  }, [activeSpaceId, statuses]);
+  }, [activeSpaceId, statuses, t]);
 
   const configuredMessagingCount = useMemo(() => {
     return ["whatsapp", "telegram"].reduce((count, providerId) => {
       const provider = SUPPORTED_PROVIDERS.find((item) => item.id === providerId);
-      const status = provider ? getStatus(provider, statuses, activeSpaceId) : null;
+      const status = provider ? getStatus(provider, statuses, activeSpaceId, t) : null;
       return status?.tone === "green" ? count + 1 : count;
     }, 0);
-  }, [activeSpaceId, statuses]);
+  }, [activeSpaceId, statuses, t]);
 
   const handleDriveConnect = () => {
     connectGoogleDrive();
@@ -298,9 +330,9 @@ export default function IntegrationsPage({ setPath }) {
 
     try {
       await disconnectDriveMutation.mutateAsync();
-      setSuccessMessage("Google Drive disconnected.");
+      setSuccessMessage(t("integrations.success.driveDisconnected"));
     } catch (requestError) {
-      setError(requestError.message || "Unable to disconnect Google Drive.");
+      setError(requestError.message || t("integrations.errors.driveDisconnectFailed"));
     } finally {
       setBusyAction("");
     }
@@ -318,7 +350,7 @@ export default function IntegrationsPage({ setPath }) {
     try {
       const result = await connectCalendarMutation.mutateAsync(activeSpaceId);
       if (!result?.url) {
-        throw new Error("Google Calendar did not return an authorization URL.");
+        throw new Error(t("integrations.errors.calendarUrlMissing"));
       }
 
       const popup = window.open(result.url, "mongez-google-calendar", "popup=yes,width=640,height=760");
@@ -328,7 +360,7 @@ export default function IntegrationsPage({ setPath }) {
         return;
       }
 
-      setSuccessMessage("Google Calendar authorization opened in a separate window.");
+      setSuccessMessage(t("integrations.success.calendarWindowOpened"));
 
       popupWatcherRef.current = window.setInterval(() => {
         if (!popup.closed) {
@@ -338,11 +370,11 @@ export default function IntegrationsPage({ setPath }) {
         window.clearInterval(popupWatcherRef.current);
         popupWatcherRef.current = null;
         setBusyAction("");
-        setSuccessMessage("Google Calendar authorization window closed. Run a manual sync to confirm the connection.");
+        setSuccessMessage(t("integrations.success.calendarWindowClosed"));
       }, 600);
       return;
     } catch (requestError) {
-      setError(requestError.message || "Unable to start Google Calendar connection.");
+      setError(requestError.message || t("integrations.errors.calendarConnectFailed"));
     } finally {
       setBusyAction("");
     }
@@ -359,9 +391,9 @@ export default function IntegrationsPage({ setPath }) {
 
     try {
       await syncCalendarMutation.mutateAsync();
-      setSuccessMessage("Google Calendar sync request sent.");
+      setSuccessMessage(t("integrations.success.calendarSyncRequested"));
     } catch (requestError) {
-      setError(requestError.message || "Unable to sync Google Calendar.");
+      setError(requestError.message || t("integrations.errors.calendarSyncFailed"));
     } finally {
       setBusyAction("");
     }
@@ -375,18 +407,18 @@ export default function IntegrationsPage({ setPath }) {
         <div className="mx-auto max-w-6xl px-6 py-6">
           <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-sky-500">Settings</p>
-              <h1 className="text-2xl font-black tracking-tight">App Integrations</h1>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-sky-500">{t("integrations.eyebrow")}</p>
+              <h1 className="text-2xl font-black tracking-tight">{t("integrations.title")}</h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-                Only integrations with existing frontend/backend contracts are shown here. No roadmap or dummy providers are mixed into this page.
+                {t("integrations.description")}
               </p>
               {activeSpace ? (
                 <p className="mt-2 text-xs font-semibold text-slate-400">
-                  Active workspace: <span className="text-slate-600 dark:text-slate-300">{activeSpace.name}</span>
+                  {t("integrations.activeWorkspace", { name: activeSpace.name })}
                 </p>
               ) : (
                 <p className="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-300">
-                  Select a workspace to check messaging integrations or authorize Google Calendar.
+                  {t("integrations.selectWorkspace")}
                 </p>
               )}
             </div>
@@ -402,25 +434,25 @@ export default function IntegrationsPage({ setPath }) {
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:border-sky-200 hover:text-sky-600 disabled:cursor-wait disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-sky-500/40"
             >
               <i className={`fa-solid fa-rotate ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
-              Refresh status
+              {t("integrations.refreshStatus")}
             </button>
           </div>
 
           <div className="mb-6 grid gap-4 md:grid-cols-3">
             <SummaryCard
-              label="Supported"
+              label={t("integrations.summary.supported")}
               value={SUPPORTED_PROVIDERS.length}
-              hint="Integrations with current contracts"
+              hint={t("integrations.summary.supportedHint")}
             />
             <SummaryCard
-              label="Connected"
+              label={t("integrations.summary.connected")}
               value={connectedCount}
-              hint="Providers reporting an active connection"
+              hint={t("integrations.summary.connectedHint")}
             />
             <SummaryCard
-              label="Messaging Ready"
+              label={t("integrations.summary.messagingReady")}
               value={configuredMessagingCount}
-              hint="Workspace messaging channels configured"
+              hint={t("integrations.summary.messagingReadyHint")}
             />
           </div>
 
@@ -431,24 +463,24 @@ export default function IntegrationsPage({ setPath }) {
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search supported apps..."
+                  placeholder={t("integrations.searchPlaceholder")}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-900"
                 />
               </label>
 
               <div className="flex flex-wrap gap-2">
-                {FILTERS.map((item) => (
+                {filters.map((item) => (
                   <button
-                    key={item}
+                    key={item.key}
                     type="button"
-                    onClick={() => setFilter(item)}
+                    onClick={() => setFilter(item.key)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                      filter === item
+                      filter === item.key
                         ? "border-sky-400 bg-sky-500 text-white"
                         : "border-slate-200 bg-slate-50 text-slate-500 hover:border-sky-200 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400"
                     }`}
                   >
-                    {item}
+                    {item.label}
                   </button>
                 ))}
               </div>
@@ -469,7 +501,8 @@ export default function IntegrationsPage({ setPath }) {
 
           <div className="grid gap-4 md:grid-cols-2">
             {visibleProviders.map((provider) => {
-              const status = getStatus(provider, statuses, activeSpaceId);
+              const status = getStatus(provider, statuses, activeSpaceId, t);
+              const meta = providerMeta[provider.key];
 
               return (
                 <article
@@ -480,23 +513,23 @@ export default function IntegrationsPage({ setPath }) {
                     <div className={`grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br ${provider.color} text-xl text-white shadow-lg shadow-slate-900/10`}>
                       <i className={provider.icon} aria-hidden="true" />
                     </div>
-                    <StatusBadge status={loading ? { label: "Loading", tone: "slate" } : status} />
+                    <StatusBadge status={loading ? { label: t("integrations.loading"), tone: "slate" } : status} />
                   </div>
 
                   <div className="flex-1">
                     <div className="mb-2 flex items-center gap-2">
-                      <h2 className="text-base font-black">{provider.name}</h2>
+                      <h2 className="text-base font-black">{meta.name}</h2>
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                        {provider.category}
+                        {meta.category}
                       </span>
                     </div>
-                    <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">{provider.description}</p>
-                    <p className="mt-4 text-xs font-semibold text-slate-500 dark:text-slate-300">{loading ? "Refreshing provider details..." : status.detail}</p>
+                    <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">{meta.description}</p>
+                    <p className="mt-4 text-xs font-semibold text-slate-500 dark:text-slate-300">{loading ? t("integrations.providerDetailLoading") : status.detail}</p>
                     {provider.backend === "whatsapp" && statuses.whatsapp?.displayName ? (
-                      <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-300">Account: {statuses.whatsapp.displayName}</p>
+                      <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-300">{t("integrations.providers.whatsapp.account", { value: statuses.whatsapp.displayName })}</p>
                     ) : null}
                     {provider.backend === "telegram" && statuses.telegram?.botUsername ? (
-                      <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-300">Bot: {statuses.telegram.botUsername}</p>
+                      <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-300">{t("integrations.providers.telegram.bot", { value: statuses.telegram.botUsername })}</p>
                     ) : null}
                   </div>
 
@@ -519,7 +552,7 @@ export default function IntegrationsPage({ setPath }) {
 
           {!visibleProviders.length ? (
             <div className="mt-8 rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-              No supported integrations match your search.
+              {t("integrations.noMatches")}
             </div>
           ) : null}
         </div>

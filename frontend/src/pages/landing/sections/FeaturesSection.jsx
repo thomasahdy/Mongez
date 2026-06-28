@@ -1,6 +1,7 @@
 import { Icon } from '../../../components/ui/Icons'
+import { useTranslation } from "react-i18next";
 
-const featureRows = [
+const FEATURE_ROWS = [
   {
     title: 'Smart Task Board',
     description:
@@ -48,7 +49,7 @@ const featureRows = [
   },
 ]
 
-function FeatureMockup({ accent, preview }) {
+function FeatureMockup({ accent, preview, riskLabels, automationTriggers, departments, reportStats, t }) {
   const isRiskPreview = preview === 'risks'
   const isAutomationPreview = preview === 'automation'
   const isDepartmentPreview = preview === 'departments'
@@ -92,11 +93,11 @@ function FeatureMockup({ accent, preview }) {
         <div className="space-y-3 rounded-3xl bg-slate-50 p-4">
           <div className="flex items-center justify-between">
             <div className="h-3 w-24 rounded-full bg-slate-300" />
-            <span className="rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-500">3 at risk</span>
+            <span className="rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-500">{t("landing.features.riskPreviewCount")}</span>
           </div>
           <div className={`h-20 rounded-[1.25rem] bg-gradient-to-br ${accent} opacity-85`} />
           <div className="grid gap-2 sm:grid-cols-2">
-            {['Blocked approvals', 'Budget mismatch', 'Overdue owner'].map((risk) => (
+            {riskLabels.map((risk) => (
               <div key={risk} className="rounded-2xl border border-rose-100 bg-white px-3 py-3 text-xs text-slate-600 shadow-sm">
                 <div className="mb-2 h-2 w-12 rounded-full bg-rose-300" />
                 {risk}
@@ -111,7 +112,7 @@ function FeatureMockup({ accent, preview }) {
           <div className="rounded-3xl bg-slate-50 p-4">
             <div className="h-3 w-20 rounded-full bg-slate-200" />
             <div className="mt-4 space-y-3">
-              {['New task created', 'Owner inactive 48h', 'Deadline in 24h'].map((trigger) => (
+              {automationTriggers.map((trigger) => (
                 <div key={trigger} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs text-slate-600">
                   {trigger}
                 </div>
@@ -122,10 +123,10 @@ function FeatureMockup({ accent, preview }) {
             <div className={`h-10 rounded-2xl bg-gradient-to-r ${accent} opacity-90`} />
             <div className="my-3 flex items-center justify-center text-slate-300">...</div>
             <div className="rounded-2xl border border-sky-100 bg-sky-50 px-3 py-3 text-xs text-sky-600">
-              Auto-send reminder and escalate to lead
+              {t("landing.features.automationReminder")}
             </div>
             <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-xs text-emerald-600">
-              Generate weekly summary for stakeholders
+              {t("landing.features.automationSummary")}
             </div>
           </div>
         </div>
@@ -133,7 +134,7 @@ function FeatureMockup({ accent, preview }) {
 
       {isDepartmentPreview && (
         <div className="grid gap-3 sm:grid-cols-2">
-          {['Programs', 'Finance', 'Operations', 'Partnerships'].map((dept, index) => (
+          {departments.map((dept, index) => (
             <div key={dept} className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-700">{dept}</span>
@@ -153,7 +154,7 @@ function FeatureMockup({ accent, preview }) {
         <div className="space-y-4 rounded-3xl bg-slate-50 p-4">
           <div className="flex items-center justify-between">
             <div className="h-3 w-28 rounded-full bg-slate-300" />
-            <span className="rounded-full bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-600">Live export</span>
+            <span className="rounded-full bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-600">{t("landing.features.liveExport")}</span>
           </div>
           <div className="grid grid-cols-5 items-end gap-2 rounded-2xl border border-slate-100 bg-white px-3 py-4">
             {[45, 72, 58, 84, 66].map((height, index) => (
@@ -165,7 +166,7 @@ function FeatureMockup({ accent, preview }) {
             ))}
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
-            {['Impact score 92%', 'Funding secured +38%', 'Tasks completed 1,284'].map((item) => (
+            {reportStats.map((item) => (
               <div key={item} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-medium text-slate-600">
                 {item}
               </div>
@@ -178,6 +179,14 @@ function FeatureMockup({ accent, preview }) {
 }
 
 function FeaturesSection() {
+  const { t } = useTranslation();
+  const rowsCopy = t("landing.features.rows", { returnObjects: true });
+  const featureRows = FEATURE_ROWS.map((feature, index) => ({ ...feature, ...rowsCopy[index] }));
+  const riskLabels = t("landing.features.riskPreviewLabels", { returnObjects: true });
+  const automationTriggers = t("landing.features.automationTriggers", { returnObjects: true });
+  const departments = t("landing.features.departments", { returnObjects: true });
+  const reportStats = t("landing.features.reportsPreviewStats", { returnObjects: true });
+
   return (
     <section id="features" className="bg-[#F1F5F9] px-6 py-24 text-[#0F172A] lg:px-10">
       <div className="mx-auto max-w-6xl space-y-24">
@@ -187,10 +196,18 @@ function FeaturesSection() {
             className={`grid items-center gap-12 ${feature.imageLeft ? 'lg:grid-cols-[1fr_0.95fr]' : 'lg:grid-cols-[0.95fr_1fr]'}`}
           >
             <div className={feature.imageLeft ? 'lg:order-1' : ''}>
-              <FeatureMockup accent={feature.accent} preview={feature.preview} />
+              <FeatureMockup
+                accent={feature.accent}
+                preview={feature.preview}
+                riskLabels={riskLabels}
+                automationTriggers={automationTriggers}
+                departments={departments}
+                reportStats={reportStats}
+                t={t}
+              />
             </div>
             <div className={feature.imageLeft ? 'lg:order-2' : ''}>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-400">AI Features</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-400">{t("landing.features.eyebrow")}</p>
               <h2 className="mt-4 text-4xl font-black tracking-[-0.04em] text-[#0F172A] sm:text-5xl">{feature.title}</h2>
               <p className="mt-5 max-w-xl text-lg leading-8 text-[#475569]">{feature.description}</p>
               <div className="mt-8 space-y-4">

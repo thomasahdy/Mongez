@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import SettingsSidebar from "./sections/SettingsSidebar";
 import { useAppContext } from "../AppContext";
 import {
@@ -14,11 +15,6 @@ import {
 const ROLE_OPTIONS = ["MEMBER", "ADMIN"];
 const MANAGE_ROLES = new Set(["OWNER", "ADMIN"]);
 
-const membersPath = [
-  { name: "Settings", color: "text-slate-400", ref: "/settings" },
-  { name: "Members & Roles", color: "text-slate-800", ref: "/settings/members" },
-];
-
 function getMemberName(member) {
   return (
     member?.user?.fullName ||
@@ -27,7 +23,7 @@ function getMemberName(member) {
     member?.name ||
     member?.user?.email ||
     member?.email ||
-    "Workspace member"
+    ""
   );
 }
 
@@ -41,31 +37,6 @@ function getMemberRole(member) {
 
 function getMemberStatus(member) {
   return member?.user?.status || member?.status || "ACTIVE";
-}
-
-function formatRole(role) {
-  return String(role || "MEMBER")
-    .toLowerCase()
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function formatDate(dateValue) {
-  if (!dateValue) {
-    return "Unknown";
-  }
-
-  const parsed = new Date(dateValue);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return "Unknown";
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 function isValidInviteEmail(value) {
@@ -84,6 +55,7 @@ function SummaryCard({ label, value, hint }) {
 
 export default function SettingsMembersPage({ setPath }) {
   const { activeSpace, activeSpaceId, error, refreshApp, user } = useAppContext();
+  const { t, i18n } = useTranslation();
   const [inviteForm, setInviteForm] = useState({ email: "", role: "MEMBER" });
   const [pageError, setPageError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -101,12 +73,34 @@ export default function SettingsMembersPage({ setPath }) {
   const loading = membersQuery.isLoading || membersQuery.isFetching;
   const loadingInvitations = invitationsQuery.isLoading || invitationsQuery.isFetching;
   const normalizedInviteEmail = inviteForm.email.trim().toLowerCase();
+  const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
   const inviteMatchesExistingMember = spaceMembers.some((member) => getMemberEmail(member).toLowerCase() === normalizedInviteEmail);
   const inviteMatchesPending = invitations.some((invite) => String(invite.email || "").toLowerCase() === normalizedInviteEmail);
 
+  const formatRole = (role) => t(`members.roles.${String(role || "MEMBER").toUpperCase()}`, { defaultValue: String(role || "MEMBER") });
+  const formatMemberName = (member) => getMemberName(member) || t("members.labels.memberFallback");
+  const formatMemberStatus = (member) =>
+    t(`members.statuses.${String(getMemberStatus(member) || "ACTIVE").toUpperCase()}`, {
+      defaultValue: String(getMemberStatus(member) || "ACTIVE"),
+    });
+
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "";
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toLocaleDateString(locale, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   useEffect(() => {
-    setPath?.(membersPath);
-  }, [setPath]);
+    setPath?.([
+      { name: t("settingsSidebar.workspace"), color: "text-slate-400", ref: "/settings" },
+      { name: t("members.breadcrumb"), color: "text-slate-800", ref: "/settings/members" },
+    ]);
+  }, [setPath, t]);
 
   const currentMembership = useMemo(
     () => spaceMembers.find((member) => member?.user?.id === user?.id || member?.userId === user?.id) || null,
@@ -118,28 +112,28 @@ export default function SettingsMembersPage({ setPath }) {
 
   useEffect(() => {
     if (membersQuery.isError) {
-      setPageError(membersQuery.error?.message || "Unable to load workspace members.");
+      setPageError(membersQuery.error?.message || t("members.errors.membersFailed"));
       return;
     }
 
     if (invitationsQuery.isError) {
-      setPageError(invitationsQuery.error?.message || "Unable to load pending invitations.");
+      setPageError(invitationsQuery.error?.message || t("members.errors.invitesFailed"));
+      return;
     }
+
+    setPageError("");
   }, [
     invitationsQuery.error?.message,
     invitationsQuery.isError,
     membersQuery.error?.message,
     membersQuery.isError,
+    t,
   ]);
 
   const handleRefresh = async () => {
     setPageError("");
     setSuccessMessage("");
-    await Promise.all([
-      refreshApp?.(),
-      membersQuery.refetch(),
-      invitationsQuery.refetch(),
-    ]);
+    await Promise.all([refreshApp?.(), membersQuery.refetch(), invitationsQuery.refetch()]);
   };
 
   const handleInviteSubmit = async (event) => {
@@ -150,22 +144,22 @@ export default function SettingsMembersPage({ setPath }) {
     }
 
     if (!isValidInviteEmail(inviteForm.email)) {
-      setPageError("Enter a valid teammate email address before sending the invite.");
+      setPageError(t("members.errors.invalidEmail"));
       return;
     }
 
     if (String(user?.email || "").toLowerCase() === normalizedInviteEmail) {
-      setPageError("You are already a member of this workspace.");
+      setPageError(t("members.errors.selfInvite"));
       return;
     }
 
     if (inviteMatchesExistingMember) {
-      setPageError("That email already belongs to a workspace member.");
+      setPageError(t("members.errors.alreadyMember"));
       return;
     }
 
     if (inviteMatchesPending) {
-      setPageError("A pending invitation already exists for that email.");
+      setPageError(t("members.errors.alreadyInvited"));
       return;
     }
 
@@ -179,9 +173,9 @@ export default function SettingsMembersPage({ setPath }) {
         role: inviteForm.role,
       });
       setInviteForm({ email: "", role: "MEMBER" });
-      setSuccessMessage("Invitation queued successfully.");
+      setSuccessMessage(t("members.labels.invitationQueued"));
     } catch (requestError) {
-      setPageError(requestError.message || "Unable to invite this teammate.");
+      setPageError(requestError.message || t("members.errors.inviteFailed"));
     } finally {
       setBusyAction("");
     }
@@ -201,10 +195,10 @@ export default function SettingsMembersPage({ setPath }) {
         userId: member.user.id,
         role: nextRole,
       });
-      setSuccessMessage(`${getMemberName(member)} is now ${formatRole(nextRole)}.`);
+      setSuccessMessage(t("members.success.roleUpdated", { name: formatMemberName(member), role: formatRole(nextRole) }));
       await refreshApp?.();
     } catch (requestError) {
-      setPageError(requestError.message || "Unable to update this role.");
+      setPageError(requestError.message || t("members.errors.roleFailed"));
     } finally {
       setBusyAction("");
     }
@@ -215,7 +209,7 @@ export default function SettingsMembersPage({ setPath }) {
       return;
     }
 
-    if (!window.confirm(`Remove ${getMemberName(member)} from ${activeSpace?.name || "this workspace"}?`)) {
+    if (!window.confirm(t("members.confirm.remove", { name: formatMemberName(member), workspace: activeSpace?.name || t("common.workspace") }))) {
       return;
     }
 
@@ -225,10 +219,10 @@ export default function SettingsMembersPage({ setPath }) {
 
     try {
       await removeMemberMutation.mutateAsync(member.user.id);
-      setSuccessMessage(`${getMemberName(member)} was removed from the workspace.`);
+      setSuccessMessage(t("members.success.memberRemoved", { name: formatMemberName(member) }));
       await refreshApp?.();
     } catch (requestError) {
-      setPageError(requestError.message || "Unable to remove this member.");
+      setPageError(requestError.message || t("members.errors.removeFailed"));
     } finally {
       setBusyAction("");
     }
@@ -239,7 +233,7 @@ export default function SettingsMembersPage({ setPath }) {
       return;
     }
 
-    if (!window.confirm("Revoke this pending workspace invitation?")) {
+    if (!window.confirm(t("members.confirm.revoke"))) {
       return;
     }
 
@@ -249,9 +243,9 @@ export default function SettingsMembersPage({ setPath }) {
 
     try {
       await revokeInvitationMutation.mutateAsync(inviteId);
-      setSuccessMessage("Invitation revoked.");
+      setSuccessMessage(t("members.labels.invitationRevoked"));
     } catch (requestError) {
-      setPageError(requestError.message || "Unable to revoke this invitation.");
+      setPageError(requestError.message || t("members.errors.revokeFailed"));
     } finally {
       setBusyAction("");
     }
@@ -262,7 +256,7 @@ export default function SettingsMembersPage({ setPath }) {
       return;
     }
 
-    if (!window.confirm(`Leave ${activeSpace?.name || "this workspace"}? You may need a new invitation to rejoin.`)) {
+    if (!window.confirm(t("members.confirm.leave", { workspace: activeSpace?.name || t("common.workspace") }))) {
       return;
     }
 
@@ -275,7 +269,7 @@ export default function SettingsMembersPage({ setPath }) {
       await refreshApp?.();
       window.location.href = "/spaces";
     } catch (requestError) {
-      setPageError(requestError.message || "Unable to leave this workspace.");
+      setPageError(requestError.message || t("members.errors.leaveFailed"));
     } finally {
       setBusyAction("");
     }
@@ -285,18 +279,18 @@ export default function SettingsMembersPage({ setPath }) {
     <div className="flex flex-1 overflow-hidden">
       <SettingsSidebar activeId="members" />
 
-      <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950" aria-label="Members and roles settings">
+      <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950" aria-label={t("members.title")}>
         <div className="mx-auto max-w-6xl px-6 py-6">
           <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-sky-500">Workspace</p>
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">Members & Roles</h1>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-sky-500">{t("members.eyebrow")}</p>
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">{t("members.title")}</h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-                Manage the real membership list and invitation queue for {activeSpace?.name || "the active workspace"}.
+                {t("members.description", { workspace: activeSpace?.name || t("common.workspace") })}
               </p>
               {currentMembership ? (
                 <p className="mt-2 text-xs font-semibold text-slate-400 dark:text-slate-500">
-                  Your role: <span className="text-slate-700 dark:text-slate-300">{formatRole(currentRole)}</span>
+                  {t("members.yourRole", { role: formatRole(currentRole) })}
                 </p>
               ) : null}
             </div>
@@ -309,7 +303,7 @@ export default function SettingsMembersPage({ setPath }) {
                   disabled={busyAction === "leave" || !activeSpaceId}
                   className="rounded-2xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-500/30 dark:bg-slate-900 dark:text-rose-300 dark:hover:bg-rose-500/10"
                 >
-                  {busyAction === "leave" ? "Leaving..." : "Leave workspace"}
+                  {busyAction === "leave" ? t("members.leaving") : t("members.leaveWorkspace")}
                 </button>
               ) : null}
 
@@ -319,26 +313,22 @@ export default function SettingsMembersPage({ setPath }) {
                 disabled={loading || loadingInvitations}
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:border-sky-200 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
               >
-                {loading || loadingInvitations ? "Refreshing..." : "Refresh"}
+                {loading || loadingInvitations ? t("members.refreshing") : t("members.refresh")}
               </button>
             </div>
           </div>
 
           <div className="mb-6 grid gap-4 md:grid-cols-3">
+            <SummaryCard label={t("members.summary.members")} value={spaceMembers.length} hint={t("members.summary.membersHint")} />
             <SummaryCard
-              label="Members"
-              value={spaceMembers.length}
-              hint="Active memberships returned by the backend"
+              label={t("members.summary.pendingInvites")}
+              value={canViewInvitations ? invitations.length : "--"}
+              hint={canViewInvitations ? t("members.summary.pendingInvitesHint") : t("members.summary.invitationRestricted")}
             />
             <SummaryCard
-              label="Pending Invites"
-              value={canViewInvitations ? invitations.length : "—"}
-              hint={canViewInvitations ? "Outstanding invitations for this workspace" : "Invitation access is restricted"}
-            />
-            <SummaryCard
-              label="Admins"
+              label={t("members.summary.admins")}
               value={spaceMembers.filter((member) => ["OWNER", "ADMIN"].includes(String(getMemberRole(member)).toUpperCase())).length}
-              hint="Members with elevated workspace permissions"
+              hint={t("members.summary.adminsHint")}
             />
           </div>
 
@@ -357,11 +347,11 @@ export default function SettingsMembersPage({ setPath }) {
           <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
             <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <h2 className="text-sm font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Current members</h2>
+                <h2 className="text-sm font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("members.sections.currentMembers")}</h2>
               </div>
 
               {loading ? (
-                <div className="p-6 text-sm text-slate-500 dark:text-slate-400">Loading workspace members...</div>
+                <div className="p-6 text-sm text-slate-500 dark:text-slate-400">{t("common.loading")}</div>
               ) : spaceMembers.length ? (
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {spaceMembers.map((member) => {
@@ -376,18 +366,18 @@ export default function SettingsMembersPage({ setPath }) {
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                           <div className="flex items-center gap-3">
                             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-50 text-sm font-black text-sky-600 dark:bg-sky-500/10 dark:text-sky-300">
-                              {getMemberName(member).slice(0, 1).toUpperCase()}
+                              {formatMemberName(member).slice(0, 1).toUpperCase()}
                             </div>
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{getMemberName(member)}</p>
+                                <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{formatMemberName(member)}</p>
                                 {isSelf ? (
                                   <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
-                                    You
+                                    {t("members.labels.you")}
                                   </span>
                                 ) : null}
                                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                                  {getMemberStatus(member)}
+                                  {formatMemberStatus(member)}
                                 </span>
                               </div>
                               {getMemberEmail(member) ? (
@@ -409,7 +399,7 @@ export default function SettingsMembersPage({ setPath }) {
                                     {formatRole(option)}
                                   </option>
                                 ))}
-                                {role === "OWNER" ? <option value="OWNER">Owner</option> : null}
+                                {role === "OWNER" ? <option value="OWNER">{t("members.roles.OWNER")}</option> : null}
                               </select>
                             ) : (
                               <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
@@ -424,7 +414,7 @@ export default function SettingsMembersPage({ setPath }) {
                                 disabled={isBusy}
                                 className="rounded-2xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-500/30 dark:text-rose-300 dark:hover:bg-rose-500/10"
                               >
-                                {busyAction === `remove-${member?.user?.id}` ? "Removing..." : "Remove"}
+                                {busyAction === `remove-${member?.user?.id}` ? t("members.labels.removing") : t("members.labels.remove")}
                               </button>
                             ) : null}
                           </div>
@@ -435,7 +425,7 @@ export default function SettingsMembersPage({ setPath }) {
                 </div>
               ) : (
                 <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                  No members were returned for the active workspace.
+                  {t("members.labels.noMembers")}
                 </div>
               )}
             </section>
@@ -444,9 +434,9 @@ export default function SettingsMembersPage({ setPath }) {
               {canManageMembers ? (
                 <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                   <div className="mb-4">
-                    <h2 className="text-sm font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Invite teammate</h2>
+                    <h2 className="text-sm font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("members.sections.inviteTeammate")}</h2>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      Send a real invitation through the workspace membership flow.
+                      {t("members.sections.inviteDescription")}
                     </p>
                   </div>
 
@@ -455,7 +445,7 @@ export default function SettingsMembersPage({ setPath }) {
                       type="email"
                       value={inviteForm.email}
                       onChange={(event) => setInviteForm((current) => ({ ...current, email: event.target.value }))}
-                      placeholder="teammate@company.com"
+                      placeholder={t("members.labels.emailPlaceholder")}
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                       required
                     />
@@ -477,10 +467,10 @@ export default function SettingsMembersPage({ setPath }) {
                       disabled={busyAction === "invite" || !activeSpaceId}
                       className="w-full rounded-2xl bg-sky-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {busyAction === "invite" ? "Sending invite..." : "Send invite"}
+                      {busyAction === "invite" ? t("members.labels.sendingInvite") : t("members.labels.sendInvite")}
                     </button>
                     {normalizedInviteEmail && !isValidInviteEmail(inviteForm.email) ? (
-                      <p className="text-xs text-rose-600">Enter a valid email address.</p>
+                      <p className="text-xs text-rose-600">{t("members.labels.validEmail")}</p>
                     ) : null}
                   </form>
                 </section>
@@ -488,18 +478,18 @@ export default function SettingsMembersPage({ setPath }) {
 
               <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <div className="mb-4">
-                  <h2 className="text-sm font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Pending invitations</h2>
+                  <h2 className="text-sm font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("members.sections.pendingInvitations")}</h2>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Outstanding invites already created for this workspace.
+                    {t("members.sections.pendingDescription")}
                   </p>
                 </div>
 
                 {!canViewInvitations ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    Your role does not have access to the invitation queue.
+                    {t("members.labels.inviteRestricted")}
                   </div>
                 ) : loadingInvitations ? (
-                  <div className="text-sm text-slate-500 dark:text-slate-400">Loading invitations...</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400">{t("common.loading")}</div>
                 ) : invitations.length ? (
                   <div className="space-y-3">
                     {invitations.map((invite) => (
@@ -508,7 +498,7 @@ export default function SettingsMembersPage({ setPath }) {
                           <div>
                             <div className="text-sm font-bold text-slate-900 dark:text-slate-50">{invite.email}</div>
                             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                              {formatRole(invite.role)} | expires {formatDate(invite.expiresAt)}
+                              {formatRole(invite.role)} | {t("members.labels.expires", { date: formatDate(invite.expiresAt) })}
                             </div>
                           </div>
 
@@ -519,7 +509,7 @@ export default function SettingsMembersPage({ setPath }) {
                               disabled={busyAction === `invite-${invite.id}`}
                               className="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-500/30 dark:text-rose-300 dark:hover:bg-rose-500/10"
                             >
-                              {busyAction === `invite-${invite.id}` ? "Revoking..." : "Revoke"}
+                              {busyAction === `invite-${invite.id}` ? t("members.labels.revoking") : t("members.labels.revoke")}
                             </button>
                           ) : null}
                         </div>
@@ -528,7 +518,7 @@ export default function SettingsMembersPage({ setPath }) {
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    No pending invitations for this workspace.
+                    {t("members.labels.noInvites")}
                   </div>
                 )}
               </section>

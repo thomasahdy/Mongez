@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
 import { useBoardTableQuery, useCreateBoardTaskMutation } from '../../hooks/useDashboardQueries';
@@ -23,6 +24,7 @@ export default function TableView() {
   const { boardId } = useParams();
   const { activeBoard, setPath } = useOutletContext() || {};
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -32,6 +34,7 @@ export default function TableView() {
   const [createError, setCreateError] = useState('');
   const [createSuccess, setCreateSuccess] = useState('');
   const itemsPerPage = 10;
+  const locale = i18n.language?.startsWith('ar') ? 'ar-EG' : 'en-US';
   const boardIdValue = boardId || activeBoard?.id;
   const filters = useMemo(
     () => ({
@@ -50,6 +53,10 @@ export default function TableView() {
   const loading = tableQuery.isLoading || tableQuery.isFetching;
   const error = tableQuery.error?.message || null;
   const creating = createTaskMutation.isPending;
+  const formatStatusLabel = (status) => {
+    const normalized = String(status || "TODO").toUpperCase();
+    return t(`tableView.statuses.${normalized}`);
+  };
 
   useEffect(() => {
     if (!boardId && activeBoard?.id) {
@@ -59,10 +66,10 @@ export default function TableView() {
 
   useEffect(() => {
     setPath?.([
-      { name: 'Workspace', color: 'text-slate-400', ref: '/dashboard' },
-      { name: board?.name || activeBoard?.name || 'Table View', color: 'text-slate-800', ref: '' },
+      { name: t('common.workspace'), color: 'text-slate-400', ref: '/dashboard' },
+      { name: board?.name || activeBoard?.name || t('tableView.title'), color: 'text-slate-800', ref: '' },
     ]);
-  }, [setPath, board?.name, activeBoard?.name]);
+  }, [setPath, board?.name, activeBoard?.name, t]);
 
   const sortedTasks = [...tasks].sort((a, b) => {
     const aValue = a[sortConfig.key] || '';
@@ -96,7 +103,7 @@ export default function TableView() {
 
   const createTask = async () => {
     if (!boardIdValue || !newTaskTitle.trim()) {
-      setCreateError('Select a board and enter a task title before creating a task.');
+      setCreateError(t('tableView.createError'));
       return;
     }
 
@@ -105,7 +112,7 @@ export default function TableView() {
       setCreateSuccess('');
       const boardContext = board;
       if (!boardContext) {
-        throw new Error('Board details are still loading.');
+        throw new Error(t('tableView.boardLoading'));
       }
 
       await createTaskMutation.mutateAsync({
@@ -115,9 +122,9 @@ export default function TableView() {
       await tableQuery.refetch();
       setCurrentPage(1);
       setNewTaskTitle('');
-      setCreateSuccess('Task created successfully.');
+      setCreateSuccess(t('tableView.createSuccess'));
     } catch (createError) {
-      setCreateError(createError.message || 'Unable to create the task.');
+      setCreateError(createError.message || t('tableView.createFailed'));
     }
   };
 
@@ -133,7 +140,7 @@ export default function TableView() {
 
     return (
       <span className={`rounded-md px-2 py-1 text-xs font-semibold ${config.bg} ${config.text}`}>
-        {statusUpper}
+        {formatStatusLabel(statusUpper)}
       </span>
     );
   };
@@ -153,9 +160,9 @@ export default function TableView() {
       <div className="border-b border-slate-200 bg-white px-4 py-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Table tasks</h2>
+            <h2 className="text-sm font-bold text-slate-900">{t('tableView.title')}</h2>
             <p className="text-xs text-slate-500">
-              {board?.name || activeBoard?.name || 'Board tasks'} connected to GET/POST /api/v1/boards/:boardId/tasks
+              {t('tableView.connected', { board: board?.name || activeBoard?.name || t('tableView.title') })}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -169,7 +176,7 @@ export default function TableView() {
               disabled={loading || !boardIdValue}
               className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? 'Refreshing...' : 'Refresh'}
+              {loading ? t('tableView.refreshing') : t('tableView.refresh')}
             </button>
             <input
               value={search}
@@ -177,7 +184,7 @@ export default function TableView() {
                 setSearch(event.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Search tasks"
+              placeholder={t('tableView.searchPlaceholder')}
               className="min-w-[180px] rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
             />
             <select
@@ -188,11 +195,11 @@ export default function TableView() {
               }}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
             >
-              <option value="">All statuses</option>
-              <option value="TODO">TODO</option>
-              <option value="IN_PROGRESS">IN PROGRESS</option>
-              <option value="WAITING">WAITING</option>
-              <option value="DONE">DONE</option>
+              <option value="">{t('tableView.allStatuses')}</option>
+              <option value="TODO">{formatStatusLabel("TODO")}</option>
+              <option value="IN_PROGRESS">{formatStatusLabel("IN_PROGRESS")}</option>
+              <option value="WAITING">{formatStatusLabel("WAITING")}</option>
+              <option value="DONE">{formatStatusLabel("DONE")}</option>
             </select>
             <input
               value={newTaskTitle}
@@ -202,7 +209,7 @@ export default function TableView() {
                   void createTask();
                 }
               }}
-              placeholder="New task title"
+              placeholder={t('tableView.newTaskPlaceholder')}
               className="min-w-[220px] rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-500"
             />
             <button
@@ -211,7 +218,7 @@ export default function TableView() {
               disabled={creating || !newTaskTitle.trim() || !boardIdValue}
               className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {creating ? 'Creating...' : 'Create Task'}
+              {creating ? t('tableView.creating') : t('tableView.createTask')}
             </button>
           </div>
         </div>
@@ -222,11 +229,11 @@ export default function TableView() {
       <div className="flex flex-1 flex-col overflow-hidden">
         {loading ? (
           <div className="flex h-full items-center justify-center">
-            <p className="text-slate-500">Loading tasks...</p>
+            <p className="text-slate-500">{t('tableView.loading')}</p>
           </div>
         ) : error ? (
           <div className="flex h-full items-center justify-center">
-            <p className="text-red-500">Error: {error}</p>
+            <p className="text-red-500">{t('tableView.errorPrefix', { message: error })}</p>
           </div>
         ) : (
           <>
@@ -238,28 +245,28 @@ export default function TableView() {
                       className="cursor-pointer whitespace-nowrap border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100"
                       onClick={() => handleSort('title')}
                     >
-                      Task {renderSortIcon(sortConfig, 'title')}
+                      {t('tableView.headers.task')} {renderSortIcon(sortConfig, 'title')}
                     </th>
                     <th
                       className="cursor-pointer whitespace-nowrap border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100"
                       onClick={() => handleSort('status')}
                     >
-                      Status {renderSortIcon(sortConfig, 'status')}
+                      {t('tableView.headers.status')} {renderSortIcon(sortConfig, 'status')}
                     </th>
                     <th className="w-24 border-r border-slate-200 px-4 py-3 text-center text-xs font-semibold text-slate-600">
-                      Progress
+                      {t('tableView.headers.progress')}
                     </th>
                     <th
                       className="cursor-pointer whitespace-nowrap border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100"
                       onClick={() => handleSort('dueDate')}
                     >
-                      Due Date {renderSortIcon(sortConfig, 'dueDate')}
+                      {t('tableView.headers.dueDate')} {renderSortIcon(sortConfig, 'dueDate')}
                     </th>
                     <th className="w-12 border-r border-slate-200 px-4 py-3 text-center text-xs font-semibold text-slate-600">
-                      Assignee
+                      {t('tableView.headers.assignee')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">
-                      Description
+                      {t('tableView.headers.description')}
                     </th>
                   </tr>
                 </thead>
@@ -271,7 +278,7 @@ export default function TableView() {
                       onClick={() => navigate(`/tasks/${task.id}`)}
                     >
                       <td className="max-w-xs truncate border-r border-slate-200 px-4 py-3 text-sm font-medium text-slate-900">
-                        {task.title || task.name || 'Untitled'}
+                        {task.title || task.name || t('tableView.defaults.untitled')}
                       </td>
                       <td className="border-r border-slate-200 px-4 py-3 text-sm">
                         {getStatusBadge(task.status || task.statusId)}
@@ -291,12 +298,12 @@ export default function TableView() {
                       </td>
                       <td className="whitespace-nowrap border-r border-slate-200 px-4 py-3 text-sm text-slate-600">
                         {task.dueDate
-                          ? new Date(task.dueDate).toLocaleDateString('en-US', {
+                          ? new Date(task.dueDate).toLocaleDateString(locale, {
                               year: 'numeric',
                               month: 'short',
                               day: 'numeric',
                             })
-                          : 'Not set'}
+                          : t('tableView.defaults.notSet')}
                       </td>
                       <td className="border-r border-slate-200 px-4 py-3">
                         {task.assignee && (
@@ -311,7 +318,7 @@ export default function TableView() {
                         )}
                       </td>
                       <td className="truncate px-4 py-3 text-sm text-slate-600">
-                        {task.description || task.comment || 'No description'}
+                        {task.description || task.comment || t('tableView.defaults.noDescription')}
                       </td>
                     </tr>
                   ))}
@@ -321,7 +328,7 @@ export default function TableView() {
               {tasks.length === 0 && !loading && (
                 <div className="flex h-full items-center justify-center">
                   <p className="text-slate-400">
-                    {search || statusFilter ? 'No tasks matched the current search or status filter.' : 'No tasks found'}
+                    {search || statusFilter ? t('tableView.defaults.noTasksFiltered') : t('tableView.defaults.noTasks')}
                   </p>
                 </div>
               )}
@@ -330,7 +337,11 @@ export default function TableView() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3">
                 <div className="text-xs text-slate-600">
-                  Showing {(safeCurrentPage - 1) * itemsPerPage + 1} to {Math.min((safeCurrentPage - 1) * itemsPerPage + paginatedTasks.length, totalItems || paginatedTasks.length)} of {totalItems || paginatedTasks.length} tasks
+                  {t('tableView.pagination.showing', {
+                    from: (safeCurrentPage - 1) * itemsPerPage + 1,
+                    to: Math.min((safeCurrentPage - 1) * itemsPerPage + paginatedTasks.length, totalItems || paginatedTasks.length),
+                    total: totalItems || paginatedTasks.length,
+                  })}
                 </div>
                 <div className="flex gap-1">
                   <button
@@ -338,7 +349,7 @@ export default function TableView() {
                     disabled={safeCurrentPage === 1}
                     className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Previous
+                    {t('tableView.pagination.previous')}
                   </button>
                   {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
                     <button
@@ -358,7 +369,7 @@ export default function TableView() {
                     disabled={safeCurrentPage === totalPages}
                     className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Next
+                    {t('tableView.pagination.next')}
                   </button>
                 </div>
               </div>

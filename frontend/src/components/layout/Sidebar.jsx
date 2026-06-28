@@ -8,6 +8,8 @@ import TreeLink from "./TreeLink";
 import SpaceSwitcher from "../spaces/SpaceSwitcher";
 import { logout } from "../../services/api/authService";
 import { useAppContext } from "../../pages/AppContext";
+import mongezWordmark from "../../assets/Mongez.svg";
+import mongezMark from "../../assets/MongezMLogo.svg";
 
 const OVERVIEW_LINKS = [
   { href: "/my-work", icon: "fa-circle-check", label: "My Work", badge: { label: "5", variant: "danger" } },
@@ -40,18 +42,13 @@ const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
       className="workspace-sidebar flex h-screen w-[260px] flex-col overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 dark:border-slate-700 dark:bg-slate-800 [scrollbar-width:none]"
       aria-label="Sidebar navigation"
     >
-      <div className="flex justify-around">
-        <div className="flex items-center gap-2.5 px-2 py-1 mb-5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-sky-500 shrink-0">
-            <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <path d="M8 22V10l5 8 5-8v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="24" cy="10" r="2" fill="#a5b4fc" />
-            </svg>
+      <div className="flex justify-around p-3">
+        <a href="/dashboard" className="flex items-center gap-0 text-slate-900"  aria-label={t("landing.nav.homeAria")}>
+          <div className="grid h-10 w-10 place-items-center rounded-xl">
+            <img src={mongezMark} alt={t("landing.nav.markAlt")} className="h-8 w-7 object-contain" />
           </div>
-          <NavLink to="/" className="text-[15px] font-bold tracking-tight text-slate-800 dark:text-slate-100">
-            {t("mongez")}
-          </NavLink>
-        </div>
+          <img src={mongezWordmark} alt={t("landing.nav.wordmarkAlt")} className="h-10 w-auto object-contain" />
+        </a>
         {setLanguage ? <ToggleLanguage setLanguage={setLanguage} language={language} /> : null}
       </div>
 

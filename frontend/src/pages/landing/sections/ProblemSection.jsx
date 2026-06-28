@@ -1,7 +1,8 @@
 import { Icon } from '../../../components/ui/Icons'
 import SectionBadge from './SectionBadge'
+import { useTranslation } from "react-i18next";
 
-const problemCards = [
+const PROBLEM_CARDS = [
   {
     icon: 'bars',
     title: 'Tasks get lost in spreadsheets, emails, and scattered tools.',
@@ -29,7 +30,7 @@ const problemCards = [
   },
 ]
 
-const floatingIssues = [
+const FLOATING_ISSUES = [
   { icon: 'warning', label: '23 days blocked', tone: 'text-rose-500' },
   { icon: 'clock', label: 'Overdue', tone: 'text-amber-500' },
   { icon: 'excel', label: 'Excel reports', tone: 'text-orange-500' },
@@ -38,16 +39,22 @@ const floatingIssues = [
 ]
 
 function ProblemSection() {
+  const { t } = useTranslation();
+  const cardsCopy = t("landing.problem.cards", { returnObjects: true });
+  const issueLabels = t("landing.problem.floatingIssues", { returnObjects: true });
+  const problemCards = PROBLEM_CARDS.map((item, index) => ({ ...item, ...cardsCopy[index] }));
+  const floatingIssues = FLOATING_ISSUES.map((item, index) => ({ ...item, label: issueLabels[index] || item.label }));
+
   return (
     <section id="problem" className="px-6 py-24 lg:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto max-w-3xl text-center">
-          <SectionBadge icon="sparkles">The Problem</SectionBadge>
+          <SectionBadge icon="sparkles">{t("landing.problem.badge")}</SectionBadge>
           <h2 className="mt-6 text-4xl font-black tracking-[-0.04em] text-slate-900 sm:text-5xl">
-            Managing NGOs & Teams Shouldn&apos;t Feel Like Firefighting.
+            {t("landing.problem.title")}
           </h2>
           <p className="mt-5 text-lg leading-8 text-slate-500">
-            Legacy tools create more problems than they solve. Teams drown in manual processes while opportunities slip away.
+            {t("landing.problem.description")}
           </p>
         </div>
 

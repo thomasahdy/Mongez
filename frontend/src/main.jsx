@@ -1,15 +1,15 @@
-import * as Sentry from "@sentry/react";
+//import * as Sentry from "@sentry/react";
 
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN || "https://examplePublicKey@o0.ingest.sentry.io/0",
-  integrations: [
-    Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration(),
-  ],
-  tracesSampleRate: 1.0,
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
-});
+// Sentry.init({
+//   dsn: import.meta.env.VITE_SENTRY_DSN || "https://examplePublicKey@o0.ingest.sentry.io/0",
+//   integrations: [
+//     Sentry.browserTracingIntegration(),
+//     Sentry.replayIntegration(),
+//   ],
+//   tracesSampleRate: 1.0,
+//   replaysSessionSampleRate: 0.1,
+//   replaysOnErrorSampleRate: 1.0,
+// });
 
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";

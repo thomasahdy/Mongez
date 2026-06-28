@@ -1,20 +1,17 @@
 import SectionBadge from './SectionBadge'
-
-const metrics = [
-  { value: '92%', label: 'On-Time Delivery' },
-  { value: '3.4x', label: 'Faster Approvals' },
-  { value: '60%', label: 'Less Manual Reporting' },
-  { value: '100%', label: 'Execution Clarity' },
-]
+import { useTranslation } from "react-i18next";
 
 function ResultsSection() {
+  const { t } = useTranslation();
+  const metrics = t("landing.results.metrics", { returnObjects: true });
+
   return (
     <section id="results" className="bg-[#0f172a] px-6 py-24 text-white lg:px-10">
       <div className="mx-auto max-w-6xl text-center">
-        <SectionBadge icon="chart">Impact</SectionBadge>
-        <h2 className="mt-6 text-4xl font-black tracking-[-0.05em] sm:text-5xl lg:text-6xl">Real Results, Measured.</h2>
+        <SectionBadge icon="chart">{t("landing.results.badge")}</SectionBadge>
+        <h2 className="mt-6 text-4xl font-black tracking-[-0.05em] sm:text-5xl lg:text-6xl">{t("landing.results.title")}</h2>
         <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-slate-400">
-          Organizations using Mongez consistently achieve transformational improvements across every dimension.
+          {t("landing.results.description")}
         </p>
         <div className="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {metrics.map((metric) => (

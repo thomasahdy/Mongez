@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
 import { useAppContext } from '../AppContext';
@@ -69,28 +70,24 @@ function buildTimelineDates(scale) {
   return Array.from({ length: totalCells }, (_, index) => addPeriod(base, scale, startOffset + index));
 }
 
-function formatHeaderPrimary(date, scale) {
+function formatHeaderPrimary(date, scale, locale) {
   if (scale === 'months') {
-    return date.toLocaleDateString('en-US', { month: 'short' });
+    return date.toLocaleDateString(locale, { month: 'short' });
   }
 
   if (scale === 'weeks') {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
   }
 
   return String(date.getDate());
 }
 
-function formatHeaderSecondary(date, scale) {
+function formatHeaderSecondary(date, scale, locale) {
   if (scale === 'months') {
     return String(date.getFullYear());
   }
 
-  if (scale === 'weeks') {
-    return `W${Math.ceil(date.getDate() / 7)}`;
-  }
-
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()].slice(0, 1);
+  return date.toLocaleDateString(locale, { weekday: 'narrow' });
 }
 
 function getPeriodValue(date, scale) {
@@ -182,10 +179,12 @@ export default function TimelineView() {
   const { setPath, activeBoard } = useOutletContext() || {};
   const { activeSpace, spaces } = useAppContext();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [error, setError] = useState(null);
   const [scale, setScale] = useState('days');
   const boardIdValue = boardId || activeBoard?.id;
   const spaceId = activeSpace?.id || spaces[0]?.id;
+  const locale = i18n.language?.startsWith('ar') ? 'ar-EG' : 'en-US';
 
   const dates = useMemo(() => buildTimelineDates(scale), [scale]);
   const timelineQuery = useTimelineQuery({
@@ -206,10 +205,10 @@ export default function TimelineView() {
       return '';
     }
 
-    const start = dates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const end = dates[dates.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const start = dates[0].toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+    const end = dates[dates.length - 1].toLocaleDateString(locale, { month: 'short', day: 'numeric' });
     return `${start} - ${end}`;
-  }, [dates]);
+  }, [dates, locale]);
 
   const groupedTasks = useMemo(() => {
     const grouped = {
@@ -230,6 +229,7 @@ export default function TimelineView() {
 
     return grouped;
   }, [tasks]);
+  const formatStatusLabel = (status) => t(`timeline.statuses.${String(status || 'TODO').toUpperCase()}`);
 
   const eventCountsByPeriod = useMemo(
     () =>
@@ -256,10 +256,10 @@ export default function TimelineView() {
 
   useEffect(() => {
     setPath?.([
-      { name: 'Workspace', color: 'text-slate-400', ref: '/dashboard' },
-      { name: activeBoard?.name || 'Timeline', color: 'text-slate-800', ref: '' },
+      { name: t('common.workspace'), color: 'text-slate-400', ref: '/dashboard' },
+      { name: activeBoard?.name || t('timeline.title'), color: 'text-slate-800', ref: '' },
     ]);
-  }, [setPath, activeBoard?.name]);
+  }, [setPath, activeBoard?.name, t]);
 
   useEffect(() => {
     if (!boardIdValue) {
@@ -268,12 +268,12 @@ export default function TimelineView() {
     }
 
     if (timelineQuery.isError) {
-      setError(timelineQuery.error?.message || 'Unable to load timeline data.');
+      setError(timelineQuery.error?.message || t('timeline.loadFailed'));
       return;
     }
 
     setError(null);
-  }, [boardIdValue, timelineQuery.error?.message, timelineQuery.isError]);
+  }, [boardIdValue, timelineQuery.error?.message, timelineQuery.isError, t]);
 
   const isToday = (date) => startOfDay(date).getTime() === startOfDay(new Date()).getTime();
   const isWeekend = (date) => date.getDay() === 0 || date.getDay() === 6;
@@ -293,9 +293,9 @@ export default function TimelineView() {
       <div className="flex h-full flex-col overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Timeline</h2>
+            <h2 className="text-sm font-bold text-slate-900">{t('timeline.title')}</h2>
             <p className="text-xs text-slate-500">
-              {activeBoard?.name || 'Board timeline'} synced with GET /api/v1/boards/:boardId/tasks and GET /api/v1/calendar/events
+              {t('timeline.subtitle', { board: activeBoard?.name || t('timeline.title') })}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -313,32 +313,34 @@ export default function TimelineView() {
                     : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                {option[0].toUpperCase() + option.slice(1)}
-              </button>
-            ))}
+                  {t(`timeline.scales.${option}`)}
+                </button>
+              ))}
             <button
               type="button"
               onClick={() => timelineQuery.refetch()}
               disabled={loading || !boardIdValue}
               className="rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? 'Refreshing...' : 'Refresh'}
+              {loading ? t('timeline.refreshing') : t('timeline.refresh')}
             </button>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">
-              {calendarEvents.length} synced events
+              {t('timeline.syncedEvents', { count: calendarEvents.length })}
             </span>
           </div>
         </div>
         {tasksWithoutTimeline > 0 ? (
           <div className="border-t border-slate-100 px-4 py-2 text-xs text-amber-600">
-            {tasksWithoutTimeline} task{tasksWithoutTimeline === 1 ? '' : 's'} do not have usable timeline dates and will not render bars.
+            {tasksWithoutTimeline === 1
+              ? t('timeline.tasksMissingDates', { count: tasksWithoutTimeline })
+              : t('timeline.tasksMissingDatesPlural', { count: tasksWithoutTimeline })}
           </div>
         ) : null}
 
         <div className="flex flex-1 overflow-hidden">
           <div className="w-64 overflow-y-auto border-r border-slate-200 bg-white">
             <div className="sticky top-0 border-b border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900">
-              Tasks <span className="text-xs font-normal text-slate-400">({tasks.length})</span>
+              {t('timeline.tasks')} <span className="text-xs font-normal text-slate-400">({tasks.length})</span>
             </div>
             <div className="divide-y divide-slate-100">
               {Object.entries(groupedTasks).map(([status, statusTasks]) =>
@@ -346,7 +348,7 @@ export default function TimelineView() {
                   <div key={status}>
                     <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getStatusColor(status) }} />
-                      {status.replace('_', ' ')}
+                      {formatStatusLabel(status)}
                     </div>
                     {statusTasks.map((task) => (
                       <div
@@ -356,13 +358,13 @@ export default function TimelineView() {
                       >
                         <div className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: getStatusColor(status) }} />
                         <span className="flex-1 truncate text-xs font-medium text-slate-700">
-                          {task.title || task.name || 'Untitled'}
+                          {task.title || task.name || t('timeline.defaults.untitled')}
                         </span>
                         {task.assignee && (
                           <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-blue-500 text-xs font-bold text-white">
                             {(typeof task.assignee === 'string' ? task.assignee : task.assignee?.name || task.assigneeId)
                               ?.substring(0, 2)
-                              .toUpperCase() || 'A'}
+                              .toUpperCase() || t('timeline.defaults.selectedAssignee')}
                           </div>
                         )}
                       </div>
@@ -371,7 +373,7 @@ export default function TimelineView() {
                 ) : null,
               )}
               {tasks.length === 0 && !loading && (
-                <div className="p-4 text-center text-xs text-slate-500">No tasks found</div>
+                <div className="p-4 text-center text-xs text-slate-500">{t('timeline.noTasks')}</div>
               )}
             </div>
           </div>
@@ -390,10 +392,14 @@ export default function TimelineView() {
                       className={`flex-shrink-0 border-r border-slate-200 py-2 text-center text-xs ${todayClass} ${weekendClass}`}
                       style={{ width: `${CELL_WIDTH[scale]}px` }}
                     >
-                      <div className="font-bold text-slate-700">{formatHeaderPrimary(date, scale)}</div>
-                      <div className="text-xs text-slate-400">{formatHeaderSecondary(date, scale)}</div>
+                      <div className="font-bold text-slate-700">{formatHeaderPrimary(date, scale, locale)}</div>
+                      <div className="text-xs text-slate-400">
+                        {scale === 'weeks'
+                          ? t('timeline.weekLabel', { value: Math.ceil(date.getDate() / 7) })
+                          : formatHeaderSecondary(date, scale, locale)}
+                      </div>
                       {eventCount > 0 && (
-                        <div className="mt-1 text-[10px] font-semibold text-indigo-500">{eventCount} evt</div>
+                        <div className="mt-1 text-[10px] font-semibold text-indigo-500">{t('timeline.eventCount', { count: eventCount })}</div>
                       )}
                     </div>
                   );
@@ -420,16 +426,16 @@ export default function TimelineView() {
                       <div
                         className="absolute top-2 z-20 flex h-6 items-center rounded bg-gradient-to-r from-sky-500 to-sky-600 px-2 text-xs font-semibold text-white shadow-sm transition-all hover:opacity-90"
                         style={getTaskBarStyle(task, dates, scale)}
-                        title={task.title || task.name || 'Task'}
+                        title={task.title || task.name || t('timeline.defaults.task')}
                       >
-                        <span className="truncate text-xs">{task.title || task.name || 'Task'}</span>
+                        <span className="truncate text-xs">{task.title || task.name || t('timeline.defaults.task')}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="flex h-full items-center justify-center">
-                  <p className="text-sm text-slate-400">{loading ? 'Loading tasks...' : 'No tasks to display'}</p>
+                  <p className="text-sm text-slate-400">{loading ? t('timeline.loading') : t('timeline.noTasksDisplay')}</p>
                 </div>
               )}
             </div>

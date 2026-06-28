@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router";
+import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
 import { useDashboardAnalyticsQuery } from "../../hooks/useDashboardQueries";
 
@@ -40,25 +41,25 @@ function pickNumber(source, keys, fallback = 0) {
   return fallback;
 }
 
-function formatNumber(value) {
+function formatNumber(value, locale = "en-US") {
   if (value === null || value === undefined) {
     return "--";
   }
-  return new Intl.NumberFormat("en", { notation: Math.abs(value) >= 10000 ? "compact" : "standard" }).format(value);
+  return new Intl.NumberFormat(locale, { notation: Math.abs(value) >= 10000 ? "compact" : "standard" }).format(value);
 }
 
-function formatPercent(value) {
+function formatPercent(value, locale = "en-US") {
   if (value === null || value === undefined) {
     return "--";
   }
-  return `${Math.round(toNumber(value))}%`;
+  return `${new Intl.NumberFormat(locale).format(Math.round(toNumber(value)))}%`;
 }
 
-function formatCurrency(value) {
+function formatCurrency(value, locale = "en-US") {
   if (value === null || value === undefined) {
     return "--";
   }
-  return new Intl.NumberFormat("en", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "USD",
     notation: Math.abs(value) >= 10000 ? "compact" : "standard",
@@ -74,11 +75,11 @@ function itemValue(item) {
   return toNumber(item.value ?? item.count ?? item.tasks ?? item.total ?? item.percentage);
 }
 
-function formatDate(value) {
+function formatDate(value, locale = "en-US") {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en", { month: "short", day: "numeric" });
+  return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 function Sparkline({ color = "var(--primary)", direction = "up" }) {
@@ -94,7 +95,7 @@ function Sparkline({ color = "var(--primary)", direction = "up" }) {
   );
 }
 
-function KpiCard({ icon, iconClass, label, value, suffix = "", trend, trendDirection = "up", loading }) {
+function KpiCard({ icon, iconClass, label, value, suffix = "", trend, trendDirection = "up", loading, liveLabel = "Live" }) {
   return (
     <div className="kpi-card">
       <div className="kpi-header">
@@ -108,7 +109,7 @@ function KpiCard({ icon, iconClass, label, value, suffix = "", trend, trendDirec
               {trend}
             </>
           ) : (
-            "Live"
+            liveLabel
           )}
         </div>
       </div>
@@ -141,9 +142,9 @@ function InsightCard({ type, icon, color, text, action }) {
   );
 }
 
-function BarChart({ items }) {
+function BarChart({ items, emptyLabel }) {
   if (!items.length) {
-    return <div className="empty-state">No task completion data returned yet.</div>;
+    return <div className="empty-state">{emptyLabel}</div>;
   }
 
   const maxValue = Math.max(...items.map((item) => item.value), 1);
@@ -162,9 +163,9 @@ function BarChart({ items }) {
   );
 }
 
-function DistributionChart({ items }) {
+function DistributionChart({ items, emptyLabel, locale }) {
   if (!items.length) {
-    return <div className="empty-state">No priority or status distribution returned yet.</div>;
+    return <div className="empty-state">{emptyLabel}</div>;
   }
 
   const total = items.reduce((sum, item) => sum + item.value, 0) || 1;
@@ -185,7 +186,7 @@ function DistributionChart({ items }) {
             "--donut-c": angles[2] || angles[1] || angles[0] || "0deg",
           }}
         >
-          <div className="donut-inner">{formatNumber(total)}</div>
+          <div className="donut-inner">{formatNumber(total, locale)}</div>
         </div>
       </div>
       <div className="donut-legend">
@@ -195,7 +196,7 @@ function DistributionChart({ items }) {
               <span className="legend-dot" style={{ background: CHART_COLORS[index] }} />
               {item.label}
             </span>
-            <strong>{formatNumber(item.value)}</strong>
+            <strong>{formatNumber(item.value, locale)}</strong>
           </div>
         ))}
       </div>
@@ -206,9 +207,11 @@ function DistributionChart({ items }) {
 function DashboardPage() {
   const { setPath } = useOutletContext() || {};
   const { activeSpace, spaces } = useAppContext();
+  const { t, i18n } = useTranslation();
   const spaceId = activeSpace?.id || spaces[0]?.id;
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
   const dashboardQuery = useDashboardAnalyticsQuery(spaceId);
   const loading = dashboardQuery.isLoading || dashboardQuery.isFetching;
   const stats = normalizeStats(dashboardQuery.data?.stats);
@@ -223,28 +226,28 @@ function DashboardPage() {
 
   useEffect(() => {
     setPath?.([
-      { name: activeSpace?.name || "Workspace", color: "text-slate-400", ref: "/dashboard" },
-      { name: "Dashboard", color: "text-slate-800", ref: "" },
+      { name: activeSpace?.name || t("common.workspace"), color: "text-slate-400", ref: "/dashboard" },
+      { name: t("dashboard.title"), color: "text-slate-800", ref: "" },
     ]);
-  }, [activeSpace?.name, setPath]);
+  }, [activeSpace?.name, setPath, t]);
 
   useEffect(() => {
     if (!spaceId) {
-      setError("Select a workspace to load dashboard analytics.");
+      setError(t("dashboard.selectWorkspace"));
       return;
     }
 
     if (dashboardQuery.isError) {
-      setError(dashboardQuery.error?.message || "Unable to load dashboard data.");
+      setError(dashboardQuery.error?.message || t("dashboard.loadFailed"));
       return;
     }
 
     setError("");
-  }, [dashboardQuery.error?.message, dashboardQuery.isError, spaceId]);
+  }, [dashboardQuery.error?.message, dashboardQuery.isError, spaceId, t]);
 
   const exportDashboard = async () => {
     if (!spaceId) {
-      setError("Select a workspace before exporting dashboard data.");
+      setError(t("dashboard.exportSelectWorkspace"));
       return;
     }
 
@@ -273,7 +276,7 @@ function DashboardPage() {
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (exportError) {
-      setError(exportError.message || "Unable to export dashboard data.");
+      setError(exportError.message || t("dashboard.exportFailed"));
     } finally {
       setExporting(false);
     }
@@ -331,47 +334,54 @@ function DashboardPage() {
       .map((item, index) => ({
         id: item.id || index,
         date: item.dueDate || item.deadline || item.endDate,
-        title: item.title || item.message || item.action || "Upcoming item",
-        status: item.status || item.priority || "Due",
+        title: item.title || item.message || item.action || t("dashboard.upcomingItem"),
+        status: item.status || item.priority || t("dashboard.dueLabel"),
       }))
       .slice(0, 5);
-  }, [activity]);
+  }, [activity, t]);
 
   const insights = useMemo(() => {
     const bottlenecks = pickNumber(workflowAnalytics, ["bottlenecks", "blockedItems", "blocked"], null);
     const avgApproval = pickNumber(executiveMetrics, ["avgApprovalTime", "averageApprovalTime"], null);
     return [
       {
-        type: dashboardMetrics.overdueTasks > 0 ? "Risk Alert" : "Risk Check",
+        type: dashboardMetrics.overdueTasks > 0 ? t("dashboard.insights.riskAlert") : t("dashboard.insights.riskCheck"),
         icon: dashboardMetrics.overdueTasks > 0 ? "fa-triangle-exclamation" : "fa-shield-check",
         color: dashboardMetrics.overdueTasks > 0 ? "var(--danger)" : "var(--success)",
         text:
           dashboardMetrics.overdueTasks > 0
-            ? `${formatNumber(dashboardMetrics.overdueTasks)} overdue tasks are currently affecting the workspace.`
+            ? t("dashboard.insights.riskText", { value: formatNumber(dashboardMetrics.overdueTasks, locale) })
             : dashboardMetrics.overdueTasks === null
-              ? "The backend did not return an overdue task count for this workspace yet."
-              : "No overdue task count was returned for this workspace.",
-        action: "Review workload",
+              ? t("dashboard.insights.riskMissing")
+              : t("dashboard.insights.riskNone"),
+        action: t("dashboard.insights.reviewWorkload"),
       },
       {
-        type: "Performance",
+        type: t("dashboard.insights.performance"),
         icon: "fa-chart-line",
         color: "var(--success)",
-        text: `Current on-time delivery is ${formatPercent(dashboardMetrics.deliveryRate)} based on available backend metrics.`,
-        action: "Open analytics",
+        text: t("dashboard.insights.performanceText", { value: formatPercent(dashboardMetrics.deliveryRate, locale) }),
+        action: t("dashboard.insights.openAnalytics"),
       },
       {
-        type: "Workflow",
+        type: t("dashboard.insights.workflow"),
         icon: "fa-route",
         color: "var(--primary)",
         text:
           bottlenecks > 0
-            ? `${formatNumber(bottlenecks)} workflow bottlenecks are reported by the analytics API.`
-            : `Pending approvals: ${formatNumber(dashboardMetrics.pendingApprovals)}. Average approval time: ${formatNumber(avgApproval)}${avgApproval === null ? "" : "h"}.`,
-        action: "Inspect flow",
+            ? t("dashboard.insights.workflowBottlenecks", { value: formatNumber(bottlenecks, locale) })
+            : avgApproval === null
+              ? t("dashboard.insights.workflowFallbackNoAverage", {
+                  pending: formatNumber(dashboardMetrics.pendingApprovals, locale),
+                })
+              : t("dashboard.insights.workflowFallback", {
+                  pending: formatNumber(dashboardMetrics.pendingApprovals, locale),
+                  average: `${formatNumber(avgApproval, locale)}h`,
+                }),
+        action: t("dashboard.insights.inspectFlow"),
       },
     ];
-  }, [dashboardMetrics, executiveMetrics, workflowAnalytics]);
+  }, [dashboardMetrics, executiveMetrics, workflowAnalytics, locale, t]);
   const hasAnalyticsData = Boolean(
     activity.length ||
       completion.length ||
@@ -386,7 +396,7 @@ function DashboardPage() {
       <div className="dashboard-content">
         <div className="page-title">
           <i className="fa-solid fa-chart-pie" />
-          Executive Dashboard
+          {t("dashboard.title")}
           <div className="dashboard-page-actions">
             <button
               type="button"
@@ -397,11 +407,11 @@ function DashboardPage() {
               }}
             >
               <i className="fa-solid fa-rotate" />
-              Refresh
+              {t("dashboard.refresh")}
             </button>
             <button type="button" className="action-btn" onClick={exportDashboard} disabled={loading || exporting}>
               <i className={`fa-solid ${exporting ? "fa-spinner fa-spin" : "fa-download"}`} />
-              {exporting ? "Exporting" : "Export"}
+              {exporting ? t("dashboard.exporting") : t("dashboard.export")}
             </button>
           </div>
         </div>
@@ -414,7 +424,7 @@ function DashboardPage() {
 
         {!error && !loading && !hasAnalyticsData ? (
           <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
-            Analytics endpoints are reachable, but no dashboard metrics were returned for this workspace yet.
+            {t("dashboard.noData")}
           </div>
         ) : null}
 
@@ -422,42 +432,46 @@ function DashboardPage() {
           <KpiCard
             icon="fa-list-check"
             iconClass="bg-[var(--primary-light)] text-[var(--primary)]"
-            label="Active Tasks"
-            value={formatNumber(dashboardMetrics.totalTasks)}
-            trend={dashboardMetrics.completedTasks ? `${formatNumber(dashboardMetrics.completedTasks)} done` : ""}
+            label={t("dashboard.kpis.activeTasks")}
+            value={formatNumber(dashboardMetrics.totalTasks, locale)}
+            trend={dashboardMetrics.completedTasks ? t("dashboard.kpis.done", { value: formatNumber(dashboardMetrics.completedTasks, locale) }) : ""}
             loading={loading}
+            liveLabel={t("dashboard.liveBadge")}
           />
           <KpiCard
             icon="fa-bullseye"
             iconClass="bg-[var(--success-light)] text-[var(--success)]"
-            label="On-Time Delivery Rate"
-            value={loading ? "" : formatPercent(dashboardMetrics.deliveryRate)}
-            trend={dashboardMetrics.slaCompliance ? `${formatPercent(dashboardMetrics.slaCompliance)} SLA` : ""}
+            label={t("dashboard.kpis.onTimeDelivery")}
+            value={loading ? "" : formatPercent(dashboardMetrics.deliveryRate, locale)}
+            trend={dashboardMetrics.slaCompliance ? t("dashboard.kpis.sla", { value: formatPercent(dashboardMetrics.slaCompliance, locale) }) : ""}
             loading={loading}
+            liveLabel={t("dashboard.liveBadge")}
           />
           <KpiCard
             icon="fa-coins"
             iconClass="bg-[var(--warning-light)] text-[var(--warning)]"
-            label="Budget Remaining"
-            value={loading ? "" : formatCurrency(dashboardMetrics.budgetRemaining)}
+            label={t("dashboard.kpis.budgetRemaining")}
+            value={loading ? "" : formatCurrency(dashboardMetrics.budgetRemaining, locale)}
             trendDirection="down"
             loading={loading}
+            liveLabel={t("dashboard.liveBadge")}
           />
           <KpiCard
             icon="fa-users"
             iconClass="bg-[var(--accent-light)] text-[var(--accent)]"
-            label="Team Members"
-            value={formatNumber(dashboardMetrics.activeMembers)}
-            trend={teamLoad.length ? `${formatNumber(teamLoad.length)} active` : ""}
+            label={t("dashboard.kpis.teamMembers")}
+            value={formatNumber(dashboardMetrics.activeMembers, locale)}
+            trend={teamLoad.length ? t("dashboard.kpis.active", { value: formatNumber(teamLoad.length, locale) }) : ""}
             loading={loading}
+            liveLabel={t("dashboard.liveBadge")}
           />
         </div>
 
         <section className="insights-section">
           <h3>
             <i className="fa-solid fa-robot" />
-            AI Insights
-            <span className="ml-1 text-[11px] font-medium text-[var(--text-tertiary)]">Live from workspace metrics</span>
+            {t("dashboard.aiInsights")}
+            <span className="ml-1 text-[11px] font-medium text-[var(--text-tertiary)]">{t("dashboard.liveMetrics")}</span>
           </h3>
           <div className="insight-cards">
             {insights.map((insight) => (
@@ -470,17 +484,17 @@ function DashboardPage() {
           <section className="chart-card">
             <h3 className="chart-title">
               <i className="fa-solid fa-chart-column" />
-              Task Completion
+              {t("dashboard.charts.taskCompletion")}
             </h3>
-            {loading ? <div className="empty-state">Loading task analytics...</div> : <BarChart items={chartItems} />}
+            {loading ? <div className="empty-state">{t("dashboard.charts.loadingTaskAnalytics")}</div> : <BarChart items={chartItems} emptyLabel={t("dashboard.charts.noCompletion")} />}
           </section>
 
           <section className="chart-card">
             <h3 className="chart-title">
               <i className="fa-solid fa-chart-pie" />
-              Distribution
+              {t("dashboard.charts.distribution")}
             </h3>
-            {loading ? <div className="empty-state">Loading distribution...</div> : <DistributionChart items={distributionItems} />}
+            {loading ? <div className="empty-state">{t("dashboard.charts.loadingDistribution")}</div> : <DistributionChart items={distributionItems} emptyLabel={t("dashboard.charts.noDistribution")} locale={locale} />}
           </section>
         </div>
 
@@ -488,7 +502,7 @@ function DashboardPage() {
           <section className="list-card">
             <h3 className="list-title">
               <i className="fa-solid fa-clock-rotate-left" />
-              Recent Activity
+              {t("dashboard.recentActivity")}
             </h3>
             {activity.length ? (
               activity.slice(0, 6).map((item, index) => (
@@ -496,27 +510,27 @@ function DashboardPage() {
                   <div className="activity-avatar">{(item.actor?.name || item.user?.name || item.userName || "A").slice(0, 2).toUpperCase()}</div>
                   <div>
                     <div className="activity-text">
-                      <strong>{item.actor?.name || item.user?.name || item.userName || "Workspace"}</strong>{" "}
-                      {item.title || item.message || item.action || "updated the workspace"}
+                      <strong>{item.actor?.name || item.user?.name || item.userName || t("dashboard.activityFallbackActor")}</strong>{" "}
+                      {item.title || item.message || item.action || t("dashboard.activityFallbackAction")}
                     </div>
-                    <div className="activity-time">{item.createdAt ? new Date(item.createdAt).toLocaleString() : item.time || "Recent"}</div>
+                    <div className="activity-time">{item.createdAt ? new Date(item.createdAt).toLocaleString(locale) : item.time || t("dashboard.activityFallbackTime")}</div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="empty-state">No activity returned yet.</div>
+              <div className="empty-state">{t("dashboard.noActivity")}</div>
             )}
           </section>
 
           <section className="list-card">
             <h3 className="list-title">
               <i className="fa-regular fa-calendar" />
-              Upcoming Deadlines
+              {t("dashboard.upcomingDeadlines")}
             </h3>
             {upcomingItems.length ? (
               upcomingItems.map((item) => (
                 <div className="upcoming-item" key={item.id}>
-                  <div className="upcoming-date">{formatDate(item.date)}</div>
+                  <div className="upcoming-date">{formatDate(item.date, locale)}</div>
                   <div className="upcoming-title">
                     <strong>{item.title}</strong>
                   </div>
@@ -524,7 +538,7 @@ function DashboardPage() {
                 </div>
               ))
             ) : (
-              <div className="empty-state">No deadline data returned yet.</div>
+              <div className="empty-state">{t("dashboard.noDeadlines")}</div>
             )}
           </section>
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext, useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
 import meetingsService from "../../services/api/meetingsService";
 import {
@@ -13,6 +14,8 @@ import {
 import { extractTextFromPayload } from "../../utils/extractTextFromPayload";
 import { useBoardTasksQuery } from "../../hooks/useTaskListQueries";
 import ErrorBoundary from "../../components/ErrorBoundary";
+import mongezWordmark from "../../assets/Mongez.svg";
+import mongezMark from "../../assets/MongezMLogo.svg";
 
 const STORAGE_KEYS = {
   context: "mongez.ai.context",
@@ -20,53 +23,27 @@ const STORAGE_KEYS = {
 };
 const MAX_COMPOSER_LENGTH = 4000;
 
-function buildQuickPrompts() {
-  return [
-    {
-      label: "What will miss deadline this week?",
-      icon: "fa-triangle-exclamation",
-      accentClassName: "text-rose-500 bg-rose-50 dark:bg-rose-950/20",
-      prompt: "Show me all blocked or overdue tasks that are at risk of missing their deadlines this week.",
-    },
-    {
-      label: "Which approvals are blocking progress?",
-      icon: "fa-shield-halved",
-      accentClassName: "text-amber-500 bg-amber-50 dark:bg-amber-950/20",
-      prompt: "Identify all pending workflow approvals that have been waiting for more than 48 hours.",
-    },
-    {
-      label: "Who is overloaded right now?",
-      icon: "fa-users",
-      accentClassName: "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/20",
-      prompt: "Analyze team workload and point out which assignees have crossed their task capacity threshold.",
-    },
-    {
-      label: "What should I escalate today?",
-      icon: "fa-arrow-up-right-dots",
-      accentClassName: "text-sky-500 bg-sky-50 dark:bg-sky-950/20",
-      prompt: "Give me a list of tasks that have been stuck in the same column for over 5 days and need manager escalation.",
-    },
-    {
-      label: "Generate executive status report",
-      icon: "fa-file-invoice",
-      accentClassName: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20",
-      prompt: "Generate an executive project status report summarizing current progress, major risks, and key decisions.",
-    },
-    {
-      label: "Show hidden project risks",
-      icon: "fa-eye",
-      accentClassName: "text-purple-500 bg-purple-50 dark:bg-purple-950/20",
-      prompt: "Scan our workspace database and list hidden dependency bottlenecks or potential project risks.",
-    },
-  ];
+function buildQuickPrompts(t) {
+  return t("aiAssistant.quickPrompts", { returnObjects: true }).map((item, index) => ({
+    ...item,
+    icon: [
+      "fa-triangle-exclamation",
+      "fa-shield-halved",
+      "fa-users",
+      "fa-arrow-up-right-dots",
+      "fa-file-invoice",
+      "fa-eye",
+    ][index],
+    accentClassName: [
+      "text-rose-500 bg-rose-50 dark:bg-rose-950/20",
+      "text-amber-500 bg-amber-50 dark:bg-amber-950/20",
+      "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/20",
+      "text-sky-500 bg-sky-50 dark:bg-sky-950/20",
+      "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20",
+      "text-purple-500 bg-purple-50 dark:bg-purple-950/20",
+    ][index],
+  }));
 }
-
-const welcomeMessage = {
-  id: "welcome-message",
-  role: "assistant",
-  kind: "welcome",
-  text: "Welcome to Mongez Intelligence Engine. How can I assist you with workspace oversight today? You can choose one of the quick commands below or start a conversation.",
-};
 
 function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -105,27 +82,27 @@ function formatApiResult(payload) {
   return JSON.stringify(payload, null, 2);
 }
 
-function createSessionSnapshot({ sessionId, messages, context }) {
+function createSessionSnapshot({ sessionId, messages, context, t }) {
   const firstUserMessage = messages.find((message) => message.role === "user" && message.kind === "text");
   return {
     id: sessionId,
-    title: truncateText(firstUserMessage?.text || "Untitled conversation"),
+    title: truncateText(firstUserMessage?.text || t("aiAssistant.untitledConversation")),
     createdAt: new Date().toISOString(),
     messages,
     context,
   };
 }
 
-function getUserFriendlyErrorMessage(error) {
-  if (!error) return "Workspace data unavailable. I could not access live data right now.";
+function getUserFriendlyErrorMessage(error, t) {
+  if (!error) return t("aiAssistant.errors.workspaceUnavailable");
 
   // Never expose raw provider errors to users
   const rawMsg = (typeof error === "string" ? error : error.message || error.toString() || "").toLowerCase();
   if (rawMsg.includes("429") || rawMsg.includes("rate") || rawMsg.includes("too many") || rawMsg.includes("busy")) {
-    return "AI is temporarily busy. Please wait a moment and try again.";
+    return t("aiAssistant.errors.busy");
   }
   if (rawMsg.includes("error code:") || rawMsg.includes("{'status'") || rawMsg.includes("status error") || rawMsg.includes("status: 429")) {
-    return "Workspace data unavailable. I could not access live data right now.";
+    return t("aiAssistant.errors.workspaceUnavailable");
   }
 
   if (typeof error === "string") return error;
@@ -139,16 +116,16 @@ function getUserFriendlyErrorMessage(error) {
     error.code === "ECONNABORTED";
 
   if (isNetworkOrTimeout || status === 500 || status === 502 || status === 503 || status === 504) {
-    return "Workspace data unavailable. I could not access live data right now.";
+    return t("aiAssistant.errors.workspaceUnavailable");
   }
 
   switch (status) {
-    case 400: return "Invalid request parameters. Please verify context.";
-    case 401: return "Session expired. Please sign in again.";
-    case 403: return "Access denied. Insufficient workspace permissions.";
-    case 404: return "AI resource not found.";
-    case 429: return "AI rate limit reached. Please wait a moment.";
-    default: return message || "Workspace data unavailable. I could not access live data right now.";
+    case 400: return t("aiAssistant.errors.invalidRequest");
+    case 401: return t("aiAssistant.errors.sessionExpired");
+    case 403: return t("aiAssistant.errors.accessDenied");
+    case 404: return t("aiAssistant.errors.resourceNotFound");
+    case 429: return t("aiAssistant.errors.rateLimit");
+    default: return message || t("aiAssistant.errors.workspaceUnavailable");
   }
 }
 
@@ -443,6 +420,9 @@ function ChatBubble({
   onActionDecision,
   reviewingActionId,
 }) {
+  const { t, i18n } = useTranslation();
+  const isArabic = i18n.language?.startsWith("ar");
+
   if (message.kind === "welcome") {
     return (
       <div className="rounded-[24px] rounded-tl-md border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 text-[13px] leading-6 text-slate-655 dark:text-slate-350 shadow-sm" dir="auto">
@@ -472,14 +452,17 @@ function ChatBubble({
           </div>
         )}
         <div className="rounded-xl bg-rose-50/50 dark:bg-rose-955/10 px-3.5 py-2.5 flex items-center justify-between gap-3 border border-rose-100/50 dark:border-rose-900/30">
-          <span className="text-[12px] text-rose-605 dark:text-rose-455 font-bold leading-relaxed">⚠️ {message.error}</span>
+          <span className="inline-flex items-center gap-1.5 text-[12px] font-bold leading-relaxed text-rose-605 dark:text-rose-455">
+            <i className="fa-solid fa-triangle-exclamation" />
+            {message.error}
+          </span>
           <button
             type="button"
             onClick={() => onRetry?.(message.id)}
             className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-rose-500 hover:bg-rose-600 px-3 py-1 text-[11px] font-bold text-white transition-all cursor-pointer shadow-sm"
           >
             <i className="fa-solid fa-arrows-rotate" />
-            Retry
+            {t("aiAssistant.labels.retry")}
           </button>
         </div>
       </div>
@@ -504,7 +487,7 @@ function ChatBubble({
               <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce" />
             </div>
             <span className="text-[12.5px] font-semibold tracking-wide animate-pulse">
-              {message.status || "Thinking..."}
+              {message.status || t("aiAssistant.labels.thinking")}
             </span>
           </div>
         </div>
@@ -551,13 +534,13 @@ function ChatBubble({
         {/* Suggested Actions for Plan layout */}
         {hasActions && (
           <div className="border-t border-slate-100 dark:border-slate-808/40 pt-4 mt-4">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2.5">Suggested Action Tasks</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2.5">{t("aiAssistant.labels.chat.suggestedActionTasks")}</span>
             <div className="grid grid-cols-1 gap-2.5">
               {message.actions.map((act, index) => (
                 <div key={index} className="rounded-2xl bg-slate-50 dark:bg-slate-955 p-3.5 border border-slate-150/60 dark:border-slate-808 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm text-left">
                   <div className="min-w-0 flex-1">
                     <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-[9px] font-bold text-indigo-655 dark:text-indigo-400 tracking-wide uppercase">
-                      {act.commandType || act.type || "Action"}
+                      {act.commandType || act.type || t("aiAssistant.labels.chat.actionFallback")}
                     </span>
                     <p className="mt-1 text-[12.5px] font-bold text-slate-808 dark:text-slate-255 leading-relaxed">{act.reason || act.description}</p>
                   </div>
@@ -568,7 +551,7 @@ function ChatBubble({
                       onClick={() => onActionDecision?.(act.id || act.actionId, "approve")}
                       className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 px-3.5 py-1.5 text-[11px] font-bold text-white transition disabled:opacity-55 cursor-pointer shadow-sm"
                     >
-                      <i className="fa-solid fa-check" /> Approve
+                      <i className="fa-solid fa-check" /> {t("aiAssistant.labels.actions.approve")}
                     </button>
                     <button
                       type="button"
@@ -576,7 +559,7 @@ function ChatBubble({
                       onClick={() => onActionDecision?.(act.id || act.actionId, "reject")}
                       className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 rounded-full border border-rose-200 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-[11px] font-bold text-rose-605 dark:text-rose-455 transition hover:bg-rose-50 dark:hover:bg-rose-955/20 disabled:opacity-55 cursor-pointer"
                     >
-                      <i className="fa-solid fa-xmark" /> Reject
+                      <i className="fa-solid fa-xmark" /> {t("aiAssistant.labels.actions.reject")}
                     </button>
                   </div>
                 </div>
@@ -600,7 +583,7 @@ function ChatBubble({
             }`}
           >
             <i className={`fa-solid ${feedbackState?.submitting ? "fa-spinner fa-spin" : "fa-thumbs-up"}`} />
-            Helpful
+            {t("aiAssistant.labels.feedback.helpful")}
           </button>
           <button
             type="button"
@@ -613,7 +596,7 @@ function ChatBubble({
             }`}
           >
             <i className="fa-solid fa-thumbs-down" />
-            Needs work
+            {t("aiAssistant.labels.feedback.needsWork")}
           </button>
         </div>
       )}
@@ -661,9 +644,23 @@ function ToastContainer({ toasts, onClose }) {
 }
 
 function AiAssistantPage() {
+  const { t, i18n } = useTranslation();
   const { setPath } = useOutletContext();
   const navigate = useNavigate();
   const { activeSpace, activeBoard, spaces, activeBoards, setActiveSpace, setActiveBoard, user } = useAppContext();
+  const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
+  const formatDate = (value, options) => new Date(value).toLocaleDateString(locale, options);
+  const formatTime = (value, options) => new Date(value).toLocaleTimeString(locale, options);
+  const formatDateTime = (value, options) => new Date(value).toLocaleString(locale, options);
+  const welcomeMessage = useMemo(
+    () => ({
+      id: "welcome-message",
+      role: "assistant",
+      kind: "welcome",
+      text: t("aiAssistant.welcome"),
+    }),
+    [t],
+  );
   const [composer, setComposer] = useState("");
   const [contextOpen, setContextOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview"); // overview, actions, approvals, insights, chat
@@ -680,7 +677,7 @@ function AiAssistantPage() {
   });
   const [recentSessions, setRecentSessions] = useState(() => readJsonStorage(STORAGE_KEYS.sessions, []));
   const [currentSessionId, setCurrentSessionId] = useState(() => makeId("session"));
-  const [messages, setMessages] = useState([welcomeMessage]);
+  const [messages, setMessages] = useState(() => [welcomeMessage]);
   const [pageError, setPageError] = useState("");
   const [activeActionKey, setActiveActionKey] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -692,16 +689,17 @@ function AiAssistantPage() {
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const chatAbortRef = useRef(null);
+  const suggestionChips = useMemo(() => t("aiAssistant.suggestionChips", { returnObjects: true }), [t]);
 
   const fetchAndShowTranscript = async (meetingId, title) => {
     setLoadingTranscript(true);
     setTranscriptModalOpen(true);
-    setActiveMeetingTranscript({ title, text: "Loading transcript..." });
+    setActiveMeetingTranscript({ title, text: t("aiAssistant.errors.loadingTranscript") });
     try {
       const data = await meetingsService.getTranscript(meetingId, contextValues.spaceId);
-      setActiveMeetingTranscript({ title, text: data?.transcript || data || "No transcript content available." });
+      setActiveMeetingTranscript({ title, text: data?.transcript || data || t("aiAssistant.errors.noTranscript") });
     } catch (err) {
-      setActiveMeetingTranscript({ title, text: `Failed to load transcript: ${err?.message || err}` });
+      setActiveMeetingTranscript({ title, text: t("aiAssistant.errors.transcriptFailed", { message: err?.message || err }) });
     } finally {
       setLoadingTranscript(false);
     }
@@ -714,10 +712,10 @@ function AiAssistantPage() {
       void fetchAndShowTranscript(citation.entity_id, citation.title);
     } else if (citation.entity_type === "decision") {
       setActiveTab("overview");
-      showToast(`Decision selected: "${citation.title}". Scroll to Decision Register to view details.`, "info");
+      showToast(t("aiAssistant.toasts.decisionSelected", { title: citation.title }), "info");
     } else if (citation.entity_type === "approval" || citation.entity_type === "workflow") {
       setActiveTab("approvals");
-      showToast(`Workflow approval selected: "${citation.title}". Check active workflow queue.`, "info");
+      showToast(t("aiAssistant.toasts.workflowSelected", { title: citation.title }), "info");
     }
   };
 
@@ -745,7 +743,7 @@ function AiAssistantPage() {
     [contextValues.boardId, contextValues.spaceId, contextValues.taskId],
   );
 
-  const quickPromptItems = useMemo(() => buildQuickPrompts(), []);
+  const quickPromptItems = useMemo(() => buildQuickPrompts(t), [t]);
 
   // Primary Workspace Intelligence query
   const dashboardQuery = useAiDashboardQuery(contextValues.spaceId.trim());
@@ -827,6 +825,7 @@ function AiAssistantPage() {
       sessionId: currentSessionId,
       messages: nextMessages,
       context: contextValues,
+      t,
     });
     setRecentSessions((currentSessions) => {
       const withoutCurrent = currentSessions.filter((session) => session.id !== currentSessionId);
@@ -865,13 +864,13 @@ function AiAssistantPage() {
     if (!trimmedPrompt || isStreaming) return;
 
     if (trimmedPrompt.length > MAX_COMPOSER_LENGTH) {
-      setPageError(`Messages are limited to ${MAX_COMPOSER_LENGTH} characters.`);
+      setPageError(t("aiAssistant.errors.messageLimit", { count: MAX_COMPOSER_LENGTH }));
       return;
     }
 
     // Validate workspace selection before calling AI
     if (!chatContext.spaceId || chatContext.spaceId.trim() === "") {
-      showToast("Please select a workspace before asking questions. Use the workspace selector at the top of the page.", "error");
+      showToast(t("aiAssistant.errors.selectWorkspace"), "error");
       return;
     }
 
@@ -887,10 +886,10 @@ function AiAssistantPage() {
       role: "assistant",
       kind: "text",
       text: "",
-      label: "Intelligence Response",
+      label: t("aiAssistant.labels.chat.intelligenceResponse"),
       icon: "fa-sparkles",
       loading: true,
-      status: "Thinking...",
+      status: t("aiAssistant.labels.thinking"),
       error: "",
       traceId: "",
     };
@@ -932,17 +931,39 @@ function AiAssistantPage() {
               if (message.id !== assistantMessageId) return message;
               
               const info = typeof statusInfo === "string" ? { status: statusInfo } : statusInfo;
-              const statusText = info.status || info.message || "Processing...";
+              const statusText = info.status || info.message || t("aiAssistant.labels.processing");
               const steps = message.thinkingSteps || [];
-              
+
               let nextSteps = [...steps];
               if (info.event === "tool_complete" || info.event === "reflection") {
-                nextSteps = steps.map(s => s.active ? { ...s, active: false, status: s.status.startsWith("✓") || s.status.startsWith("✗") ? s.status : `✓ Completed: ${s.status.replace("...", "")}` } : s);
+                nextSteps = steps.map((s) =>
+                  s.active
+                    ? {
+                        ...s,
+                        active: false,
+                        status:
+                          s.status.startsWith("✓") || s.status.startsWith("✗")
+                            ? s.status
+                            : `✓ ${t("aiAssistant.labels.thinkingStepCompleted", { status: s.status.replace("...", "") })}`,
+                      }
+                    : s,
+                );
                 nextSteps.push({ event: info.event, status: statusText, active: false });
               } else {
-                const exists = steps.some(s => s.status === statusText);
+                const exists = steps.some((s) => s.status === statusText);
                 if (!exists) {
-                  nextSteps = steps.map(s => s.active ? { ...s, active: false, status: s.status.startsWith("✓") || s.status.startsWith("✗") ? s.status : `✓ Resolved: ${s.status.replace("...", "")}` } : s);
+                  nextSteps = steps.map((s) =>
+                    s.active
+                      ? {
+                          ...s,
+                          active: false,
+                          status:
+                            s.status.startsWith("✓") || s.status.startsWith("✗")
+                              ? s.status
+                              : `✓ ${t("aiAssistant.labels.thinkingStepResolved", { status: s.status.replace("...", "") })}`,
+                        }
+                      : s,
+                  );
                   nextSteps.push({ event: info.event || "thinking", status: statusText, active: true });
                 }
               }
@@ -962,7 +983,7 @@ function AiAssistantPage() {
           message.id === assistantMessageId
             ? {
                 ...message,
-                text: message.text || text || "Done.",
+                text: message.text || text || t("aiAssistant.labels.completed"),
                 loading: false,
                 traceId: message.traceId || traceId || "",
                 citations: citations || [],
@@ -983,14 +1004,14 @@ function AiAssistantPage() {
         setMessages((currentMessages) => {
           const abortedMessages = currentMessages.map((message) =>
             message.id === assistantMessageId
-              ? { ...message, loading: false, error: "Response stopped." }
+              ? { ...message, loading: false, error: t("aiAssistant.errors.stopped") }
               : message,
           );
           persistCurrentSession(abortedMessages);
           return abortedMessages;
         });
       } else {
-        const errorMessage = getUserFriendlyErrorMessage(error);
+        const errorMessage = getUserFriendlyErrorMessage(error, t);
         setPageError(errorMessage);
         setMessages((currentMessages) => {
           const failedMessages = currentMessages.map((message) =>
@@ -1033,7 +1054,7 @@ function AiAssistantPage() {
           spaceId: contextValues.spaceId.trim(),
           boardId: contextValues.boardId.trim() || undefined,
         });
-        appendAssistantResult("Board Risk Assessment", formatApiResult(payload), {
+        appendAssistantResult(t("aiAssistant.scans.riskLabel"), formatApiResult(payload), {
           icon: "fa-chalkboard",
           traceId: extractTraceId(payload),
         });
@@ -1044,13 +1065,13 @@ function AiAssistantPage() {
           boardId: contextValues.boardId.trim() || undefined,
           reportType: "weekly",
         });
-        appendAssistantResult("AI Executive Status Report", formatApiResult(payload), {
+        appendAssistantResult(t("aiAssistant.scans.reportLabel"), formatApiResult(payload), {
           icon: "fa-file-lines",
           traceId: extractTraceId(payload),
         });
       }
     } catch (error) {
-      setPageError(getUserFriendlyErrorMessage(error));
+      setPageError(getUserFriendlyErrorMessage(error, t));
     } finally {
       setActiveActionKey("");
     }
@@ -1068,9 +1089,9 @@ function AiAssistantPage() {
         ...current,
         [traceId]: { rating, submitting: false },
       }));
-      showToast("Feedback submitted successfully!", "success");
+      showToast(t("aiAssistant.toasts.feedbackSubmitted"), "success");
     } catch (error) {
-      setPageError(getUserFriendlyErrorMessage(error));
+      setPageError(getUserFriendlyErrorMessage(error, t));
       setMessageFeedback((current) => ({
         ...current,
         [traceId]: { ...current[traceId], submitting: false },
@@ -1084,10 +1105,13 @@ function AiAssistantPage() {
 
     try {
       await reviewActionMutation.mutateAsync({ actionId, decision });
-      showToast(`AI proposed action ${decision === "approve" ? "approved" : "rejected"} successfully.`, "success");
+      showToast(
+        t(decision === "approve" ? "aiAssistant.toasts.actionReviewedApproved" : "aiAssistant.toasts.actionReviewedRejected"),
+        "success",
+      );
       void dashboardQuery.refetch();
     } catch (error) {
-      setPageError(getUserFriendlyErrorMessage(error));
+      setPageError(getUserFriendlyErrorMessage(error, t));
     } finally {
       setReviewingActionId("");
     }
@@ -1122,7 +1146,7 @@ function AiAssistantPage() {
       {contextOpen && (
         <button
           type="button"
-          aria-label="Close context panel"
+          aria-label={t("common.close")}
           onClick={() => setContextOpen(false)}
           className="absolute inset-0 z-40 bg-slate-900/20 backdrop-blur-[2px] transition-all"
         />
@@ -1136,8 +1160,8 @@ function AiAssistantPage() {
       >
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Settings</span>
-            <h2 className="text-[15px] font-black text-slate-900 dark:text-slate-150">Workspace Context</h2>
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t("aiAssistant.labels.settings")}</span>
+            <h2 className="text-[15px] font-black text-slate-900 dark:text-slate-150">{t("aiAssistant.labels.workspaceContext")}</h2>
           </div>
           <button
             type="button"
@@ -1150,7 +1174,7 @@ function AiAssistantPage() {
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
           <div>
-            <FieldLabel>Current Workspace</FieldLabel>
+            <FieldLabel>{t("aiAssistant.labels.currentWorkspace")}</FieldLabel>
             <select
               value={contextValues.spaceId}
               onChange={(e) => {
@@ -1162,7 +1186,7 @@ function AiAssistantPage() {
               }}
               className="w-full rounded-xl border border-slate-205 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 px-3 py-2 text-[12px] font-semibold text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-400 cursor-pointer"
             >
-              <option value="">Select Workspace...</option>
+              <option value="">{t("aiAssistant.labels.selectWorkspace")}</option>
               {spaces.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -1170,7 +1194,7 @@ function AiAssistantPage() {
           </div>
 
           <div>
-            <FieldLabel>Current Board</FieldLabel>
+            <FieldLabel>{t("aiAssistant.labels.currentBoard")}</FieldLabel>
             <select
               value={contextValues.boardId}
               onChange={(e) => {
@@ -1182,7 +1206,7 @@ function AiAssistantPage() {
               disabled={!contextValues.spaceId}
               className="w-full rounded-xl border border-slate-205 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 px-3 py-2 text-[12px] font-semibold text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              <option value="">Select Board...</option>
+              <option value="">{t("aiAssistant.labels.selectBoard")}</option>
               {activeBoards.map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
@@ -1190,7 +1214,7 @@ function AiAssistantPage() {
           </div>
 
           <div>
-            <FieldLabel>Focus Task</FieldLabel>
+            <FieldLabel>{t("aiAssistant.labels.focusTask")}</FieldLabel>
             <select
               value={contextValues.taskId}
               onChange={(e) => setContextValue("taskId", e.target.value)}
@@ -1198,12 +1222,12 @@ function AiAssistantPage() {
               className="w-full rounded-xl border border-slate-205 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 px-3 py-2 text-[12px] font-semibold text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {tasksQuery.isLoading ? (
-                <option value="">Loading tasks...</option>
+                <option value="">{t("aiAssistant.labels.loadingTasks")}</option>
               ) : boardTasks.length === 0 ? (
-                <option value="">No tasks available</option>
+                <option value="">{t("aiAssistant.labels.noTasksAvailable")}</option>
               ) : (
                 <>
-                  <option value="">Select Task...</option>
+                  <option value="">{t("aiAssistant.labels.selectTask")}</option>
                   {boardTasks.map((t) => (
                     <option key={t.id} value={t.id}>{t.title || t.name}</option>
                   ))}
@@ -1213,23 +1237,23 @@ function AiAssistantPage() {
           </div>
 
           <div>
-            <FieldLabel>Response Style</FieldLabel>
+            <FieldLabel>{t("aiAssistant.labels.responseStyle")}</FieldLabel>
             <select
               value={contextValues.commentTone}
               onChange={(e) => setContextValue("commentTone", e.target.value)}
               className="w-full rounded-xl border border-slate-205 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 px-3 py-2 text-[12px] font-semibold text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-400 cursor-pointer"
             >
               {["professional", "friendly", "concise", "urgent"].map((tone) => (
-                <option key={tone} value={tone}>{tone.charAt(0).toUpperCase() + tone.slice(1)}</option>
+                <option key={tone} value={tone}>{t(`aiAssistant.tones.${tone}`)}</option>
               ))}
             </select>
           </div>
 
           <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-6">
-            <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3">Recent Sessions</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3">{t("aiAssistant.labels.recentSessions")}</h3>
             {recentSessions.length === 0 ? (
               <div className="text-[11px] text-slate-400 p-2 text-center border border-dashed border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-955/20">
-                No recent conversations
+                {t("aiAssistant.labels.noRecentConversations")}
               </div>
             ) : (
               <div className="space-y-2">
@@ -1256,28 +1280,28 @@ function AiAssistantPage() {
         <header className="bg-white dark:bg-slate-900 px-6 py-5 border-b border-slate-100 dark:border-slate-800/60 shadow-[0_2px_8px_rgba(15,23,42,0.01)] shrink-0">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3.5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[20px] bg-gradient-to-tr from-indigo-500 to-indigo-400 text-white shadow-[0_8px_20px_rgba(99,102,241,0.2)]">
-                <i className="fa-solid fa-sparkles text-md" />
-              </div>
+          <div className="grid h-10 w-10 place-items-center rounded-xl">
+            <img src={mongezMark} alt={t("landing.nav.markAlt")} className="h-8 w-7 object-contain" />
+          </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-[20px] font-black tracking-[-0.04em] text-slate-900 dark:text-white">Mongez Intelligence</h1>
+                  <h1 className="text-[20px] font-black tracking-[-0.04em] text-slate-900 dark:text-white">{t("aiAssistant.labels.title")}</h1>
                   <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-indigo-600 dark:text-indigo-400">
                     AI OS
                   </span>
                 </div>
-                <p className="text-[12px] text-slate-550 mt-0.5 font-medium">AI-driven workspace insights, approvals, workload capacities, and execution logs.</p>
+                <p className="text-[12px] text-slate-550 mt-0.5 font-medium">{t("aiAssistant.labels.subtitle")}</p>
               </div>
             </div>
 
             {/* Premium Tab bar navigation */}
             <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/80 dark:bg-slate-950/60 p-1 rounded-full border border-slate-202/50 dark:border-slate-808/50">
               {[
-                { id: "overview", label: "Overview", icon: "fa-chart-pie" },
-                { id: "actions", label: "Actions", icon: "fa-bolt-lightning" },
-                { id: "approvals", label: "Approvals", icon: "fa-shield-halved" },
-                { id: "insights", label: "Insights", icon: "fa-eye" },
-                { id: "chat", label: "Chat Assistant", icon: "fa-comments" },
+                { id: "overview", label: t("aiAssistant.labels.tabs.overview"), icon: "fa-chart-pie" },
+                { id: "actions", label: t("aiAssistant.labels.tabs.actions"), icon: "fa-bolt-lightning" },
+                { id: "approvals", label: t("aiAssistant.labels.tabs.approvals"), icon: "fa-shield-halved" },
+                { id: "insights", label: t("aiAssistant.labels.tabs.insights"), icon: "fa-eye" },
+                { id: "chat", label: t("aiAssistant.labels.tabs.chat"), icon: "fa-comments" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1303,7 +1327,7 @@ function AiAssistantPage() {
                 className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-808 bg-white dark:bg-slate-900 px-4 py-2 text-[11px] font-bold text-slate-655 dark:text-slate-335 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-808 cursor-pointer"
               >
                 <i className="fa-solid fa-sliders" />
-                Context Setup
+                {t("aiAssistant.labels.contextSetup")}
               </button>
             </div>
           </div>
@@ -1321,7 +1345,7 @@ function AiAssistantPage() {
           {dashboardLoading && activeTab !== "chat" && (
             <div className="mb-6 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/10 px-4 py-2 text-[11px] font-bold text-indigo-500 animate-pulse flex items-center gap-2">
               <i className="fa-solid fa-spinner fa-spin" />
-              <span>Workspace Intelligence updating live...</span>
+              <span>{t("aiAssistant.labels.workspaceUpdating")}</span>
             </div>
           )}
 
@@ -1344,15 +1368,15 @@ function AiAssistantPage() {
                 ) : (
                   // Actual metrics when loaded
                   [
-                  { label: "Open Tasks", value: dashboardData.metrics.openTasks, color: "text-slate-900 dark:text-slate-100" },
-                  { label: "Overdue Tasks", value: dashboardData.metrics.overdueTasks, color: dashboardData.metrics.overdueTasks > 0 ? "text-rose-600 dark:text-rose-455 font-black" : "text-slate-900 dark:text-slate-100", highlight: dashboardData.metrics.overdueTasks > 0 },
-                  { label: "Blocked Tasks", value: dashboardData.metrics.blockedTasks, color: dashboardData.metrics.blockedTasks > 0 ? "text-amber-600 dark:text-amber-400 font-black" : "text-slate-900 dark:text-slate-100", highlight: dashboardData.metrics.blockedTasks > 0 },
-                  { label: "Pending Approvals", value: dashboardData.metrics.pendingApprovals, color: "text-violet-600 dark:text-violet-405", sub: `${dashboardData.metrics.staleApprovals} stale >48h` },
-                  { label: "High Risk Boards", value: dashboardData.metrics.highRiskProjects, color: dashboardData.metrics.highRiskProjects > 0 ? "text-rose-500" : "text-slate-900 dark:text-slate-100" },
-                  { label: "Overloaded Members", value: dashboardData.metrics.overloadedMembers, color: "text-amber-505" },
-                  { label: "Upcoming Deadlines", value: dashboardData.metrics.upcomingDeadlines, color: "text-sky-505" },
-                  { label: "Meeting Actions", value: dashboardData.metrics.meetingActionsWaitingReview, color: "text-indigo-500" },
-                ].map((stat, idx) => (
+                    { label: t("aiAssistant.labels.overview.openTasks"), value: dashboardData.metrics.openTasks, color: "text-slate-900 dark:text-slate-100" },
+                    { label: t("aiAssistant.labels.overview.overdueTasks"), value: dashboardData.metrics.overdueTasks, color: dashboardData.metrics.overdueTasks > 0 ? "text-rose-600 dark:text-rose-455 font-black" : "text-slate-900 dark:text-slate-100", highlight: dashboardData.metrics.overdueTasks > 0 },
+                    { label: t("aiAssistant.labels.overview.blockedTasks"), value: dashboardData.metrics.blockedTasks, color: dashboardData.metrics.blockedTasks > 0 ? "text-amber-600 dark:text-amber-400 font-black" : "text-slate-900 dark:text-slate-100", highlight: dashboardData.metrics.blockedTasks > 0 },
+                    { label: t("aiAssistant.labels.overview.pendingApprovals"), value: dashboardData.metrics.pendingApprovals, color: "text-violet-600 dark:text-violet-405", sub: t("aiAssistant.labels.overview.staleApprovalsSuffix", { count: dashboardData.metrics.staleApprovals }) },
+                    { label: t("aiAssistant.labels.overview.highRiskBoards"), value: dashboardData.metrics.highRiskProjects, color: dashboardData.metrics.highRiskProjects > 0 ? "text-rose-500" : "text-slate-900 dark:text-slate-100" },
+                    { label: t("aiAssistant.labels.overview.overloadedMembers"), value: dashboardData.metrics.overloadedMembers, color: "text-amber-505" },
+                    { label: t("aiAssistant.labels.overview.upcomingDeadlines"), value: dashboardData.metrics.upcomingDeadlines, color: "text-sky-505" },
+                    { label: t("aiAssistant.labels.overview.meetingActions"), value: dashboardData.metrics.meetingActionsWaitingReview, color: "text-indigo-500" },
+                  ].map((stat, idx) => (
                   <div
                     key={idx}
                     className={`rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-md transition duration-200 border-none ${
@@ -1365,7 +1389,7 @@ function AiAssistantPage() {
                       {stat.sub && <span className="text-[10px] font-semibold text-slate-400">{stat.sub}</span>}
                     </div>
                   </div>
-                )))}
+                  )))}
               </section>
 
               {/* Action Center & Executive Feed Split */}
@@ -1374,11 +1398,11 @@ function AiAssistantPage() {
                 <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm flex flex-col">
                   <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
                     <div>
-                      <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">AI Action Center</h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Approve or reject automated CQRS proposed tasks.</p>
+                      <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">{t("aiAssistant.labels.overview.actionCenter")}</h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{t("aiAssistant.labels.overview.actionCenterDescription")}</p>
                     </div>
                     <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-450">
-                      {dashboardData.pendingActions.length} Pending
+                      {t("aiAssistant.labels.overview.pendingBadge", { count: dashboardData.pendingActions.length })}
                     </span>
                   </div>
 
@@ -1387,8 +1411,8 @@ function AiAssistantPage() {
                       <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-505 flex items-center justify-center mb-3">
                         <i className="fa-solid fa-circle-check text-lg" />
                       </div>
-                      <h4 className="text-[13px] font-bold text-slate-800 dark:text-slate-200">Governance Clean</h4>
-                      <p className="text-[11px] text-slate-400 max-w-xs mt-1">All proposed actions have been reviewed and executed.</p>
+                      <h4 className="text-[13px] font-bold text-slate-800 dark:text-slate-200">{t("aiAssistant.labels.overview.governanceClean")}</h4>
+                      <p className="text-[11px] text-slate-400 max-w-xs mt-1">{t("aiAssistant.labels.overview.governanceCleanDescription")}</p>
                     </div>
                   ) : (
                     <div className="space-y-3 flex-1 overflow-y-auto max-h-[320px] pr-1">
@@ -1398,7 +1422,7 @@ function AiAssistantPage() {
                             <span className="rounded-full bg-slate-202 dark:bg-slate-850 px-2 py-0.5 text-[9px] font-bold text-slate-700 dark:text-slate-335 tracking-wide uppercase">
                               {action.commandType}
                             </span>
-                            <span className="text-[9px] text-slate-400 font-bold">{new Date(action.createdAt).toLocaleTimeString()}</span>
+                            <span className="text-[9px] text-slate-400 font-bold">{formatTime(action.createdAt)}</span>
                           </div>
                           <p className="mt-2 text-[12px] font-bold text-slate-800 dark:text-slate-255 leading-relaxed">{action.reason}</p>
                           <div className="mt-3 flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-850">
@@ -1408,7 +1432,7 @@ function AiAssistantPage() {
                               onClick={() => void reviewFeedAction(action.id, "approve")}
                               className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 py-1.5 text-[11px] font-bold text-white transition disabled:opacity-55 cursor-pointer shadow-sm"
                             >
-                              <i className="fa-solid fa-check" /> Approve
+                              <i className="fa-solid fa-check" /> {t("aiAssistant.labels.actions.approve")}
                             </button>
                             <button
                               type="button"
@@ -1416,7 +1440,7 @@ function AiAssistantPage() {
                               onClick={() => void reviewFeedAction(action.id, "reject")}
                               className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-rose-200 bg-white dark:bg-slate-900 py-1.5 text-[11px] font-bold text-rose-600 dark:text-rose-455 transition hover:bg-rose-55 dark:hover:bg-rose-955/20 disabled:opacity-55 cursor-pointer"
                             >
-                              <i className="fa-solid fa-xmark" /> Reject
+                              <i className="fa-solid fa-xmark" /> {t("aiAssistant.labels.actions.reject")}
                             </button>
                           </div>
                         </div>
@@ -1429,8 +1453,8 @@ function AiAssistantPage() {
                 <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm flex flex-col">
                   <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
                     <div>
-                      <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">Executive Feed</h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Real-time alerts, blockages, and capacity highlights.</p>
+                      <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">{t("aiAssistant.labels.overview.executiveFeed")}</h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{t("aiAssistant.labels.overview.executiveFeedDescription")}</p>
                     </div>
                     <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
                   </div>
@@ -1456,7 +1480,7 @@ function AiAssistantPage() {
                         <div className="flex-1">
                           <p className="text-[12.5px] font-semibold text-slate-750 dark:text-slate-300 leading-relaxed">{item.message}</p>
                           <span className="text-[9px] text-slate-400 font-bold block mt-1">
-                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {formatTime(item.timestamp, { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
                       </div>
@@ -1470,13 +1494,13 @@ function AiAssistantPage() {
                 {/* Meeting Intelligence Widget */}
                 <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm">
                   <div className="mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
-                    <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">Recent Meeting Intelligence</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Analyzed transcripts with task extraction statistics.</p>
+                    <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">{t("aiAssistant.labels.overview.recentMeetingIntelligence")}</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{t("aiAssistant.labels.overview.recentMeetingDescription")}</p>
                   </div>
 
                   {dashboardData.meetingIntelligence.length === 0 ? (
                     <div className="py-8 text-center text-[12px] text-slate-400">
-                      No analyzed meetings found in this space.
+                      {t("aiAssistant.labels.overview.noMeetings")}
                     </div>
                   ) : (
                     <div className="space-y-3.5">
@@ -1484,21 +1508,21 @@ function AiAssistantPage() {
                         <div key={meeting.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-955 rounded-2xl">
                           <div className="min-w-0">
                             <span className="text-[12px] font-bold text-slate-800 dark:text-slate-200 block truncate">{meeting.title}</span>
-                            <span className="text-[9px] font-bold text-slate-400">{new Date(meeting.createdAt).toLocaleDateString()}</span>
+                            <span className="text-[9px] font-bold text-slate-400">{formatDate(meeting.createdAt)}</span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-405">
-                              {meeting.proposedTasksCount} Tasks Extracted
+                              {t("aiAssistant.labels.overview.tasksExtracted", { count: meeting.proposedTasksCount })}
                             </span>
                             <button
                               type="button"
                               onClick={() => {
-                                setComposer(`Show details for meeting: ${meeting.title}`);
+                                setComposer(t("aiAssistant.labels.overview.openMeetingPrompt", { title: meeting.title }));
                                 setActiveTab("chat");
                               }}
                               className="text-[11px] font-bold text-indigo-500 hover:text-indigo-600 cursor-pointer"
                             >
-                              Open
+                              {t("aiAssistant.labels.overview.open")}
                             </button>
                           </div>
                         </div>
@@ -1510,13 +1534,13 @@ function AiAssistantPage() {
                 {/* Decision Register Widget */}
                 <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm">
                   <div className="mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
-                    <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">Recent Decisions (Decision Register)</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Latest logs, outcomes, and justifications.</p>
+                    <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">{t("aiAssistant.labels.overview.recentDecisions")}</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{t("aiAssistant.labels.overview.recentDecisionsDescription")}</p>
                   </div>
 
                   {dashboardData.recentDecisions.length === 0 ? (
                     <div className="py-8 text-center text-[12px] text-slate-400">
-                      No decision records resolved yet.
+                      {t("aiAssistant.labels.overview.noDecisions")}
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1546,15 +1570,15 @@ function AiAssistantPage() {
           {activeTab === "actions" && (
             <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm animate-fadeIn">
               <div className="mb-6 pb-2 border-b border-slate-50 dark:border-slate-800/40">
-                <h2 className="text-[16px] font-black text-slate-900 dark:text-slate-100">AI Proposed Actions Log</h2>
-                <p className="text-[12px] text-slate-550 mt-0.5">Automated task mutations, escalations, and messaging recommendations awaiting reviews.</p>
+                <h2 className="text-[16px] font-black text-slate-900 dark:text-slate-100">{t("aiAssistant.labels.actions.title")}</h2>
+                <p className="text-[12px] text-slate-550 mt-0.5">{t("aiAssistant.labels.actions.description")}</p>
               </div>
 
               {dashboardData.pendingActions.length === 0 ? (
                 <div className="py-12 text-center text-slate-405">
                   <i className="fa-solid fa-circle-check text-3xl text-emerald-400 mb-3" />
-                  <p className="text-[13px] font-bold text-slate-700 dark:text-slate-350">All actions resolved</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Mongez workspace is fully aligned with governance parameters.</p>
+                  <p className="text-[13px] font-bold text-slate-700 dark:text-slate-350">{t("aiAssistant.labels.actions.allResolved")}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{t("aiAssistant.labels.actions.allResolvedDescription")}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-slate-850">
@@ -1564,11 +1588,11 @@ function AiAssistantPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-[12px] font-black text-slate-808 dark:text-slate-150">{action.commandType}</span>
                           <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[9px] font-bold text-slate-500 uppercase tracking-wide">
-                            Pending Approval
+                            {t("aiAssistant.labels.actions.pendingApproval")}
                           </span>
                         </div>
                         <p className="text-[12.5px] leading-relaxed text-slate-650 dark:text-slate-400">{action.reason}</p>
-                        <div className="text-[10px] font-bold text-slate-400">Proposed {new Date(action.createdAt).toLocaleString()}</div>
+                        <div className="text-[10px] font-bold text-slate-400">{t("aiAssistant.labels.actions.proposedAt", { date: formatDateTime(action.createdAt) })}</div>
                       </div>
                       <div className="flex gap-2 w-full md:w-auto">
                         <button
@@ -1577,7 +1601,7 @@ function AiAssistantPage() {
                           onClick={() => void reviewFeedAction(action.id, "approve")}
                           className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 px-4 py-2 text-[11px] font-bold text-white transition disabled:opacity-55 cursor-pointer shadow-sm"
                         >
-                          <i className="fa-solid fa-check" /> Approve
+                          <i className="fa-solid fa-check" /> {t("aiAssistant.labels.actions.approve")}
                         </button>
                         <button
                           type="button"
@@ -1585,7 +1609,7 @@ function AiAssistantPage() {
                           onClick={() => void reviewFeedAction(action.id, "reject")}
                           className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 rounded-full border border-rose-200 bg-white dark:bg-slate-900 px-4 py-2 text-[11px] font-bold text-rose-600 dark:text-rose-455 transition hover:bg-rose-50 dark:hover:bg-rose-955/20 disabled:opacity-55 cursor-pointer"
                         >
-                          <i className="fa-solid fa-xmark" /> Reject
+                          <i className="fa-solid fa-xmark" /> {t("aiAssistant.labels.actions.reject")}
                         </button>
                       </div>
                     </div>
@@ -1600,30 +1624,30 @@ function AiAssistantPage() {
             <div className="space-y-6 animate-fadeIn">
               <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Total Pending Approvals</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">{t("aiAssistant.labels.approvals.totalPending")}</span>
                   <span className="text-3xl font-black text-slate-900 dark:text-slate-100">{dashboardData.metrics.pendingApprovals}</span>
                 </div>
                 <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Stale Approvals (&gt;48h)</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">{t("aiAssistant.labels.approvals.stale")}</span>
                   <span className={`text-3xl font-black ${dashboardData.metrics.staleApprovals > 0 ? "text-rose-500" : "text-slate-900 dark:text-slate-100"}`}>
                     {dashboardData.metrics.staleApprovals}
                   </span>
                 </div>
                 <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Escalated Notifications</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">{t("aiAssistant.labels.approvals.escalated")}</span>
                   <span className="text-3xl font-black text-slate-900 dark:text-slate-100">{dashboardData.metrics.meetingActionsWaitingReview}</span>
                 </div>
               </section>
 
               <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm">
                 <div className="mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
-                  <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">Active Workflow Queue</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Tasks, budget releases, and milestones locked behind workflow gates.</p>
+                  <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">{t("aiAssistant.labels.approvals.queueTitle")}</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{t("aiAssistant.labels.approvals.queueDescription")}</p>
                 </div>
 
                 {dashboardData.approvals.length === 0 ? (
                   <div className="py-12 text-center text-slate-400">
-                    No active workflows require review.
+                    {t("aiAssistant.labels.approvals.noApprovals")}
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-100 dark:divide-slate-850">
@@ -1631,12 +1655,12 @@ function AiAssistantPage() {
                       <div key={app.id} className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
                         <div>
                           <span className="text-[12.5px] font-bold text-slate-850 dark:text-slate-200 block">{app.title}</span>
-                          <span className="text-[10px] text-slate-400 font-semibold">Started {new Date(app.startedAt).toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400 font-semibold">{t("aiAssistant.labels.approvals.started", { date: formatDateTime(app.startedAt) })}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           {app.isStale && (
                             <span className="rounded-full bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 text-[9px] font-bold text-rose-600 dark:text-rose-400">
-                              Stale &gt;48h
+                              {t("aiAssistant.labels.approvals.staleBadge")}
                             </span>
                           )}
                           <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
@@ -1658,8 +1682,8 @@ function AiAssistantPage() {
               <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm">
                 <div className="mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40 flex items-center justify-between">
                   <div>
-                    <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">Project Risks Analysis</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Tasks currently blocked or past their due dates.</p>
+                  <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">{t("aiAssistant.labels.insights.risksTitle")}</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{t("aiAssistant.labels.insights.risksDescription")}</p>
                   </div>
                   <button
                     type="button"
@@ -1668,13 +1692,13 @@ function AiAssistantPage() {
                     className="inline-flex items-center gap-1 bg-rose-50 hover:bg-rose-100 dark:bg-rose-955/20 px-3 py-1 rounded-full text-[10px] font-bold text-rose-600 dark:text-rose-455 cursor-pointer"
                   >
                     <i className={`fa-solid ${activeActionKey === "board_risk" ? "fa-spinner fa-spin" : "fa-shield-halved"}`} />
-                    Deep Scan
+                    {t("aiAssistant.labels.insights.deepScan")}
                   </button>
                 </div>
 
                 {dashboardData.risks.length === 0 ? (
                   <div className="py-12 text-center text-slate-450">
-                    🟢 No immediate blocked or overdue risks detected.
+                    {t("aiAssistant.labels.insights.noRisks")}
                   </div>
                 ) : (
                   <div className="space-y-3.5">
@@ -1687,10 +1711,10 @@ function AiAssistantPage() {
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-2 text-[10px] text-slate-400 font-semibold mt-2">
-                          <span>Board: {risk.boardName}</span>
+                          <span>{t("aiAssistant.labels.insights.board", { name: risk.boardName })}</span>
                           {risk.dueDate && (
                             <span className="text-rose-500">
-                              Overdue: {new Date(risk.dueDate).toLocaleDateString()}
+                              {t("aiAssistant.labels.insights.overdue", { date: formatDate(risk.dueDate) })}
                             </span>
                           )}
                         </div>
@@ -1703,8 +1727,8 @@ function AiAssistantPage() {
               {/* Workload Capacities List */}
               <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm flex flex-col">
                 <div className="mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
-                  <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">Team Workload Capacity</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Computed dynamically from historical completion rates.</p>
+                  <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">{t("aiAssistant.labels.insights.workloadTitle")}</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{t("aiAssistant.labels.insights.workloadDescription")}</p>
                 </div>
 
                 <div className="space-y-4 flex-1">
@@ -1724,12 +1748,12 @@ function AiAssistantPage() {
                     </div>
                   ) : (
                     <div className="py-8 text-center text-slate-450">
-                      🟢 All assignees are currently within their calculated workload boundaries.
+                      {t("aiAssistant.labels.insights.allBalanced")}
                     </div>
                   )}
 
                   <div className="rounded-2xl border border-dashed border-slate-150 dark:border-slate-808 bg-slate-50/50 dark:bg-slate-955/20 p-4 text-[11px] leading-relaxed text-slate-500 mt-4">
-                    <strong>Capacity algorithm:</strong> Completion rate (completed tasks in status DONE) over the last 30 days is measured weekly and multiplied by 1.5. If active open tasks exceed this average, capacity is flagged.
+                    {t("aiAssistant.labels.insights.capacityAlgorithm")}
                   </div>
                 </div>
               </section>
@@ -1752,13 +1776,13 @@ function AiAssistantPage() {
                     <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-indigo-50 dark:bg-indigo-950/50 text-indigo-500 shadow-[0_12px_24px_rgba(99,102,241,0.12)] mb-5">
                       <i className="fa-solid fa-sparkles text-xl animate-pulse" />
                     </div>
-                    <h3 className="text-[16px] font-black text-slate-900 dark:text-slate-150">Workspace Chat Assistant</h3>
+                    <h3 className="text-[16px] font-black text-slate-900 dark:text-slate-150">{t("aiAssistant.labels.chat.emptyTitle")}</h3>
                     <p className="text-[12px] leading-relaxed text-slate-450 mt-1.5 mb-6">
-                      Ask me to analyze project timelines, extract meeting highlights, or compile status summaries.
+                      {t("aiAssistant.labels.chat.emptyDescription")}
                     </p>
 
                     <div className="w-full space-y-2 text-left">
-                      <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 pl-1 block mb-2">Workspace queries</span>
+                      <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 pl-1 block mb-2">{t("aiAssistant.labels.chat.workspaceQueries")}</span>
                       <div className="grid grid-cols-1 gap-2.5">
                         {quickPromptItems.map((item) => (
                           <button
@@ -1819,7 +1843,7 @@ function AiAssistantPage() {
                   className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-808 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-808 dark:text-slate-400 dark:hover:text-slate-205 shadow-sm cursor-pointer"
                 >
                   <i className="fa-solid fa-rotate" />
-                  Clear Session
+                  {t("aiAssistant.labels.chat.clearSession")}
                 </button>
                 <button
                   type="button"
@@ -1828,7 +1852,7 @@ function AiAssistantPage() {
                   className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-808 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-808 dark:text-slate-400 dark:hover:text-slate-205 shadow-sm disabled:cursor-not-allowed cursor-pointer"
                 >
                   <i className="fa-solid fa-file-invoice" />
-                  Generate Status Report
+                  {t("aiAssistant.labels.chat.generateStatusReport")}
                 </button>
               </div>
 
@@ -1837,14 +1861,8 @@ function AiAssistantPage() {
                 <div className="mx-auto w-full">
                   {/* Dynamic Suggestion Chips */}
                   <div className="flex flex-wrap gap-2 mb-3.5 items-center">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">💡 Try asking:</span>
-                    {[
-                      { label: "Blocked tasks", prompt: "Show me all blocked tasks on my board." },
-                      { label: "Weekly report", prompt: "Generate a weekly status report." },
-                      { label: "Overloaded users", prompt: "Who is overloaded right now?" },
-                      { label: "Release risks", prompt: "Are there any risks to our release timeline?" },
-                      { label: "Remind overdue", prompt: "Propose reminders for overdue tasks." },
-                    ].map((chip) => (
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">💡 {t("aiAssistant.labels.chat.tryAsking")}</span>
+                    {suggestionChips.map((chip) => (
                       <button
                         key={chip.label}
                         type="button"
@@ -1872,7 +1890,7 @@ function AiAssistantPage() {
                             handleSubmit();
                           }
                         }}
-                        placeholder="Ask Mongez Intelligence anything..."
+                        placeholder={t("aiAssistant.labels.chat.composerPlaceholder")}
                         className="min-h-11 flex-1 resize-none border-0 bg-transparent px-3 py-2.5 text-[13px] leading-relaxed text-slate-755 dark:text-slate-350 outline-none placeholder:text-slate-400"
                       />
 
@@ -1881,7 +1899,7 @@ function AiAssistantPage() {
                           type="button"
                           onClick={() => chatAbortRef.current?.abort()}
                           className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-rose-500 hover:bg-rose-600 px-3 text-white transition cursor-pointer shadow-sm"
-                          aria-label="Stop streaming response"
+                          aria-label={t("aiAssistant.labels.chat.stopStreaming")}
                         >
                           <i className="fa-solid fa-stop text-xs" />
                         </button>
@@ -1891,7 +1909,7 @@ function AiAssistantPage() {
                           onClick={handleSubmit}
                           disabled={!composer.trim()}
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-505 text-white transition hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
-                          aria-label="Send message"
+                          aria-label={t("aiAssistant.labels.chat.sendMessage")}
                         >
                           <i className="fa-solid fa-arrow-up text-xs" />
                         </button>
@@ -1914,18 +1932,18 @@ function AiAssistantPage() {
                     {/* Status Context Indicator line */}
                     <div className="mt-2.5 flex flex-wrap items-center gap-1.5 px-2 border-t border-slate-100 dark:border-slate-850 pt-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">
                       <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                        Space: {activeSpace?.name || "None"}
+                        {t("aiAssistant.labels.chat.statusSpace", { value: activeSpace?.name || t("common.none") })}
                       </span>
                       <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                        Board: {activeBoard?.name || "None"}
+                        {t("aiAssistant.labels.chat.statusBoard", { value: activeBoard?.name || t("common.none") })}
                       </span>
                       {contextValues.taskId && (
                         <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                          Task: {boardTasks.find(t => t.id === contextValues.taskId)?.title || "Selected"}
+                          {t("aiAssistant.labels.chat.statusTask", { value: boardTasks.find((task) => task.id === contextValues.taskId)?.title || t("common.selected") })}
                         </span>
                       )}
                       <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                        Tone: {contextValues.commentTone}
+                        {t("aiAssistant.labels.chat.statusTone", { value: t(`aiAssistant.tones.${contextValues.commentTone}`) })}
                       </span>
                     </div>
                   </div>
@@ -1943,7 +1961,7 @@ function AiAssistantPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-slate-800/80">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Meeting Transcript</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">{t("aiAssistant.transcript.title")}</span>
                 <h3 className="text-[15px] font-black text-slate-900 dark:text-slate-100 truncate max-w-[450px]">
                   {activeMeetingTranscript.title}
                 </h3>
@@ -1962,7 +1980,7 @@ function AiAssistantPage() {
               {loadingTranscript ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                   <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-500" />
-                  <span className="text-slate-400 font-bold">Decrypting meeting transcript...</span>
+                  <span className="text-slate-400 font-bold">{t("aiAssistant.transcript.decrypting")}</span>
                 </div>
               ) : (
                 <div className="bg-slate-50 dark:bg-slate-955 p-4.5 rounded-2xl border border-slate-150/50 dark:border-slate-808/60 font-sans">
@@ -1978,7 +1996,7 @@ function AiAssistantPage() {
                 onClick={() => setTranscriptModalOpen(false)}
                 className="rounded-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white px-5 py-2 text-[11.5px] font-bold text-white dark:text-slate-900 transition cursor-pointer shadow-sm"
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
           </div>
@@ -1991,8 +2009,9 @@ function AiAssistantPage() {
 }
 
 function AiAssistantPageWithErrorBoundary(props) {
+  const { t } = useTranslation();
   return (
-    <ErrorBoundary fallbackMessage="The Mongez Intelligence page encountered a layout error. Please refresh.">
+    <ErrorBoundary fallbackMessage={t("aiAssistant.labels.errorBoundary")}>
       <AiAssistantPage {...props} />
     </ErrorBoundary>
   );

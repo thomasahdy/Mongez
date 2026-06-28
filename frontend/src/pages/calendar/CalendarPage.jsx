@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router";
+import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
 import {
   useCalendarEventsQuery,
@@ -7,17 +8,8 @@ import {
 } from "../../hooks/useCalendarQueries";
 
 const STORAGE_KEY = "mongez.calendar.filters";
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const CALENDAR_VIEWS = ["month", "week", "day"];
-
-const legendItems = [
-  { label: "Task", className: "bg-sky-100 text-sky-700 border-sky-200" },
-  { label: "Deadline", className: "bg-rose-100 text-rose-700 border-rose-200" },
-  { label: "Meeting", className: "bg-violet-100 text-violet-700 border-violet-200" },
-  { label: "Milestone", className: "bg-amber-100 text-amber-700 border-amber-200" },
-  { label: "Holiday", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  { label: "Weekend", className: "bg-slate-200 text-slate-700 border-slate-300" },
-];
+const NON_WORKING_WEEKEND = "weekend";
 
 function readFilters(activeSpaceId, activeBoardId) {
   try {
@@ -78,15 +70,15 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
-function formatMonthLabel(date) {
-  return new Intl.DateTimeFormat("en-US", {
+function formatMonthLabel(date, locale) {
+  return new Intl.DateTimeFormat(locale, {
     month: "long",
     year: "numeric",
   }).format(date);
 }
 
-function formatLongDayLabel(date) {
-  return new Intl.DateTimeFormat("en-US", {
+function formatLongDayLabel(date, locale) {
+  return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -149,17 +141,17 @@ function eventClassName(type) {
   }
 }
 
-function buildViewTabs(boardId) {
+function buildViewTabs(boardId, t) {
   return [
-    { label: "Board", icon: "fa-table-columns" },
-    { label: "List", icon: "fa-list" },
-    { label: "Calendar", icon: "fa-regular fa-calendar", to: "/calendar", active: true },
-    { label: "Gantt", icon: "fa-bars-staggered", to: boardId ? `/board/${boardId}/timeline` : "" },
-    { label: "Table", icon: "fa-table-cells", to: boardId ? `/board/${boardId}/table` : "" },
+    { label: t("calendar.viewTabs.board"), icon: "fa-table-columns" },
+    { label: t("calendar.viewTabs.list"), icon: "fa-list" },
+    { label: t("calendar.viewTabs.calendar"), icon: "fa-regular fa-calendar", to: "/calendar", active: true },
+    { label: t("calendar.viewTabs.gantt"), icon: "fa-bars-staggered", to: boardId ? `/board/${boardId}/timeline` : "" },
+    { label: t("calendar.viewTabs.table"), icon: "fa-table-cells", to: boardId ? `/board/${boardId}/table` : "" },
   ];
 }
 
-function normalizeEvents(payload) {
+function normalizeEvents(payload, t) {
   const rawEvents = Array.isArray(payload)
     ? payload
     : Array.isArray(payload?.data)
@@ -181,7 +173,12 @@ function normalizeEvents(payload) {
 
       const startDate = startOfDay(new Date(startValue));
       const endDate = startOfDay(new Date(endValue));
-      const title = event.title || event.name || event.taskTitle || event.taskName || `Event ${index + 1}`;
+      const title =
+        event.title ||
+        event.name ||
+        event.taskTitle ||
+        event.taskName ||
+        t("calendar.labels.eventFallbackTitle", { index: index + 1 });
       const source = `${event.source || ""} ${event.category || ""} ${event.type || ""} ${event.status || ""} ${title}`.toLowerCase();
 
       let type = "task";
@@ -229,8 +226,8 @@ function buildNonWorkingEntries(visibleDates, eventsByDate, selectedCountry) {
 
       return {
         dateKey: key,
-        label: holiday ? holiday.title : "Weekend",
-        source: holiday ? selectedCountry : "Weekend",
+        label: holiday ? holiday.title : NON_WORKING_WEEKEND,
+        source: holiday ? selectedCountry : NON_WORKING_WEEKEND,
       };
     });
 }
@@ -238,8 +235,25 @@ function buildNonWorkingEntries(visibleDates, eventsByDate, selectedCountry) {
 export default function CalendarPage() {
   const { setPath, activeBoard: outletBoard } = useOutletContext() || {};
   const { activeSpace, activeSpaceId, activeBoard, activeBoardId, user } = useAppContext();
+  const { t, i18n } = useTranslation();
   const resolvedBoard = outletBoard || activeBoard;
-  const viewTabs = buildViewTabs(resolvedBoard?.id || activeBoardId);
+  const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
+  const viewTabs = buildViewTabs(resolvedBoard?.id || activeBoardId, t);
+  const weekdayLabels = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => new Date(2026, 0, 4 + index).toLocaleDateString(locale, { weekday: "short" })),
+    [locale],
+  );
+  const legendItems = useMemo(
+    () => [
+      { label: t("calendar.legend.0"), className: "bg-sky-100 text-sky-700 border-sky-200" },
+      { label: t("calendar.legend.1"), className: "bg-rose-100 text-rose-700 border-rose-200" },
+      { label: t("calendar.legend.2"), className: "bg-violet-100 text-violet-700 border-violet-200" },
+      { label: t("calendar.legend.3"), className: "bg-amber-100 text-amber-700 border-amber-200" },
+      { label: t("calendar.legend.4"), className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+      { label: t("calendar.legend.5"), className: "bg-slate-200 text-slate-700 border-slate-300" },
+    ],
+    [t],
+  );
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [calendarView, setCalendarView] = useState("month");
@@ -259,7 +273,7 @@ export default function CalendarPage() {
     holidayCountry: appliedFilters.holidayCountry.trim() || preferences?.holidayCountry || "",
     enabled: Boolean(visibleRange.start && visibleRange.end),
   });
-  const normalizedEvents = useMemo(() => normalizeEvents(calendarEventsQuery.data), [calendarEventsQuery.data]);
+  const normalizedEvents = useMemo(() => normalizeEvents(calendarEventsQuery.data, t), [calendarEventsQuery.data, t]);
   const events = normalizedEvents.items;
   const invalidEventCount = normalizedEvents.invalidCount;
   const loading = calendarEventsQuery.isLoading || calendarEventsQuery.isFetching;
@@ -299,10 +313,10 @@ export default function CalendarPage() {
 
   useEffect(() => {
     setPath?.([
-      { name: activeSpace?.name || "Workspace", color: "text-slate-400", ref: "/dashboard" },
-      { name: "Calendar", color: "text-slate-800", ref: "/calendar" },
+      { name: activeSpace?.name || t("common.workspace"), color: "text-slate-400", ref: "/dashboard" },
+      { name: t("calendar.title"), color: "text-slate-800", ref: "/calendar" },
     ]);
-  }, [activeSpace?.name, setPath]);
+  }, [activeSpace?.name, setPath, t]);
 
   useEffect(() => {
     if (!preferences) {
@@ -325,12 +339,12 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (preferencesQuery.isError) {
-      setPageError(preferencesQuery.error?.message || "Unable to load calendar preferences.");
+      setPageError(preferencesQuery.error?.message || t("calendar.notices.preferencesFailed"));
       return;
     }
 
     if (calendarEventsQuery.isError) {
-      setPageError(calendarEventsQuery.error?.message || "Failed to load the calendar.");
+      setPageError(calendarEventsQuery.error?.message || t("calendar.notices.calendarFailed"));
       return;
     }
 
@@ -340,6 +354,7 @@ export default function CalendarPage() {
     calendarEventsQuery.isError,
     preferencesQuery.error?.message,
     preferencesQuery.isError,
+    t,
   ]);
 
   useEffect(() => {
@@ -403,7 +418,7 @@ export default function CalendarPage() {
   const renderMonthView = () => (
     <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
       <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
-        {WEEKDAY_LABELS.map((label) => (
+        {weekdayLabels.map((label) => (
           <div key={label} className="px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
             {label}
           </div>
@@ -438,7 +453,7 @@ export default function CalendarPage() {
                 </span>
                 {isNonWorkingDay ? (
                   <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">
-                    Off
+                    {t("calendar.labels.off")}
                   </span>
                 ) : null}
               </div>
@@ -450,7 +465,7 @@ export default function CalendarPage() {
                   </div>
                 ))}
                 {dateEvents.length > 3 ? (
-                  <div className="px-1 text-[10px] font-semibold text-slate-400">+{dateEvents.length - 3} more</div>
+                  <div className="px-1 text-[10px] font-semibold text-slate-400">{t("calendar.labels.more", { count: dateEvents.length - 3 })}</div>
                 ) : null}
               </div>
             </button>
@@ -479,18 +494,18 @@ export default function CalendarPage() {
           >
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{WEEKDAY_LABELS[date.getDay()]}</div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{date.toLocaleDateString(locale, { weekday: "short" })}</div>
                 <div className="mt-1 text-[22px] font-black tracking-[-0.05em] text-slate-900">{date.getDate()}</div>
               </div>
               {isNonWorkingDay ? (
                 <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">
-                  Non-working
+                  {t("calendar.labels.nonWorking")}
                 </span>
               ) : null}
             </div>
 
             <div className="space-y-2">
-              {dateEvents.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-[12px] text-slate-400">No events</div> : null}
+              {dateEvents.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-[12px] text-slate-400">{t("calendar.labels.noEvents")}</div> : null}
               {dateEvents.map((event) => (
                 <div key={event.id} className={`rounded-2xl px-3 py-2.5 text-[12px] font-medium leading-5 ${eventClassName(event.type)}`}>
                   <div>{event.title}</div>
@@ -512,14 +527,14 @@ export default function CalendarPage() {
       <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Day View</div>
-            <h2 className="mt-1 text-[26px] font-black tracking-[-0.05em] text-slate-900">{formatLongDayLabel(selectedDate)}</h2>
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.labels.dayView")}</div>
+            <h2 className="mt-1 text-[26px] font-black tracking-[-0.05em] text-slate-900">{formatLongDayLabel(selectedDate, locale)}</h2>
           </div>
-          {isNonWorkingDay ? <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700">Non-working day</span> : null}
+          {isNonWorkingDay ? <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700">{t("calendar.labels.nonWorking")}</span> : null}
         </div>
 
         <div className="space-y-3">
-          {dayEvents.length === 0 ? <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-4 text-[13px] text-slate-500">No events for this day.</div> : null}
+          {dayEvents.length === 0 ? <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-4 text-[13px] text-slate-500">{t("calendar.labels.noEventsForDay")}</div> : null}
           {dayEvents.map((event) => (
             <article key={event.id} className={`rounded-[22px] px-4 py-4 ${eventClassName(event.type)}`}>
               <div className="text-[13px] font-semibold">{event.title}</div>
@@ -584,7 +599,7 @@ export default function CalendarPage() {
                 >
                   <i className="fa-solid fa-chevron-left" />
                 </button>
-                <div className="min-w-[180px] text-[26px] font-black tracking-[-0.05em] text-slate-900">{formatMonthLabel(anchorDate)}</div>
+                <div className="min-w-[180px] text-[26px] font-black tracking-[-0.05em] text-slate-900">{formatMonthLabel(anchorDate, locale)}</div>
                 <button
                   type="button"
                   onClick={() => handleNavigate(1)}
@@ -597,7 +612,7 @@ export default function CalendarPage() {
                   onClick={handleGoToToday}
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
                 >
-                  Today
+                  {t("calendar.controls.today")}
                 </button>
                 <button
                   type="button"
@@ -605,7 +620,7 @@ export default function CalendarPage() {
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
                 >
                   <i className={`fa-solid ${loading ? "fa-spinner fa-spin" : "fa-rotate-right"} mr-2`} />
-                  Refresh
+                  {t("calendar.controls.refresh")}
                 </button>
               </div>
 
@@ -621,7 +636,7 @@ export default function CalendarPage() {
                         : "border border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800"
                     }`}
                   >
-                    {view}
+                    {t(`calendar.views.${view}`)}
                   </button>
                 ))}
               </div>
@@ -637,25 +652,25 @@ export default function CalendarPage() {
               <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
                 <div className="mb-4 grid gap-4 lg:grid-cols-[1fr_1fr_180px_auto]">
                   <div>
-                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Space ID</label>
+                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.filters.spaceId")}</label>
                     <input
                       value={draftFilters.spaceId}
                       onChange={(event) => setDraftFilters((current) => ({ ...current, spaceId: event.target.value }))}
-                      placeholder="Workspace scope"
+                      placeholder={t("calendar.filters.workspaceScope")}
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Board ID</label>
+                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.filters.boardId")}</label>
                     <input
                       value={draftFilters.boardId}
                       onChange={(event) => setDraftFilters((current) => ({ ...current, boardId: event.target.value }))}
-                      placeholder="Optional board scope"
+                      placeholder={t("calendar.filters.optionalBoardScope")}
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Holiday country</label>
+                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.filters.holidayCountry")}</label>
                     <input
                       value={draftFilters.holidayCountry}
                       onChange={(event) => setDraftFilters((current) => ({ ...current, holidayCountry: event.target.value.toUpperCase() }))}
@@ -669,32 +684,34 @@ export default function CalendarPage() {
                       onClick={handleApplyFilters}
                       className="rounded-2xl bg-sky-500 px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-sky-600"
                     >
-                      Apply
+                      {t("calendar.filters.apply")}
                     </button>
                     <button
                       type="button"
                       onClick={handleUseActiveWorkspace}
                       className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
                     >
-                      Use active
+                      {t("calendar.filters.useActive")}
                     </button>
                     <button
                       type="button"
                       onClick={handleClearFilters}
                       className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
                     >
-                      Reset
+                      {t("calendar.filters.reset")}
                     </button>
                   </div>
                 </div>
 
                 <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] text-slate-500">
-                  Non-working days are now derived from the backend calendar feed plus visible weekends. No frontend-only add/remove stubs are used here anymore.
+                  {t("calendar.notices.nonWorking")}
                 </div>
 
                 {invalidEventCount > 0 ? (
                   <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-700">
-                    {invalidEventCount} calendar entr{invalidEventCount === 1 ? "y was" : "ies were"} skipped because the backend payload did not include a usable date.
+                    {invalidEventCount === 1
+                      ? t("calendar.notices.invalidEntries", { count: invalidEventCount })
+                      : t("calendar.notices.invalidEntriesPlural", { count: invalidEventCount })}
                   </div>
                 ) : null}
 
@@ -715,11 +732,11 @@ export default function CalendarPage() {
 
             <aside className="space-y-5">
               <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Selected Day</div>
-                <h2 className="text-[22px] font-black tracking-[-0.04em] text-slate-900">{formatLongDayLabel(selectedDate)}</h2>
+                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.labels.selectedDay")}</div>
+                <h2 className="text-[22px] font-black tracking-[-0.04em] text-slate-900">{formatLongDayLabel(selectedDate, locale)}</h2>
                 <div className="mt-4 space-y-2">
                   {selectedDayEvents.length === 0 ? (
-                    <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-3 text-[12px] leading-5 text-slate-500">No events on this day.</div>
+                    <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-3 text-[12px] leading-5 text-slate-500">{t("calendar.labels.noEventsSelectedDay")}</div>
                   ) : null}
 
                   {(selectedDayEventsExpanded ? selectedDayEvents : selectedDayEvents.slice(0, 4)).map((event) => (
@@ -735,7 +752,7 @@ export default function CalendarPage() {
                       onClick={() => setSelectedDayEventsExpanded((value) => !value)}
                       className="text-[12px] font-semibold text-sky-600 hover:text-sky-700"
                     >
-                      {selectedDayEventsExpanded ? "Show less" : `Show all ${selectedDayEvents.length} events`}
+                      {selectedDayEventsExpanded ? t("calendar.labels.showLess") : t("calendar.labels.showAllEvents", { count: selectedDayEvents.length })}
                     </button>
                   ) : null}
                 </div>
@@ -744,20 +761,22 @@ export default function CalendarPage() {
               <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Non-Working Days</div>
+                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.labels.nonWorkingDays")}</div>
                     <div className="mt-1 text-sm text-slate-500">
-                      {(draftFilters.holidayCountry || preferences?.holidayCountry || "No country")} holidays and visible weekends
+                      {t("calendar.labels.holidaysAndWeekends", {
+                        country: draftFilters.holidayCountry || preferences?.holidayCountry || t("calendar.labels.noCountry"),
+                      })}
                     </div>
                   </div>
                   <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">
-                    {nonWorkingEntries.length} in range
+                    {t("calendar.labels.inRange", { count: nonWorkingEntries.length })}
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   {nonWorkingEntries.length === 0 ? (
                     <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-3 text-[12px] leading-5 text-slate-500">
-                      No non-working days were returned for the current visible range.
+                      {t("calendar.labels.noNonWorkingDays")}
                     </div>
                   ) : null}
 
@@ -765,7 +784,10 @@ export default function CalendarPage() {
                     <div key={`${entry.dateKey}-${entry.label}`} className="rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2.5">
                       <div className="text-[12px] font-semibold text-slate-700">{entry.dateKey}</div>
                       <div className="mt-1 text-[11px] text-slate-500">
-                        {entry.label} | {entry.source}
+                        {t("calendar.labels.holidaySource", {
+                          label: entry.label === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.label,
+                          source: entry.source === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.source,
+                        })}
                       </div>
                     </div>
                   ))}
@@ -773,19 +795,19 @@ export default function CalendarPage() {
               </section>
 
               <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Calendar Scope</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.labels.calendarScope")}</div>
                 <div className="mt-3 space-y-2 text-[13px] text-slate-500">
                   <div>
-                    Workspace: <span className="font-semibold text-slate-700">{activeSpace?.name || draftFilters.spaceId || "Not selected"}</span>
+                    {t("calendar.labels.workspace", { value: activeSpace?.name || draftFilters.spaceId || t("calendar.labels.notSelected") })}
                   </div>
                   <div>
-                    Board: <span className="font-semibold text-slate-700">{resolvedBoard?.name || draftFilters.boardId || "All boards"}</span>
+                    {t("calendar.labels.board", { value: resolvedBoard?.name || draftFilters.boardId || t("calendar.labels.allBoards") })}
                   </div>
                   <div>
-                    Timezone: <span className="font-semibold text-slate-700">{preferences?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
+                    {t("calendar.labels.timezone", { value: preferences?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone })}
                   </div>
                   <div>
-                    Viewer: <span className="font-semibold text-slate-700">{user?.email || user?.name || "Current user"}</span>
+                    {t("calendar.labels.viewer", { value: user?.email || user?.name || t("common.selected") })}
                   </div>
                 </div>
               </section>

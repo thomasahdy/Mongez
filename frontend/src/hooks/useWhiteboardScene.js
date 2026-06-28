@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 function getSafeAppState(appState) {
   const safeAppState = appState && typeof appState === "object" ? { ...appState } : {};
@@ -45,25 +46,28 @@ function loadScene(storageKey) {
   }
 }
 
-export function formatSavedAt(value) {
+export function formatSavedAt(value, t, locale = "en-US") {
   if (!value) {
-    return "Not saved yet";
+    return t("whiteboard.savedAt.notSavedYet");
   }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Saved locally";
+    return t("whiteboard.savedAt.local");
   }
 
-  return `Saved locally ${date.toLocaleString()}`;
+  return t("whiteboard.savedAt.savedOn", {
+    date: date.toLocaleString(locale),
+  });
 }
 
 export function useWhiteboardScene(boardId) {
+  const { t } = useTranslation();
   const storageKey = useMemo(() => `mongez-whiteboard-scene:${boardId || "global"}`, [boardId]);
   const loadedScene = useMemo(() => loadScene(storageKey), [storageKey]);
   const [lastSavedAt, setLastSavedAt] = useState(() => loadedScene.updatedAt);
-  const [statusMessage, setStatusMessage] = useState("Board-scoped autosave is active.");
+  const [statusMessage, setStatusMessage] = useState(() => t("whiteboard.statuses.autosaveActive"));
   const latestSceneRef = useRef(loadedScene.scene);
   const latestSavedAtRef = useRef(loadedScene.updatedAt);
 
@@ -71,8 +75,8 @@ export function useWhiteboardScene(boardId) {
     latestSceneRef.current = loadedScene.scene;
     latestSavedAtRef.current = loadedScene.updatedAt;
     setLastSavedAt(loadedScene.updatedAt);
-    setStatusMessage("Board-scoped autosave is active.");
-  }, [loadedScene.scene, loadedScene.updatedAt]);
+    setStatusMessage(t("whiteboard.statuses.autosaveActive"));
+  }, [loadedScene.scene, loadedScene.updatedAt, t]);
 
   const persistScene = useCallback(
     (elements, appState, files) => {
@@ -96,10 +100,10 @@ export function useWhiteboardScene(boardId) {
         latestSavedAtRef.current = updatedAt;
         setLastSavedAt(updatedAt);
       } catch {
-        setStatusMessage("Local save failed in this browser, but drawing remains available.");
+        setStatusMessage(t("whiteboard.statuses.saveFailed"));
       }
     },
-    [storageKey],
+    [storageKey, t],
   );
 
   const resetScene = useCallback(() => {
@@ -108,9 +112,9 @@ export function useWhiteboardScene(boardId) {
     latestSceneRef.current = emptyScene;
     latestSavedAtRef.current = "";
     setLastSavedAt("");
-    setStatusMessage("Board cleared. Local snapshot removed.");
+    setStatusMessage(t("whiteboard.statuses.cleared"));
     return emptyScene;
-  }, [storageKey]);
+  }, [storageKey, t]);
 
   return {
     storageKey,

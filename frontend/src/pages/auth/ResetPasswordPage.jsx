@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import mongezMark from "../../assets/MongezMLogo.svg";
 import {
   useForgotPasswordMutation,
@@ -11,33 +12,33 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
 }
 
-function getPasswordIssues(password, confirmPassword) {
+function getPasswordIssues(password, confirmPassword, t) {
   const issues = [];
 
   if (password.length < 8) {
-    issues.push("Use at least 8 characters.");
+    issues.push(t("resetPassword.errors.tooShort"));
   }
 
   if (!/[a-z]/.test(password) || !/[A-Z]/.test(password)) {
-    issues.push("Use both uppercase and lowercase letters.");
+    issues.push(t("resetPassword.errors.letterCase"));
   }
 
   if (!/\d/.test(password)) {
-    issues.push("Include at least one number.");
+    issues.push(t("resetPassword.errors.number"));
   }
 
   if (confirmPassword && password !== confirmPassword) {
-    issues.push("Passwords do not match.");
+    issues.push(t("resetPassword.errors.mismatch"));
   }
 
   return issues;
 }
 
-function StrengthHint({ password }) {
+function StrengthHint({ password, labels }) {
   const checks = [
-    { label: "8+ characters", valid: password.length >= 8 },
-    { label: "Upper and lower case", valid: /[a-z]/.test(password) && /[A-Z]/.test(password) },
-    { label: "Number", valid: /\d/.test(password) },
+    { label: labels[0], valid: password.length >= 8 },
+    { label: labels[1], valid: /[a-z]/.test(password) && /[A-Z]/.test(password) },
+    { label: labels[2], valid: /\d/.test(password) },
   ];
 
   return (
@@ -59,6 +60,7 @@ function StrengthHint({ password }) {
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const token = useMemo(() => new URLSearchParams(window.location.search).get("token") || "", []);
   const mode = token ? "reset" : "request";
@@ -75,7 +77,8 @@ export default function ResetPasswordPage() {
   const submitting = forgotPasswordMutation.isPending || resetPasswordMutation.isPending;
   const tokenChecking = mode === "reset" ? tokenVerificationQuery.isLoading : false;
   const tokenValid = mode === "request" || tokenVerificationQuery.isSuccess;
-  const passwordIssues = getPasswordIssues(password, confirmPassword);
+  const passwordIssues = getPasswordIssues(password, confirmPassword, t);
+  const strengthChecks = t("resetPassword.strengthChecks", { returnObjects: true });
   const trimmedEmail = email.trim();
 
   // Auto-focus email input when in request mode
@@ -94,9 +97,9 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (tokenVerificationQuery.isError) {
-      setError(tokenVerificationQuery.error?.message || "This reset link is invalid or expired.");
+      setError(tokenVerificationQuery.error?.message || t("resetPassword.errors.invalidLink"));
     }
-  }, [tokenVerificationQuery.error?.message, tokenVerificationQuery.isError]);
+  }, [t, tokenVerificationQuery.error?.message, tokenVerificationQuery.isError]);
 
   useEffect(() => {
     if (!(mode === "reset" && success)) {
@@ -114,7 +117,7 @@ export default function ResetPasswordPage() {
     event.preventDefault();
 
     if (!isValidEmail(trimmedEmail)) {
-      setError("Enter a valid email address to receive a reset link.");
+      setError(t("resetPassword.errors.invalidEmail"));
       return;
     }
 
@@ -123,9 +126,9 @@ export default function ResetPasswordPage() {
 
     try {
       const result = await forgotPasswordMutation.mutateAsync(trimmedEmail);
-      setSuccess(result.message || "If the account exists, a reset link has been sent.");
+      setSuccess(result.message || t("resetPassword.success.requestSent"));
     } catch (requestError) {
-      setError(requestError.message || "Unable to send the reset email.");
+      setError(requestError.message || t("resetPassword.errors.sendFailed"));
     }
   };
 
@@ -146,11 +149,11 @@ export default function ResetPasswordPage() {
         password,
         confirmPassword,
       });
-      setSuccess(result.message || "Password reset successfully.");
+      setSuccess(result.message || t("resetPassword.success.resetDone"));
       setPassword("");
       setConfirmPassword("");
     } catch (resetError) {
-      setError(resetError.message || "Unable to reset the password.");
+      setError(resetError.message || t("resetPassword.errors.resetFailed"));
     }
   };
 
@@ -160,7 +163,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="auth-page">
       <header className="auth-brand-row">
-        <NavLink to="/" className="auth-brand" aria-label="Mongez home">
+        <NavLink to="/" className="auth-brand" aria-label={t("resetPassword.homeAria")}>
           <img src={mongezMark} alt="" className="auth-brand-mark" />
           <span className="auth-brand-text">Mongez</span>
         </NavLink>
@@ -172,19 +175,19 @@ export default function ResetPasswordPage() {
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[22px] bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(99,102,241,0.12))] text-sky-500">
               <i className={`fa-solid ${mode === "reset" ? "fa-shield-heart" : "fa-envelope-open-text"} text-[24px]`} />
             </div>
-            <h1>{mode === "reset" ? "Create a new password" : "Reset your password"}</h1>
+            <h1>{mode === "reset" ? t("resetPassword.resetTitle") : t("resetPassword.requestTitle")}</h1>
             <p>
               {mode === "reset"
-                ? "This secure link is connected to the live reset-password flow. Choose a new password to restore access."
-                : "Enter the email for your account and we will send a secure reset link to your inbox."}
+                ? t("resetPassword.resetDescription")
+                : t("resetPassword.requestDescription")}
             </p>
           </div>
 
           <div className="mb-5 grid gap-3 sm:grid-cols-3">
             {[
-              { label: "Request", active: mode === "request" },
-              { label: "Verify link", active: mode === "reset" || tokenChecking },
-              { label: "Update password", active: mode === "reset" && tokenValid },
+              { label: t("resetPassword.steps.0"), active: mode === "request" },
+              { label: t("resetPassword.steps.1"), active: mode === "reset" || tokenChecking },
+              { label: t("resetPassword.steps.2"), active: mode === "reset" && tokenValid },
             ].map((step, index) => (
               <div
                 key={step.label}
@@ -192,7 +195,7 @@ export default function ResetPasswordPage() {
                   step.active ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-slate-50 text-slate-400"
                 }`}
               >
-                <div className="text-[10px] font-black uppercase tracking-[0.16em]">Step {index + 1}</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.16em]">{t("resetPassword.stepLabel", { step: index + 1 })}</div>
                 <div className="mt-1 text-sm font-semibold">{step.label}</div>
               </div>
             ))}
@@ -201,12 +204,12 @@ export default function ResetPasswordPage() {
           {mode === "request" && (
             <form className="space-y-4" onSubmit={handleRequestReset}>
               <label className="auth-field">
-                <span className="auth-label">Email address</span>
+                <span className="auth-label">{t("resetPassword.emailLabel")}</span>
                 <span className="auth-input-shell">
                   <input
                     ref={emailInputRef}
                     type="email"
-                    placeholder="you@organization.com"
+                    placeholder={t("resetPassword.emailPlaceholder")}
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     required
@@ -215,10 +218,10 @@ export default function ResetPasswordPage() {
               </label>
 
               <button type="submit" className="auth-primary-button" disabled={!canSubmitRequest}>
-                <span>{submitting ? "Sending..." : "Send reset link"}</span>
+                <span>{submitting ? t("resetPassword.sending") : t("resetPassword.sendLink")}</span>
               </button>
               {!trimmedEmail || canSubmitRequest ? null : (
-                <p className="text-xs text-rose-600">Enter a valid work email before sending the reset link.</p>
+                <p className="text-xs text-rose-600">{t("resetPassword.validEmailHint")}</p>
               )}
             </form>
           )}
@@ -227,21 +230,21 @@ export default function ResetPasswordPage() {
             <div className="space-y-4">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 {tokenChecking
-                  ? "Checking the reset link..."
+                  ? t("resetPassword.checkingLink")
                   : tokenValid
-                    ? "Reset link verified. You can safely create a new password."
-                    : "This link could not be verified. Request a new reset email to continue."}
+                    ? t("resetPassword.linkVerified")
+                    : t("resetPassword.linkInvalid")}
               </div>
 
               {tokenValid && !tokenChecking ? (
                 <form className="space-y-4" onSubmit={handleResetPassword}>
                   <label className="auth-field">
-                    <span className="auth-label">New password</span>
+                    <span className="auth-label">{t("resetPassword.newPassword")}</span>
                     <span className="auth-input-shell">
                       <input
                         ref={passwordInputRef}
                         type="password"
-                        placeholder="Create a strong password"
+                        placeholder={t("resetPassword.newPasswordPlaceholder")}
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         required
@@ -250,11 +253,11 @@ export default function ResetPasswordPage() {
                   </label>
 
                   <label className="auth-field">
-                    <span className="auth-label">Confirm password</span>
+                    <span className="auth-label">{t("resetPassword.confirmPassword")}</span>
                     <span className="auth-input-shell">
                       <input
                         type="password"
-                        placeholder="Repeat your new password"
+                        placeholder={t("resetPassword.confirmPasswordPlaceholder")}
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
                         required
@@ -262,7 +265,7 @@ export default function ResetPasswordPage() {
                     </span>
                   </label>
 
-                  <StrengthHint password={password} />
+                  <StrengthHint password={password} labels={strengthChecks} />
                   {passwordIssues.length > 0 ? (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
                       {passwordIssues[0]}
@@ -270,7 +273,7 @@ export default function ResetPasswordPage() {
                   ) : null}
 
                   <button type="submit" className="auth-primary-button" disabled={submitting || !canSubmitReset}>
-                    <span>{submitting ? "Updating..." : "Update password"}</span>
+                    <span>{submitting ? t("resetPassword.updating") : t("resetPassword.updatePassword")}</span>
                   </button>
                 </form>
               ) : (
@@ -279,10 +282,10 @@ export default function ResetPasswordPage() {
                     to="/reset-password"
                     className="auth-primary-button text-center"
                   >
-                    Request a new reset link
+                    {t("resetPassword.requestNewLink")}
                   </NavLink>
                   <p className="text-xs text-slate-500">
-                    Reset links can expire or become invalid after use. Requesting a fresh email is the safest recovery path.
+                    {t("resetPassword.requestFreshHint")}
                   </p>
                 </div>
               )}
@@ -293,17 +296,17 @@ export default function ResetPasswordPage() {
           {success && (
             <p className="text-sm text-emerald-600">
               {success}
-              {mode === "reset" ? " Redirecting to login..." : ""}
+              {mode === "reset" ? ` ${t("resetPassword.redirectingToLogin")}` : ""}
             </p>
           )}
 
           <div className="grid gap-2 pt-2 text-[13px] text-slate-500">
             <p>
-              Remember your password? <NavLink to="/login">Log in</NavLink>
+              {t("resetPassword.rememberPassword")} <NavLink to="/login">{t("resetPassword.logIn")}</NavLink>
             </p>
             {mode === "reset" ? (
               <p>
-                Need a fresh link? <NavLink to="/reset-password">Request another reset email</NavLink>
+                {t("resetPassword.freshLinkQuestion")} <NavLink to="/reset-password">{t("resetPassword.requestAnotherEmail")}</NavLink>
               </p>
             ) : null}
           </div>

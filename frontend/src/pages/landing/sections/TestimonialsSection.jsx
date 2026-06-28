@@ -1,7 +1,8 @@
 import { Icon } from '../../../components/ui/Icons'
 import SectionBadge from './SectionBadge'
+import { useTranslation } from "react-i18next";
 
-const testimonials = [
+const TESTIMONIALS = [
   {
     quote:
       'Mongez transformed how we manage our education programs. The AI risk detection alone saved us from three critical funding delays last quarter.',
@@ -29,16 +30,20 @@ const testimonials = [
 ]
 
 function TestimonialsSection() {
+  const { t } = useTranslation();
+  const itemsCopy = t("landing.testimonials.items", { returnObjects: true });
+  const testimonials = TESTIMONIALS.map((item, index) => ({ ...item, ...itemsCopy[index] }));
+
   return (
     <section id="testimonials" className="px-6 py-24 lg:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto max-w-4xl text-center">
-          <SectionBadge icon="sparkles">Testimonials</SectionBadge>
+          <SectionBadge icon="sparkles">{t("landing.testimonials.badge")}</SectionBadge>
           <h2 className="mt-6 text-4xl font-black tracking-[-0.04em] text-slate-900 sm:text-5xl lg:text-6xl">
-            Trusted by Leading Organizations.
+            {t("landing.testimonials.title")}
           </h2>
           <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-slate-500">
-            See how teams across the globe are transforming their operations with Mongez.
+            {t("landing.testimonials.description")}
           </p>
         </div>
 

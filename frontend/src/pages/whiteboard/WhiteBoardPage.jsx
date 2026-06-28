@@ -2,6 +2,7 @@ import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
+import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
 import { formatSavedAt, useWhiteboardScene } from "../../hooks/useWhiteboardScene";
 
@@ -14,6 +15,7 @@ function getSafeAppState(appState) {
 }
 
 export default function WhiteBoardPage() {
+  const { t, i18n } = useTranslation();
   const { setPath } = useOutletContext() || {};
   const { activeBoard } = useAppContext();
   const fileInputRef = useRef(null);
@@ -31,6 +33,7 @@ export default function WhiteBoardPage() {
     persistScene,
     resetScene,
   } = useWhiteboardScene(activeBoard?.id);
+  const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
   const uiOptions = useMemo(
     () => ({
       canvasActions: {
@@ -47,16 +50,16 @@ export default function WhiteBoardPage() {
 
   useEffect(() => {
     setPath?.([
-      { name: "Workspace", color: "text-slate-400", ref: "/dashboard" },
-      { name: activeBoard?.name || "Whiteboard", color: "text-slate-800", ref: "" },
+      { name: t("common.workspace"), color: "text-slate-400", ref: "/dashboard" },
+      { name: activeBoard?.name || t("whiteboard.boardFallback"), color: "text-slate-800", ref: "" },
     ]);
-  }, [setPath, activeBoard?.name]);
+  }, [activeBoard?.name, setPath, t]);
 
   useEffect(() => {
     if (!activeBoard?.id) {
-      setStatusMessage("No active board selected. A local fallback whiteboard is active in this browser.");
+      setStatusMessage(t("whiteboard.statuses.noActiveBoard"));
     }
-  }, [activeBoard?.id, setStatusMessage]);
+  }, [activeBoard?.id, setStatusMessage, t]);
 
   const handleSceneChange = useCallback(
     (elements, appState, files) => {
@@ -71,7 +74,7 @@ export default function WhiteBoardPage() {
 
   const handleExportJson = () => {
     if (!latestSceneRef.current) {
-      setStatusMessage("Nothing is loaded to export yet.");
+      setStatusMessage(t("whiteboard.statuses.nothingToExport"));
       return;
     }
 
@@ -79,7 +82,7 @@ export default function WhiteBoardPage() {
       ...latestSceneRef.current,
       updatedAt: latestSavedAtRef.current || new Date().toISOString(),
       boardId: activeBoard?.id || null,
-      boardName: activeBoard?.name || "Whiteboard",
+      boardName: activeBoard?.name || t("whiteboard.title"),
     };
 
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -89,11 +92,11 @@ export default function WhiteBoardPage() {
     link.download = `${(activeBoard?.name || "whiteboard").replace(/\s+/g, "-").toLowerCase()}.json`;
     link.click();
     window.URL.revokeObjectURL(url);
-    setStatusMessage("Whiteboard exported as JSON.");
+    setStatusMessage(t("whiteboard.statuses.exported"));
   };
 
   const handleClearBoard = () => {
-    if (!window.confirm("Reset the current whiteboard? This removes the local snapshot for this board in this browser.")) {
+    if (!window.confirm(t("whiteboard.statuses.confirmReset"))) {
       return;
     }
 
@@ -113,7 +116,7 @@ export default function WhiteBoardPage() {
     }
 
     if (file.size > MAX_IMPORT_BYTES) {
-      setStatusMessage("Import failed. Use a JSON export smaller than 5 MB.");
+      setStatusMessage(t("whiteboard.statuses.importTooLarge"));
       event.target.value = "";
       return;
     }
@@ -139,9 +142,9 @@ export default function WhiteBoardPage() {
       latestSceneRef.current = nextScene;
       persistScene(nextScene.elements, nextScene.appState, nextScene.files);
       setLastSavedAt(latestSavedAtRef.current);
-      setStatusMessage("Whiteboard imported successfully.");
+      setStatusMessage(t("whiteboard.statuses.importSuccess"));
     } catch {
-      setStatusMessage("Import failed. Use a valid exported whiteboard JSON file.");
+      setStatusMessage(t("whiteboard.statuses.importFailed"));
     } finally {
       setIsImporting(false);
       event.target.value = "";
@@ -151,16 +154,12 @@ export default function WhiteBoardPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-body)]">
       <main className="mx-auto flex w-full max-w-350 flex-1 flex-col overflow-hidden px-5 py-4">
-        <section className="mb-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+        <section className="mb-4 rounded-[28px] border border-slate-200 bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-sky-500">Whiteboard</p>
-              <h1 className="mt-1 text-[24px] font-black tracking-[-0.05em] text-slate-900">
-                {activeBoard?.name || "Workspace whiteboard"}
-              </h1>
-              <p className="mt-2 text-sm text-slate-500">
-                This board is persisted locally per workspace board. Import and export are available, but server persistence is not wired yet.
-              </p>
+              <p className="text-[16px] font-black uppercase tracking-[0.18em] text-sky-500">{t("whiteboard.title")}</p>
+
+
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -170,33 +169,26 @@ export default function WhiteBoardPage() {
                 disabled={isImporting}
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
               >
-                {isImporting ? "Importing..." : "Import JSON"}
+                {isImporting ? t("whiteboard.importing") : t("whiteboard.importJson")}
               </button>
               <button
                 type="button"
                 onClick={handleExportJson}
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
               >
-                Export JSON
+                {t("whiteboard.exportJson")}
               </button>
               <button
                 type="button"
                 onClick={handleClearBoard}
                 className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                Reset board
+                {t("whiteboard.resetBoard")}
               </button>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-3 text-[12px]">
-            <div className="rounded-full bg-slate-100 px-3 py-1.5 font-semibold text-slate-600">
-              {formatSavedAt(lastSavedAt)}
-            </div>
-            <div className="rounded-full bg-sky-50 px-3 py-1.5 font-semibold text-sky-700">
-              {statusMessage}
-            </div>
-          </div>
+
         </section>
 
         <input
