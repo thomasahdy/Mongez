@@ -165,25 +165,36 @@ export default function MyWorkPage({ userName = "Teammate", setPath }) {
                 My Work
               </h1>
               <p className="text-[13px] text-slate-400 dark:text-slate-500 mb-5">
-                Good morning — you have {stats[1].value} tasks due today and {stats[0].value} overdue.
+                Good morning — you have {stats[1].value} tasks due today and{" "}
+                {stats[0].value} overdue.
               </p>
 
               {criticalTask && (
                 <FocusBanner
                   criticalTask={criticalTask}
-                  onFocusStart={() => console.info("Focus mode started for:", criticalTask.id)}
+                  onFocusStart={() =>
+                    console.info("Focus mode started for:", criticalTask.id)
+                  }
                 />
               )}
 
-              <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6" aria-label="Task summary statistics">
+              <section
+                className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"
+                aria-label="Task summary statistics"
+              >
                 {stats.map((s) => (
-                  <StatCard key={s.label} value={s.value} label={s.label} color={s.color} />
+                  <StatCard
+                    key={s.label}
+                    value={s.value}
+                    label={s.label}
+                    color={s.color}
+                  />
                 ))}
               </section>
 
               <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6">
                 <div>
-                  {(["overdue", "today", "upcoming", "noDueDate"]).map((sectionKey) => (
+                  {["overdue", "today", "upcoming", "noDueDate"].map((sectionKey) => (
                     <TaskSection
                       key={sectionKey}
                       sectionKey={sectionKey}
@@ -196,7 +207,11 @@ export default function MyWorkPage({ userName = "Teammate", setPath }) {
 
                 <aside aria-label="Work sidebar">
                   <MiniCalendar taskDays={CALENDAR_TASK_DAYS} />
-                  <CompletionStreak streak={7} bestStreak={14} days={STREAK_DAYS} />
+                  <CompletionStreak
+                    streak={7}
+                    bestStreak={14}
+                    days={STREAK_DAYS}
+                  />
                 </aside>
               </div>
             </div>
@@ -206,4 +221,3 @@ export default function MyWorkPage({ userName = "Teammate", setPath }) {
     </>
   );
 }
- 

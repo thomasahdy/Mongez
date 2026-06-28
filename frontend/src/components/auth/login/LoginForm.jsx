@@ -5,6 +5,7 @@ import AuthErrorMessage from "../shared/AuthErrorMessage";
 import AuthInput from "../shared/AuthInput";
 import PasswordInput from "../shared/PasswordInput";
 import authService from "../../../services/api/authService";
+import { NavLink } from "react-router";
 
 
 const LoginForm = () => {
@@ -101,12 +102,11 @@ const LoginForm = () => {
           />
           Remember me for 30 days
         </label>
-        <a
-          href="/forgot-password"
-          className="text-primary font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-lg px-2 py-1 transition"
-        >
+        <NavLink
+        to="/forgot-password"
+        className="text-primary font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-lg px-2 py-1 transition">
           Forgot password?
-        </a>
+        </NavLink>
       </div>
 
       <AuthErrorMessage>{errors.submit}</AuthErrorMessage>
