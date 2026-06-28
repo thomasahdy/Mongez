@@ -16,6 +16,10 @@ const Board = ({id, columns }) => {
 
   const { joinBoard, leaveBoard } = useSocket();
 
+  useEffect(()=>{
+    console.log(tasks);
+    
+  })
   useEffect(() => {
     joinBoard(id);
     return () => {

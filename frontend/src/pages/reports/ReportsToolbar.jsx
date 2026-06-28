@@ -1,11 +1,27 @@
 import React, { useState } from 'react'
 import Button from '../../components/ui/Button';
+import { useSpaces } from '../../hooks/api/useSpaces';
 
 
 const DATE_FILTERS = ["Last 30 Days", "This Quarter", "This Year"];
 
-const ReportsToolbar = () => {
+const ReportsToolbar = ({selectedSpace, setSelectedSpace}) => {
     const [activePeriod, setActivePeriod] = useState("Last 30 Days");
+    const { data: spaces, isLoading, error } = useSpaces();
+
+    const rawSpacesList = Array.isArray(spaces) ? spaces : (spaces?.spaces || []);
+  const normalizedSpaces = rawSpacesList.map((space) => ({
+    ...space,
+    gradient: space.gradient || 'from-indigo-500 to-indigo-400',
+    initials: space.initials || (space.name ? space.name.charAt(0).toUpperCase() : 'S'),
+    isOwner: space.isOwner !== undefined ? space.isOwner : space.role === 'OWNER',
+    stats: {
+      departments: space.stats?.departments ?? space._count?.departments ?? 0,
+      boards: space.stats?.boards ?? space._count?.boards ?? 0,
+      members: space.stats?.members ?? space._count?.memberships ?? space.memberCount ?? 1,
+    },
+    departments: space.departments || [],
+  }));
     return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm mb-6">
       {/* Date range */}
@@ -38,11 +54,30 @@ const ReportsToolbar = () => {
           All Members
           <i className="fa-solid fa-chevron-down text-[10px]" aria-hidden="true" />
         </Button>
-        <Button variant="outline" size="md" aria-haspopup="listbox" aria-expanded="false">
-          <i className="fa-solid fa-folder-tree text-[12px]" aria-hidden="true" />
-          All Spaces
-          <i className="fa-solid fa-chevron-down text-[10px]" aria-hidden="true" />
-        </Button>
+        <select
+          id="spaces"
+          name="spaces"
+          value={selectedSpace}
+          onChange={(e) => setSelectedSpace(e.target.value)}
+          disabled={isLoading}
+          className="inline-flex items-center justify-center gap-1.5 font-semibold rounded-lg transition-all duration-150 cursor-pointer border px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 border-slate-200 dark:border-slate-600 bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200"
+        >
+          {isLoading ? (
+            <option>Loading spaces...</option>
+          ) : error ? (
+            <option>Failed to load spaces</option>
+          ) : (
+            <>
+              <option value="">All Spaces</option>
+
+              {normalizedSpaces.map((space) => (
+                <option key={space.id} value={space.id}>
+                  {space.name}
+                </option>
+              ))}
+            </>
+          )}
+        </select>
       </div>
     </div>
   );
