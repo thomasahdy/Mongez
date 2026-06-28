@@ -424,9 +424,10 @@ export default function TimelineView() {
                       })}
 
                       <div
-                        className="absolute top-2 z-20 flex h-6 items-center rounded bg-gradient-to-r from-sky-500 to-sky-600 px-2 text-xs font-semibold text-white shadow-sm transition-all hover:opacity-90"
+                        className="absolute top-2 z-20 flex h-6 items-center rounded bg-gradient-to-r from-sky-500 to-sky-600 px-2 text-xs font-semibold text-white shadow-sm transition-all hover:opacity-90 cursor-pointer"
                         style={getTaskBarStyle(task, dates, scale)}
-                        title={task.title || task.name || t('timeline.defaults.task')}
+                        title={task.title || task.name || 'Task'}
+                        onClick={() => navigate(`/tasks/${task.id}`)}
                       >
                         <span className="truncate text-xs">{task.title || task.name || t('timeline.defaults.task')}</span>
                       </div>

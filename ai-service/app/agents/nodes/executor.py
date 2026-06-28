@@ -11,7 +11,7 @@ async def executor_node(state: MongezAgentState) -> dict:
     """Parallel Executor Node — executes relevant tools concurrently based on detected intent."""
     intent = state.get("intent", "chat")
     space_id = state.get("space_id", "")
-    query = state.get("raw_input", "")
+    query = state.get("rewritten_query") or state.get("raw_input", "")
 
     if intent == "greeting":
         logger.info("Executor node: greeting intent, skipping tools.")

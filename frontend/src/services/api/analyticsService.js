@@ -29,6 +29,7 @@ export const getDashboardTaskCompletion = async (spaceId) => {
 };
 
 export const getDashboardPriorityBreakdown = async (spaceId) => {
+  if (!spaceId) return [];
   // Try the analytics endpoint first for server-side aggregation
   try {
     const response = await apiClient.get('/analytics/tasks', {

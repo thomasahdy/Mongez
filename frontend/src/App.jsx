@@ -6,6 +6,7 @@ import { useAuthSessionQuery } from "./hooks/useAuthQueries";
 import { AppProvider } from "./pages/AppContext";
 import Home from "./pages/home/Home";
 import { useTranslation } from "react-i18next";
+import AcceptInvitationPage from "./pages/AcceptInvitationPage.jsx/AcceptInvitationPage";
 
 const LandingPage = lazy(() => import("./pages/landing/LandingPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
@@ -29,9 +30,14 @@ const SearchPage = lazy(() => import("./pages/search/SearchPage"));
 const MyWorkPage = lazy(() => import("./pages/mywork/MyWorkPage"));
 const InboxPage = lazy(() => import("./pages/Inbox/InboxPage"));
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
+const NotificationsPage = lazy(() => import("./pages/notifications/NotificationsPage"));
 const SecurityPage = lazy(() => import("./pages/security/SecurityPage"));
 const AuditLogPage = lazy(() => import("./pages/audit-log/AuditLogPage"));
 const KanbanBoard = lazy(() => import("./pages/kanbanboard/KanbanBoard"));
+const ApprovalsPage = lazy(() => import("./pages/approvals/ApprovalsPage"));
+const WorkflowInstancesList = lazy(() => import("./pages/workflow/WorkflowInstancesList"));
+const WorkflowBuilder = lazy(() => import("./pages/workflow/WorkflowBuilder"));
+const OAuthCallbackPage = lazy(() => import("./pages/auth/OAuthCallbackPage"));
 
 function FullScreenLoader() {
   return (
@@ -112,6 +118,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/invitation"
+          element={
+            <PublicOnlyRoute authReady={authReady} isAuthenticated={isAuthenticated}>
+              <AcceptInvitationPage />
+            </PublicOnlyRoute>
+          }
+        />
+        <Route
           path="/register"
           element={
             <PublicOnlyRoute authReady={authReady} isAuthenticated={isAuthenticated}>
@@ -119,7 +133,8 @@ function AppContent() {
             </PublicOnlyRoute>
           }
         />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/forgot-password" element={<ResetPasswordPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         <Route element={<ProtectedShell authReady={authReady} isAuthenticated={isAuthenticated} />}>
@@ -144,6 +159,9 @@ function AppContent() {
               <Route path="board/:boardId/table" element={<TableView />} />
               <Route path="board/:boardId/timeline" element={<TimelineView />} />
               <Route path="calendar" element={<CalendarPage />} />
+              <Route path="approvals" element={<ApprovalsPage />} />
+              <Route path="workflows" element={<WorkflowInstancesList />} />
+              <Route path="workflows/builder" element={<WorkflowBuilder />} />
               <Route path="settings/integrations" element={<IntegrationsPage setPath={setPath} />} />
               <Route path="settings/members" element={<SettingsMembersPage setPath={setPath} />} />
               <Route path="reports" element={<ReportsPage setPath={setPath} />} />
@@ -152,11 +170,13 @@ function AppContent() {
               <Route path="my-work" element={<MyWorkPage setPath={setPath} />} />
               <Route path="inbox" element={<InboxPage setPath={setPath} />} />
               <Route path="settings" element={<SettingsPage setPath={setPath} />} />
+              <Route path="settings/notifications" element={<NotificationsPage setPath={setPath} />} />
               <Route path="settings/security" element={<SecurityPage setPath={setPath} />} />
-              <Route path="audit-log" element={<AuditLogPage />} />
-              <Route path="audit-logs" element={<AuditLogPage setPath={setPath} />} />
+              <Route path="settings/notifications" element={<NotificationsPage />} />
+              <Route path="settings/audit-log" element={<AuditLogPage />} />
               <Route path="/search" element={<SearchPage />} />
-              
+              <Route path="/invitation" element={<AcceptInvitationPage />} />
+
             </Route>
           </Route>
         </Route>

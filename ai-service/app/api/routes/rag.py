@@ -38,28 +38,27 @@ async def index_document(
     Fetch task data and comments from NestJS, chunk and embed them,
     and upsert them into the space's Qdrant collection.
     """
-    if not dependencies.indexer:
+    indexer = dependencies.get_indexer()
+    if not indexer:
         raise HTTPException(status_code=500, detail="Qdrant indexer is not configured.")
     if not dependencies.nestjs_client:
         raise HTTPException(status_code=500, detail="NestJS client is not configured.")
 
     try:
-        # Fetch tasks from NestJS
-        tasks = await dependencies.nestjs_client.get_tasks(req.space_id)
-        # Find the specific task
-        task = next((t for t in tasks if t.get("id") == req.task_id), None)
+        # Fetch the specific task directly from NestJS
+        task = await dependencies.nestjs_client.get_task(req.task_id)
         
         if not task:
-            logger.warning("Task %s not found in space %s for indexing", req.task_id, req.space_id)
+            logger.warning("Task %s not found for indexing", req.task_id)
             return IndexResponse(success=True, points_indexed=0)
 
         # Index the task description/fields
-        points_indexed = dependencies.indexer.index_tasks(req.space_id, [task])
+        points_indexed = indexer.index_tasks(req.space_id, [task])
         
         # Fetch and index task comments
         comments = await dependencies.nestjs_client.get_comments(req.task_id)
         if comments:
-            points_indexed += dependencies.indexer.index_comments(req.space_id, comments)
+            points_indexed += indexer.index_comments(req.space_id, comments)
             
         return IndexResponse(success=True, points_indexed=points_indexed)
     except Exception as exc:
@@ -75,12 +74,13 @@ async def retrieve_context(
     """
     Search Qdrant for semantic context matching the query in the space's collection.
     """
-    if not dependencies.retriever:
+    retriever = dependencies.get_retriever()
+    if not retriever:
         raise HTTPException(status_code=500, detail="Retriever is not configured.")
         
     try:
-        results = await dependencies.retriever.retrieve(query=req.query, space_id=req.space_id)
-        xml_context = dependencies.retriever.format_as_xml_context(results)
+        results = await retriever.retrieve(query=req.query, space_id=req.space_id)
+        xml_context = retriever.format_as_xml_context(results)
         return RetrieveResponse(context=xml_context)
     except Exception as exc:
         logger.error("Failed to retrieve context for query '%s' in space %s: %s", req.query, req.space_id, exc)

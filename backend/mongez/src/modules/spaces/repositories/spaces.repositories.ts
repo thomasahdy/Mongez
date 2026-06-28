@@ -62,7 +62,28 @@ export class SpaceRepository {
   }
 
   async delete(id: string) {
-    return this.prisma.space.delete({ where: { id } });
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Delete from tables containing raw spaceId strings (not formal Prisma relations)
+      await tx.workflowAction.deleteMany({ where: { instance: { spaceId: id } } });
+      await tx.workflowInstance.deleteMany({ where: { spaceId: id } });
+      await tx.workflowDefinition.deleteMany({ where: { spaceId: id } });
+      await tx.usageRecord.deleteMany({ where: { spaceId: id } });
+      await tx.aIProposedAction.deleteMany({ where: { spaceId: id } });
+      await tx.aIRequest.deleteMany({ where: { spaceId: id } });
+      await tx.aIConversationTurn.deleteMany({ where: { spaceId: id } });
+      await tx.calendarEvent.deleteMany({ where: { spaceId: id } });
+      await tx.googleCalendarSync.deleteMany({ where: { spaceId: id } });
+      await tx.proposedTask.deleteMany({ where: { spaceId: id } });
+      await tx.meeting.deleteMany({ where: { spaceId: id } });
+      await tx.whatsAppMessage.deleteMany({ where: { spaceId: id } });
+      await tx.whatsAppOtpCode.deleteMany({ where: { spaceId: id } });
+      await tx.telegramMessage.deleteMany({ where: { spaceId: id } });
+      await tx.approvalDelegate.deleteMany({ where: { spaceId: id } });
+      await tx.userDelegation.deleteMany({ where: { spaceId: id } });
+
+      // 2. Finally, delete the space itself (which triggers cascades for formal relations)
+      return tx.space.delete({ where: { id } });
+    });
   }
 
   async getStats(spaceId: string) {
@@ -86,7 +107,13 @@ export class DepartmentRepository {
     return this.prisma.department.findMany({
       where: { spaceId },
       orderBy: { createdAt: 'asc' },
-      include: { _count: { select: { boards: true } } },
+      include: {
+        boards: {
+          where: { isArchived: false },
+          orderBy: { position: 'asc' as const },
+        },
+        _count: { select: { boards: true } },
+      },
     });
   }
 

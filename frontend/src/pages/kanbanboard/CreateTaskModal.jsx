@@ -2,8 +2,18 @@ import React from 'react'
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { createTaskValidationSchema } from '../../schemas/taskValidationSchema';
+import { useMembers } from '../../hooks/api/useMembers';
 
-const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, onClose }) => {
+const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, onClose, defaultValues = {} }) => {
+  const { data: members = [] } = useMembers(spaceId);
+  const [selectedAssignees, setSelectedAssignees] = React.useState(defaultValues.assigneeIds || []);
+  const [tagsText, setTagsText] = React.useState((defaultValues.tags || []).join(", "));
+
+  const toggleAssignee = (id) => {
+    setSelectedAssignees((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   const {
     register,
@@ -13,21 +23,21 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
   } = useForm({
     resolver: zodResolver(createTaskValidationSchema),
     defaultValues: {
-      title: "",
+      title: defaultValues.title || "",
       boardId: boardId || "",
       columnId: columnId || "",
       spaceId: spaceId || "",
       spacePrefix: spacePrefix || "",
-      description: "",
-      status: "TODO",
-      priority: "MEDIUM",
-      type: "Task",
-      dueDate: "",
-      startDate: "",
-      estimatedHours: 0,
-      parentId: "",
-      tags: [],
-      assigneeIds: []
+      description: defaultValues.description || "",
+      status: defaultValues.status || "TODO",
+      priority: defaultValues.priority || "MEDIUM",
+      type: defaultValues.type || "Task",
+      dueDate: defaultValues.dueDate || "",
+      startDate: defaultValues.startDate || "",
+      estimatedHours: defaultValues.estimatedHours || 0,
+      parentId: defaultValues.parentId || "",
+      tags: defaultValues.tags || [],
+      assigneeIds: defaultValues.assigneeIds || []
     },
   });console.log("Current Live Form Errors:", errors);
 
@@ -36,10 +46,17 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
     if (data.estimatedHours) {
       data.estimatedHours = Number.parseInt(data.estimatedHours, 10);
     }
+    data.assigneeIds = selectedAssignees;
+    data.tags = tagsText
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
 
     try {
       await onSubmit(data);
       reset();
+      setSelectedAssignees([]);
+      setTagsText("");
     } catch (err) {
       console.error("Task submission failed:", err);
     }
@@ -191,6 +208,52 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
                 {...register('dueDate')}
               />
             </div>
+          </div>
+
+          {/* Assignees Selection */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+              Assignees
+            </label>
+            <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/30">
+              {members.map((member) => {
+                const id = member.user?.id || member.id;
+                const name = member.user?.name || member.name || "Member";
+                const isSelected = selectedAssignees.includes(id);
+                return (
+                  <button
+                    type="button"
+                    key={id}
+                    onClick={() => toggleAssignee(id)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition ${
+                      isSelected
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-350 dark:bg-slate-950 dark:text-slate-300 dark:border-slate-800"
+                    }`}
+                  >
+                    {name}
+                  </button>
+                );
+              })}
+              {members.length === 0 && (
+                <span className="text-xs text-slate-400 italic">No members in space.</span>
+              )}
+            </div>
+          </div>
+
+          {/* Tags Input */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="task-tags">
+              Tags (comma-separated)
+            </label>
+            <input
+              id="task-tags"
+              type="text"
+              placeholder="frontend, bug, high-priority"
+              value={tagsText}
+              onChange={(e) => setTagsText(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent outline-none text-sm focus:ring-2 focus:ring-sky-400"
+            />
           </div>
 
           {/* Estimated Hours & Subtask parent */}

@@ -31,11 +31,19 @@ export const syncGoogleCalendar = async (spaceId) => {
   return response.data;
 };
 
+export const getGoogleSyncStatus = async (spaceId) => {
+  const response = await apiClient.get("/calendar/google/status", {
+    params: { spaceId },
+  });
+  return response.data;
+};
+
 const calendarService = {
   fetchCalendarEvents,
   fetchCalendarPreferences,
   connectGoogleCalendar,
   syncGoogleCalendar,
+  getGoogleSyncStatus,
 };
 
 export default calendarService;

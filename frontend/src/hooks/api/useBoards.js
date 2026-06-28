@@ -37,16 +37,12 @@ export function useCreateBoard() {
 
   return useMutation({
     mutationFn: (data) => {
-      console.log("useCreateBoard mutationFn called with:", data);
       return boardsService.createBoard(data);
     },
     onSuccess: (newBoard) => {
-      console.log("useCreateBoard onSuccess:", newBoard);
       queryClient.invalidateQueries({ queryKey: ['boards'] });
+      queryClient.invalidateQueries({ queryKey: ['spaces'] });
       queryClient.setQueryData(['boards', newBoard.id], newBoard);
-    },
-    onError: (error) => {
-      console.error("useCreateBoard onError:", error);
     },
   });
 }
@@ -95,9 +91,7 @@ export function useReorderColumns(boardId) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boards', boardId] });
     },
-    onError: (error) => {
-      console.error("useReorderColumns mutation failed:", error);
-    }
+
   });
 }
 
@@ -110,8 +104,6 @@ export function useCreateColumn(boardId) {
     onSuccess: (newColumn) => {
       queryClient.invalidateQueries({ queryKey: ['boards', newColumn.boardId] });
     },
-    onError: (error) => {
-      console.error("useCreateColumn onError:", error);
-    },
+
   }); 
 }

@@ -40,6 +40,14 @@ class NestJSClient:
             return data.get("data")
         return data if data is not None else resp_json
 
+    async def get_task(self, task_id: str) -> dict | None:
+        """Fetch a single task by ID."""
+        resp = await self._client.get(f"/internal/ai/tasks/single/{task_id}")
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return self._extract_data(resp.json())
+
     async def get_tasks(self, space_id: str, board_id: str | None = None) -> list[dict]:
         """Fetch tasks for a space. Optionally filter to a single board."""
         params = {"boardId": board_id} if board_id else {}

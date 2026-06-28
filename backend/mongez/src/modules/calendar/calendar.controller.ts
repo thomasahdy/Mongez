@@ -93,6 +93,17 @@ export class CalendarController {
     return { success: true };
   }
 
+  @Get('google/status')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Check Google Calendar integration status' })
+  async getGoogleStatus(
+    @Req() req: any,
+    @Query('spaceId') spaceId: string,
+  ) {
+    return this.googleCalendarService.getSyncStatus(req.user.userId, spaceId);
+  }
+
   @Post('google/connect')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)

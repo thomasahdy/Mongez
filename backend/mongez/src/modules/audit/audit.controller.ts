@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -17,7 +17,7 @@ export class AuditController {
   @RequirePermissions(['read', 'audit'])
   @ApiOperation({ summary: 'List audit logs for a space (admin only)' })
   async listForSpace(
-    @Query('spaceId') spaceId: string,
+    @Param('spaceId') spaceId: string,
     @Query('action') action?: string,
     @Query('entityType') entityType?: string,
     @Query('page') page?: string,

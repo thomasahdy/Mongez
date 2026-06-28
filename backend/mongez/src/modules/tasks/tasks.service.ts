@@ -58,11 +58,28 @@ export class TasksService {
     return task;
   }
 
+  async getMyWorkTasks(userId: string) {
+    return this.taskRepo.findMyWork(userId);
+  }
+
   async getBoardTasks(boardId: string, filters: FilterTasksDto) {
     return this.taskRepo.findByBoard(boardId, filters);
   }
 
-  async createTask(dto: CreateTaskDto, userId: string, spaceId: string, spacePrefix: string) {
+  async createTask(dto: CreateTaskDto, userId: string, spaceId?: string, spacePrefix?: string) {
+    // If spaceId/spacePrefix not in body, derive from the board's space
+    if (!spaceId || !spacePrefix) {
+      const board = await this.taskRepo['prisma'].board.findUnique({
+        where: { id: dto.boardId },
+        include: { department: { include: { space: { select: { id: true, prefix: true } } } } },
+      });
+      if (!board?.department?.space) {
+        throw new Error(`Board ${dto.boardId} not found or has no associated space`);
+      }
+      spaceId = spaceId ?? board.department.space.id;
+      spacePrefix = spacePrefix ?? board.department.space.prefix;
+    }
+
     const task = await this.taskRepo.create(dto, spaceId, spacePrefix, this.identifierService, userId);
 
     await this.aiQueue.add(
@@ -87,10 +104,12 @@ export class TasksService {
   async updateTask(id: string, dto: UpdateTaskDto, userId: string, spaceId?: string) {
     const task = await this.taskRepo.update(id, dto, userId);
 
-    if (dto.status === 'BLOCKED') {
+    const resolvedSpaceId = spaceId || (task as any).board?.department?.spaceId;
+
+    if (dto.status === 'BLOCKED' && resolvedSpaceId) {
       await this.aiQueue.add(
         JOB_NAMES.AI_RISK_SCAN,
-        { taskId: task.id },
+        { spaceId: resolvedSpaceId, taskId: task.id },
         {
           attempts: 3,
           backoff: { type: 'exponential', delay: 5000 },
@@ -137,18 +156,20 @@ export class TasksService {
     const { comment, mentionedUserIds } = await this.commentRepo.create(taskId, authorId, dto.content);
 
     if (mentionedUserIds.length) {
-      for (const userId of mentionedUserIds) {
-        await this.notificationsService.queueNotification({
-          userId,
-          spaceId,
-          type: 'COMMENT_MENTION',
-          channel: 'IN_APP',
-          title: 'You were mentioned',
-          body: `You were mentioned in a comment on a task`,
-          entityType: 'task',
-          entityId: taskId,
-        });
-      }
+      await Promise.all(
+        mentionedUserIds.map((userId) =>
+          this.notificationsService.queueNotification({
+            userId,
+            spaceId,
+            type: 'COMMENT_MENTION',
+            channel: 'IN_APP',
+            title: 'You were mentioned',
+            body: `You were mentioned in a comment on a task`,
+            entityType: 'task',
+            entityId: taskId,
+          }),
+        ),
+      );
     }
 
     // Publish Domain Event

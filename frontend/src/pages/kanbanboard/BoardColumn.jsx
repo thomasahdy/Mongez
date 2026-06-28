@@ -4,15 +4,14 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import CreateTaskModal from './CreateTaskModal';
 import { useAppContext } from '../AppContext'; // 1. Import your actual context hook
-import { useCreateTask, useTasks } from '../../hooks/api/useTasks';
+import { useCreateTask } from '../../hooks/api/useTasks';
 
-const BoardColumn = ({ column }) => {
+const BoardColumn = ({ column, tasks = [], isLoading, isError }) => {
   const { id, name, color, boardId } = column;
   const [showCreateTaskModal, setShowCreateTaskModal] = React.useState(false);
   
   const { activeSpace, activeBoard } = useAppContext();
 
-  const {tasks, isLoading, isError} = useTasks(boardId, { columnId: id });
   const createTask = useCreateTask();
 
   // useEffect(() => {console.log("BoardColumn tasks:", tasks)}, [tasks]);
@@ -42,9 +41,11 @@ const BoardColumn = ({ column }) => {
 
       {/* Cards List Layout */}
       <div role="list" className="flex flex-col gap-2 flex-1 overflow-y-auto">
+        <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
           {tasks?.map((task) => (
             <TaskCard key={task.id} task={task} />
           ))}
+        </SortableContext>
       </div>
 
       {/* Add Task Trigger */}

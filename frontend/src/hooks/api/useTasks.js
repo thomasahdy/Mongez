@@ -40,16 +40,16 @@ export function useCreateTask() {
     mutationFn: ({ board, taskData }) => tasksService.createBoardTask(board, taskData),
     
     onSuccess: (newTask) => {
-      // Safely updates lists viewing this board's tasks
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      // If your board state caches tasks inside it, invalidate the board too
+      queryClient.invalidateQueries({ queryKey: ['board', 'table'] });
+      queryClient.invalidateQueries({ queryKey: ['board', 'tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['board', 'timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['task', 'details'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar', 'events'] });
       if (newTask?.boardId) {
         queryClient.invalidateQueries({ queryKey: ['boards', newTask.boardId] });
       }
     },
-    onError: (error) => {
-      console.error("Failed to create task:", error);
-    }
   });
 }
 
@@ -79,8 +79,12 @@ export function useUpdateTask() {
       }
     },
     onSuccess: (_, { taskId }) => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['board', 'table'] });
+      queryClient.invalidateQueries({ queryKey: ['board', 'tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['board', 'timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['task', 'details'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar', 'events'] });
     },
   });
 }
@@ -105,11 +109,10 @@ export function useMoveTask() {
       const previousTasksData = queryClient.getQueryData(queryKey);
 
       if (previousTasksData) {
-        // Optimistically reorder list cache
         queryClient.setQueryData(queryKey, (old) => {
-          if (!old || !Array.isArray(old.data)) return old;
+          if (!old || !Array.isArray(old)) return old;
 
-          const updatedTasks = [...old.data];
+          const updatedTasks = [...old];
           const taskIndex = updatedTasks.findIndex(t => t.id === taskId);
           
           if (taskIndex !== -1) {
@@ -119,10 +122,7 @@ export function useMoveTask() {
             updatedTasks.splice(position, 0, movedTask);
           }
 
-          return {
-            ...old,
-            data: updatedTasks,
-          };
+          return updatedTasks;
         });
       }
 
@@ -135,7 +135,24 @@ export function useMoveTask() {
       }
     },
     onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['board', 'table'] });
+      queryClient.invalidateQueries({ queryKey: ['board', 'tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['board', 'timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['task', 'details'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar', 'events'] });
       queryClient.invalidateQueries({ queryKey: context.queryKey });
     },
+  });
+}
+
+/**
+ * Hook: useMyWorkTasks
+ * Fetches user's assigned tasks from the backend.
+ */
+export function useMyWorkTasks() {
+  return useQuery({
+    queryKey: ['tasks', 'mywork'],
+    queryFn: () => tasksService.getMyWorkTasks(),
   });
 }

@@ -47,6 +47,12 @@ export class TasksController {
     return paginate(data, total, pagination.page, pagination.limit);
   }
 
+  @Get('tasks/me/assigned')
+  @ApiOperation({ summary: 'Get current user assigned tasks' })
+  async getMyWork(@Req() req: any) {
+    return this.tasksService.getMyWorkTasks(req.user.userId);
+  }
+
   @Get('tasks/:id')
   @UseGuards(TaskAccessGuard, PermissionsGuard)
   @RequirePermissions(['read', 'task'])

@@ -4,6 +4,8 @@ import DepartmentRow from './DepartmentRow';
 import { useInviteMember } from '../../hooks/api/useMembers';
 import { useCreateDepartment, useSpaceDepartments } from '../../hooks/api/useSpaces';
 import CreateDepartmentCard from './CreateDepartmentCard';
+import { useToast } from '../../context/ToastContext';
+import CreateDepartmentModal from './CreateDepartmentModal';
 
 /**
  * Component: SpaceCard
@@ -23,6 +25,7 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
   const [showCreateDepModal, setShowCreateDepModal] = useState(false);
   const inviteMember = useInviteMember()
   const createDepartment = useCreateDepartment();
+  const toast = useToast();
 
   const { data: departments, isLoading, error } = useSpaceDepartments(space.id);
 
@@ -52,7 +55,7 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
       await inviteMember.mutateAsync({ spaceId: space.id, data });
       setShowInviteModal(false);
     } catch (err) {
-      alert(err.response?.data?.message || err.message || "Failed to invite a member.");
+      toast.error(err.response?.data?.message || err.message || "Failed to invite a member.");
     }
 
   }
@@ -67,7 +70,7 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
 
     }
     catch (err) {
-      alert(err.response?.data?.message || err.message || "Failed to create department.");
+      toast.error(err.response?.data?.message || err.message || "Failed to create department.");
     }
 
   }
@@ -138,9 +141,10 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
             </p>
           )}
 
-          <CreateDepartmentCard onClick={handleCreateDepartment}/>
+          <CreateDepartmentCard onClick={() => setShowCreateDepModal(true)} />
         </div>
       </div>
+      {showCreateDepModal && (<CreateDepartmentModal space={space} onSubmit={handleCreateDepartment} onClose={() => { setShowCreateDepModal(false) }} />)}
     </article>
   );
 }

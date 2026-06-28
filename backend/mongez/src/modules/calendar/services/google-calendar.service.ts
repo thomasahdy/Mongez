@@ -67,6 +67,14 @@ export class GoogleCalendarService {
     return oauth2Client;
   }
 
+  async getSyncStatus(userId: string, spaceId: string) {
+    const sync = await this.repo.getGoogleSync(userId, spaceId);
+    return {
+      connected: !!sync && sync.isActive && !!sync.refreshTokenEncrypted,
+      lastSyncAt: sync?.lastSyncAt || null,
+    };
+  }
+
   async getAuthUrl(userId: string, spaceId: string, redirectUri?: string): Promise<string> {
     const oauth2Client = this.getOAuth2Client(redirectUri);
     return oauth2Client.generateAuthUrl({

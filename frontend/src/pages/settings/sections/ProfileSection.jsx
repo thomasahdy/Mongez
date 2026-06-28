@@ -14,10 +14,6 @@ const ProfileSection = ({ form, onChange, onAvatarUploadAttempt }) => {
         onRemove={onAvatarUploadAttempt}
       />
 
-      <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-        Avatar uploads are not exposed by the current backend contract yet. Your existing avatar is still loaded from the authenticated user record.
-      </div>
-
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <FormField
           id="firstName"

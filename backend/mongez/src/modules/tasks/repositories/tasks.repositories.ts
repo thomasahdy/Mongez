@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { Prisma } from '@prisma/client';
 import { CreateTaskDto } from '../dto/create-task.dto';
@@ -17,6 +17,26 @@ export class TaskRepository {
     assignments: { include: { user: { select: userSelect } } },
     board: { select: { id: true, name: true, department: { select: { spaceId: true } } } },
     views: { select: { userId: true, viewedAt: true, user: { select: userSelect } } },
+    subtasks: {
+      include: {
+        assignments: { include: { user: { select: userSelect } } },
+      },
+      orderBy: {
+        position: 'asc' as const,
+      },
+    },
+    dependencies: {
+      include: {
+        dependsOn: {
+          select: {
+            id: true,
+            identifier: true,
+            title: true,
+            status: true,
+          },
+        },
+      },
+    },
     _count: { select: { comments: true, attachments: true, subtasks: true } },
   };
 
@@ -68,7 +88,7 @@ export class TaskRepository {
         select: { position: true },
       });
 
-      const identifier = await identifierService.nextIdentifier(spaceId, prefix);
+      const identifier = await identifierService.nextIdentifier(spaceId, prefix, tx);
       const position = (lastTask?.position ?? -1) + 1;
 
       const task = await tx.task.create({
@@ -148,32 +168,111 @@ export class TaskRepository {
   }
 
   async update(id: string, dto: UpdateTaskDto, userId: string) {
+    const { assigneeIds, ...taskData } = dto;
     const before = await this.prisma.task.findUnique({ where: { id } });
-    const task = await this.prisma.task.update({ where: { id }, data: dto, include: this.TASK_INCLUDE });
 
-    const changed = Object.keys(dto).filter((k) => (before as any)[k] !== (dto as any)[k]);
-    if (changed.length) {
-      await this.prisma.taskJournal.createMany({
-        data: changed.map((field) => ({
-          taskId: id,
-          changes: { field, from: String((before as any)[field] ?? ''), to: String((dto as any)[field] ?? '') },
-          userId,
-        })),
+    const task = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.task.update({
+        where: { id },
+        data: taskData,
+        include: this.TASK_INCLUDE,
       });
-    }
+
+      if (assigneeIds !== undefined) {
+        await tx.taskAssignment.deleteMany({ where: { taskId: id } });
+        if (assigneeIds.length > 0) {
+          await tx.taskAssignment.createMany({
+            data: assigneeIds.map((assigneeId) => ({
+              taskId: id,
+              userId: assigneeId,
+            })),
+          });
+        }
+      }
+
+      const changed = Object.keys(taskData).filter((k) => (before as any)[k] !== (taskData as any)[k]);
+      if (changed.length) {
+        await tx.taskJournal.createMany({
+          data: changed.map((field) => ({
+            taskId: id,
+            changes: { field, from: String((before as any)[field] ?? ''), to: String((taskData as any)[field] ?? '') },
+            userId,
+          })),
+        });
+      }
+
+      return tx.task.findUnique({
+        where: { id },
+        include: this.TASK_INCLUDE,
+      });
+    });
 
     return task;
   }
 
   async move(id: string, dto: MoveTaskDto) {
     return this.prisma.$transaction(async (tx) => {
-      await tx.task.updateMany({
-        where: { columnId: dto.columnId, position: { gte: dto.position } },
-        data: { position: { increment: 1 } },
-      });
+      // 0. Serialize concurrent moves in the column via explicit row-level lock
+      const targetColumnId = dto.columnId;
+      if (targetColumnId) {
+        await tx.$executeRawUnsafe(
+          `SELECT id FROM "board_columns" WHERE id = $1 FOR UPDATE`,
+          targetColumnId,
+        );
+      }
+
+      const task = await tx.task.findUnique({ where: { id } });
+      if (!task) throw new NotFoundException('Task not found');
+
+      const sourceColumnId = task.columnId;
+      const sourcePosition = task.position;
+      const targetPosition = dto.position;
+
+      if (sourceColumnId === targetColumnId) {
+        if (sourcePosition > targetPosition) {
+          // Moving up: increment positions of tasks between target and source
+          await tx.task.updateMany({
+            where: {
+              columnId: sourceColumnId,
+              position: { gte: targetPosition, lt: sourcePosition },
+            },
+            data: { position: { increment: 1 } },
+          });
+        } else if (sourcePosition < targetPosition) {
+          // Moving down: decrement positions of tasks between source and target
+          await tx.task.updateMany({
+            where: {
+              columnId: sourceColumnId,
+              position: { gt: sourcePosition, lte: targetPosition },
+            },
+            data: { position: { decrement: 1 } },
+          });
+        }
+      } else {
+        // Moving to another column:
+        // 1. Close the gap in the source column
+        await tx.task.updateMany({
+          where: {
+            columnId: sourceColumnId,
+            position: { gt: sourcePosition },
+          },
+          data: { position: { decrement: 1 } },
+        });
+
+        // 2. Make room in the target column
+        await tx.task.updateMany({
+          where: {
+            columnId: targetColumnId,
+            position: { gte: targetPosition },
+          },
+          data: { position: { increment: 1 } },
+        });
+      }
+
+      // 3. Move the task itself
       return tx.task.update({
         where: { id },
-        data: { columnId: dto.columnId, position: dto.position },
+        data: { columnId: targetColumnId, position: targetPosition },
         include: this.TASK_INCLUDE,
       });
     });
@@ -184,25 +283,146 @@ export class TaskRepository {
   }
 
   async search(query: string, spaceId: string, skip: number, limit: number) {
-    const where: Prisma.TaskWhereInput = {
-      board: { department: { spaceId } },
-      isArchived: false,
-      ...(query && {
+    const limitNum = Number(limit || 50);
+    const skipNum = Number(skip || 0);
+
+    if (!query) {
+      const where: Prisma.TaskWhereInput = {
+        board: { department: { spaceId } },
+        isArchived: false,
+      };
+      const [data, total] = await Promise.all([
+        this.prisma.task.findMany({ where, skip: skipNum, take: limitNum, include: this.TASK_INCLUDE }),
+        this.prisma.task.count({ where }),
+      ]);
+      return { data, total };
+    }
+
+    // Raw SQL to leverage full-text search on GIN-indexed searchVector column
+    const matches = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT t.id
+      FROM "tasks" t
+      JOIN "boards" b ON t."boardId" = b.id
+      JOIN "departments" d ON b."departmentId" = d.id
+      WHERE d."spaceId" = ${spaceId}
+        AND t."isArchived" = false
+        AND t."searchVector" @@ plainto_tsquery(${query})
+    `;
+
+    const total = matches.length;
+    const matchedIds = matches.slice(skipNum, skipNum + limitNum).map((m) => m.id);
+
+    if (matchedIds.length === 0) {
+      // Fallback: short/typo search fallback using standard contains query
+      const where: Prisma.TaskWhereInput = {
+        board: { department: { spaceId } },
+        isArchived: false,
         OR: [
           { title: { contains: query, mode: 'insensitive' } },
           { description: { contains: query, mode: 'insensitive' } },
-        ]
-      }),
+        ],
+      };
+      const [data, totalCount] = await Promise.all([
+        this.prisma.task.findMany({ where, skip: skipNum, take: limitNum, include: this.TASK_INCLUDE }),
+        this.prisma.task.count({ where }),
+      ]);
+      return { data, total: totalCount };
+    }
+
+    const data = await this.prisma.task.findMany({
+      where: { id: { in: matchedIds } },
+      include: this.TASK_INCLUDE,
+    });
+
+    const dataSorted = matchedIds.map((id) => data.find((t) => t.id === id)).filter(Boolean);
+
+    return { data: dataSorted, total };
+  }
+
+  async findMyWork(userId: string) {
+    const tasks = await this.prisma.task.findMany({
+      where: {
+        isArchived: false,
+        assignments: {
+          some: { userId },
+        },
+      },
+      include: {
+        board: {
+          select: {
+            id: true,
+            name: true,
+            department: {
+              select: {
+                name: true,
+                space: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        assignments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const overdue = tasks.filter((t) => {
+      if (t.status === 'DONE' || t.status === 'CANCELLED') return false;
+      return t.dueDate && new Date(t.dueDate) < todayStart;
+    });
+
+    const today = tasks.filter((t) => {
+      if (t.status === 'DONE' || t.status === 'CANCELLED') return false;
+      return t.dueDate && new Date(t.dueDate) >= todayStart && new Date(t.dueDate) <= todayEnd;
+    });
+
+    const upcoming = tasks.filter((t) => {
+      if (t.status === 'DONE' || t.status === 'CANCELLED') return false;
+      return t.dueDate && new Date(t.dueDate) > todayEnd;
+    });
+
+    const completed = tasks.filter((t) => t.status === 'DONE');
+
+    const oneWeekLater = new Date(todayEnd.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const thisWeek = tasks.filter((t) => {
+      if (t.status === 'DONE' || t.status === 'CANCELLED') return false;
+      return t.dueDate && new Date(t.dueDate) > todayEnd && new Date(t.dueDate) <= oneWeekLater;
+    });
+
+    const noDueDate = tasks.filter((t) => {
+      if (t.status === 'DONE' || t.status === 'CANCELLED') return false;
+      return !t.dueDate;
+    });
+
+    return {
+      overdue,
+      today,
+      upcoming,
+      noDueDate,
+      stats: {
+        overdueCount: overdue.length,
+        todayCount: today.length,
+        thisWeekCount: thisWeek.length,
+        completedCount: completed.length,
+        noDueDateCount: noDueDate.length,
+      },
     };
-
-    const limitNum = Number(limit || 50);
-    const skipNum = Number(skip || 0);
-    const [data, total] = await Promise.all([
-      this.prisma.task.findMany({ where, skip: skipNum, take: limitNum, include: this.TASK_INCLUDE }),
-      this.prisma.task.count({ where }),
-    ]);
-
-    return { data, total };
   }
 }
 

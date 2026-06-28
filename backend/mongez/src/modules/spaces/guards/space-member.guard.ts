@@ -34,7 +34,15 @@ export class SpaceMemberGuard implements CanActivate {
     const userId: string | undefined = req.user?.userId;
     if (!userId) return false;
 
-    const spaceId = resolveSpaceId(req);
+    let spaceId = resolveSpaceId(req);
+    if (!spaceId && req.body?.boardId) {
+      const board = await this.prisma.board.findUnique({
+        where: { id: req.body.boardId },
+        select: { department: { select: { spaceId: true } } },
+      });
+      spaceId = board?.department?.spaceId;
+      req.boardSpaceId = spaceId;
+    }
 
     if (!spaceId) return true; // no space context — skip guard
 

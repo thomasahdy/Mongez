@@ -44,6 +44,11 @@ describe('Concurrency & Race Conditions (Integration)', () => {
     await cleanDatabase(prisma);
   });
 
+  afterEach(async () => {
+    // Allow background events/queues to settle before truncating
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  });
+
   describe('Concurrent Step Approvals', () => {
     it('should handle concurrent step approvals in a parallel step requiresAll=true correctly', async () => {
       // 1. Setup space & users
@@ -113,10 +118,10 @@ describe('Concurrency & Race Conditions (Integration)', () => {
       const board = await factories.createBoard(dept.id);
       const col = await factories.createBoardColumn(board.id);
 
-      // 2. Create 3 tasks in that column (default positions will be 0, 1, 2)
-      const task1 = await factories.createTask(board.id, user.id, { columnId: col.id, identifier: 'T-1' });
-      const task2 = await factories.createTask(board.id, user.id, { columnId: col.id, identifier: 'T-2' });
-      const task3 = await factories.createTask(board.id, user.id, { columnId: col.id, identifier: 'T-3' });
+      // 2. Create 3 tasks in that column with explicit positions 0, 1, 2
+      const task1 = await factories.createTask(board.id, user.id, { columnId: col.id, identifier: 'T-1', position: 0 });
+      const task2 = await factories.createTask(board.id, user.id, { columnId: col.id, identifier: 'T-2', position: 1 });
+      const task3 = await factories.createTask(board.id, user.id, { columnId: col.id, identifier: 'T-3', position: 2 });
 
       // 3. Concurrently move task2 to position 0 and task3 to position 0
       // This tests the database transaction lock safety under position incrementing.

@@ -94,26 +94,33 @@ def is_greeting(query: str) -> tuple[bool, str | None]:
     if not query:
         return False, None
 
-    # English greetings
-    if _EN_GREETING_RE.search(query):
+    # Extract clean user query if it's enriched with history/preferences
+    clean_query = query.strip()
+    if "User request:" in query:
+        clean_query = query.split("User request:", 1)[1].strip()
+
+    words_count = len(clean_query.split())
+
+    # English greetings (restricted to short messages to avoid hijacking instructions)
+    if words_count <= 3 and _EN_GREETING_RE.search(clean_query):
         return True, "greeting_en"
 
     # Arabic greetings
-    if _AR_GREETING_RE.search(query):
+    if words_count <= 3 and _AR_GREETING_RE.search(clean_query):
         return True, "greeting_ar"
 
     # English thanks
-    if _EN_THANKS_RE.search(query):
+    if words_count <= 3 and _EN_THANKS_RE.search(clean_query):
         return True, "thanks_en"
 
     # Arabic thanks
-    if _AR_THANKS_RE.search(query):
+    if words_count <= 3 and _AR_THANKS_RE.search(clean_query):
         return True, "thanks_ar"
 
     # Small talk about capabilities
-    if _EN_SMALLTALK_RE.search(query):
+    if _EN_SMALLTALK_RE.search(clean_query):
         # Detect language
-        if any(c in query for c in "ابتثجحخدذرزسشصضطظعغفقكلمنهوي"):
+        if any(c in clean_query for c in "ابتثجحخدذرزسشصضطظعغفقكلمنهوي"):
             return True, "smalltalk_ar"
         return True, "smalltalk_en"
 
@@ -138,7 +145,7 @@ def get_greeting_response(response_type: str) -> str:
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, max_length=4000)
+    message: str = Field(min_length=1, max_length=100000)
     space_id: str
     user_id: str
     user_name: str = "User"

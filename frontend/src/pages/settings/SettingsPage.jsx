@@ -10,6 +10,7 @@ import {
   useSettingsProfileQuery,
   useUpdatePreferencesMutation,
   useUpdateProfileMutation,
+  useUploadAvatarMutation,
 } from "../../hooks/useSettingsQueries";
 
 const INITIAL_FORM = {
@@ -63,6 +64,7 @@ export default function SettingsPage({ setPath }) {
   const settingsQuery = useSettingsProfileQuery();
   const updateProfileMutation = useUpdateProfileMutation();
   const updatePreferencesMutation = useUpdatePreferencesMutation();
+  const uploadAvatarMutation = useUploadAvatarMutation();
   const [form, setForm] = useState(INITIAL_FORM);
   const [pageError, setPageError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -104,8 +106,29 @@ export default function SettingsPage({ setPath }) {
     setSuccessMessage("");
   };
 
-  const handleAvatarUploadAttempt = () => {
-    setPageError("Direct avatar uploads are not exposed by the current API yet. Your current avatar is still shown correctly.");
+  const handleAvatarUploadAttempt = async (fileOrEvent) => {
+    if (!fileOrEvent || fileOrEvent.target) {
+      // Remove avatar
+      try {
+        setPageError("");
+        setSuccessMessage("");
+        await updateProfileMutation.mutateAsync({ avatarUrl: "" });
+        setSuccessMessage("Avatar removed successfully.");
+      } catch (error) {
+        setPageError(error.message || "Failed to remove avatar.");
+      }
+      return;
+    }
+
+    // Upload avatar
+    try {
+      setPageError("");
+      setSuccessMessage("");
+      await uploadAvatarMutation.mutateAsync(fileOrEvent);
+      setSuccessMessage("Avatar uploaded successfully.");
+    } catch (error) {
+      setPageError(error.message || "Failed to upload avatar.");
+    }
   };
 
   const handleDiscard = () => {

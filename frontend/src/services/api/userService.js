@@ -20,8 +20,16 @@ export const updateUserPreferences = async (preferencesData) => {
   return response.data;
 };
 
-export const uploadAvatar = async () => {
-  throw new Error("Direct avatar uploads are not available through the current API contract.");
+export const uploadAvatar = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await apiClient.post("/users/me/avatar", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data;
 };
 
 // Backward-compatible aliases for older imports.

@@ -20,6 +20,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { queryClient } from "./lib/queryClient.js";
 import { store } from "./store/store.js";
 import { SocketProvider } from "./context/SocketContext.jsx";
+import { ToastProvider } from "./context/ToastContext.jsx";
 import "./index.css";
 import "./i18n";
 
@@ -27,9 +28,11 @@ createRoot(document.getElementById("root")).render(
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
       <Provider store={store}>
-        <SocketProvider>
-          <App />
-        </SocketProvider>
+        <ToastProvider>
+          <SocketProvider>
+            <App />
+          </SocketProvider>
+        </ToastProvider>
       </Provider>
     </ErrorBoundary>
     {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}

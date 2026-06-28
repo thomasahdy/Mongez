@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router';
 import MicroProgress from '../../components/ui/MicroProgress';
 import Tag from '../../components/ui/Tag';
 import AvatarGroup from '../../components/ui/AvatarGroup';
@@ -7,9 +8,10 @@ import BlockerBox from './BlockerBox';
 import {CSS} from '@dnd-kit/utilities'
 import {useSortable} from '@dnd-kit/sortable'
 
-const TaskCard = ({ card }) => {
+const TaskCard = ({ task }) => {
+  const navigate = useNavigate();
   // 1. Fix: useSortable expects an object configuration
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: card.id });
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
   
   const {
     progress, tags, title, avatars, extraAvatars = 0,
@@ -17,7 +19,7 @@ const TaskCard = ({ card }) => {
     blocker, leftBorder,
     done, doneLabel, celebration,
     views = [],
-  } = card;
+  } = task;
 
   const dueColors = {
     danger:  "text-red-500 font-semibold",
@@ -48,6 +50,7 @@ const TaskCard = ({ card }) => {
       `}
       role="listitem"
       tabIndex={0}
+      onClick={() => navigate(`/tasks/${task.id}`)}
       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
       aria-label={`Task: ${title}`}
     >

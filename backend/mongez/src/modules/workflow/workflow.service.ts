@@ -462,29 +462,31 @@ export class WorkflowService {
       ),
     );
 
-    // Also send in-app notifications to all approvers
-    for (const approverId of approverIds) {
-      await this.notifications.queueNotification({
-        userId: approverId,
-        spaceId: instance.spaceId,
-        type: 'WORKFLOW_APPROVAL_REQUEST',
-        channel: 'IN_APP',
-        priority: 'HIGH',
-        title,
-        body,
-        entityType: 'workflow',
-        entityId: instance.id,
-      });
-      this.realtime.emitToUser(approverId, 'workflow:pending_review', {
-        instanceId: instance.id,
-        stepName: step.name,
-      });
-      this.realtime.emitToUser(approverId, 'approval:created', {
-        instanceId: instance.id,
-        stepName: step.name,
-        expiresAt,
-      });
-    }
+    // Also send in-app notifications to all approvers in parallel
+    await Promise.all(
+      approverIds.map(async (approverId) => {
+        await this.notifications.queueNotification({
+          userId: approverId,
+          spaceId: instance.spaceId,
+          type: 'WORKFLOW_APPROVAL_REQUEST',
+          channel: 'IN_APP',
+          priority: 'HIGH',
+          title,
+          body,
+          entityType: 'workflow',
+          entityId: instance.id,
+        });
+        this.realtime.emitToUser(approverId, 'workflow:pending_review', {
+          instanceId: instance.id,
+          stepName: step.name,
+        });
+        this.realtime.emitToUser(approverId, 'approval:created', {
+          instanceId: instance.id,
+          stepName: step.name,
+          expiresAt,
+        });
+      }),
+    );
   }
 
   /**
@@ -517,11 +519,14 @@ export class WorkflowService {
       return true;
     }
 
-    for (const approverId of step.approverIds) {
-      const delegateId = await this.delegationService.getActiveDelegate(approverId, spaceId);
-      if (delegateId === userId) {
-        return true;
-      }
+    const delegationResults = await Promise.all(
+      step.approverIds.map((approverId) =>
+        this.delegationService.getActiveDelegate(approverId, spaceId),
+      ),
+    );
+
+    if (delegationResults.includes(userId)) {
+      return true;
     }
 
     return false;

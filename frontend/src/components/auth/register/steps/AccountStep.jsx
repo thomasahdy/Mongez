@@ -7,8 +7,6 @@ import SocialAuthButtons from "../../shared/SocialAuthButtons";
 import { FaArrowRight, FaEnvelope } from "react-icons/fa";
 import { FaCheck, FaSpinner } from "react-icons/fa";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
-
 
 const AccountStep = ({ values, onChange, onNext }) => {
   const [errors, setErrors] = useState({});
@@ -69,45 +67,20 @@ const AccountStep = ({ values, onChange, onNext }) => {
     validate();
   };
 
-  const handleContinue = async () => {
-    setTouched({ firstName: true, lastName: true, email: true, password: true });
-    setErrors((prev) => ({ ...prev, submit: '' }));
+  const handleContinue = () => {
+  setTouched({
+    firstName: true,
+    lastName: true,
+    email: true,
+    password: true,
+  });
 
-    if (!validate()) {
-      return;
-    }
+  setErrors((prev) => ({ ...prev, submit: "" }));
 
-    setIsLoading(true);
+  if (!validate()) return;
 
-    try {
-      const payload = {
-        email: values.email,
-        password: values.password,
-        name: `${values.firstName} ${values.lastName}`,
-      };
-
-      const response = await fetch("/api/v1/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || "Registration failed. Please try again.");
-      }
-
-      onNext();
-    } catch (error) {
-      setErrors((prev) => ({ ...prev, submit: error.message || "Something went wrong during registration" }));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  onNext();
+};
 
   const strength = getPasswordStrength();
 

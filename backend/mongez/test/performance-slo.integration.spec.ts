@@ -33,7 +33,7 @@ describe('Performance SLOs Latency Benchmarks (Integration)', () => {
 
   afterAll(async () => {
     await app.close();
-  });
+  }, 60000);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);

@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { randomUUID } from 'crypto';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 
 @Injectable()
 export class TrashService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   /**
    * List all soft-deleted items in a given Space.
@@ -250,6 +254,11 @@ export class TrashService {
       select: { id: true },
     });
     if (board) {
+      const tasks = await this.prisma.task.findMany({
+        where: { boardId: id },
+        select: { id: true },
+      });
+      await this.deletePhysicalFilesForTasks(tasks.map((t) => t.id));
       await this.prisma.board.delete({ where: { id } });
       return { type: 'board', id };
     }
@@ -260,6 +269,11 @@ export class TrashService {
       select: { id: true },
     });
     if (col) {
+      const tasks = await this.prisma.task.findMany({
+        where: { columnId: id },
+        select: { id: true },
+      });
+      await this.deletePhysicalFilesForTasks(tasks.map((t) => t.id));
       await this.prisma.boardColumn.delete({ where: { id } });
       return { type: 'column', id };
     }
@@ -270,6 +284,9 @@ export class TrashService {
       select: { id: true },
     });
     if (task) {
+      const subtaskIds = await this.getSubtaskIdsRecursive(id);
+      const allTaskIds = [id, ...subtaskIds];
+      await this.deletePhysicalFilesForTasks(allTaskIds);
       await this.prisma.task.delete({ where: { id } });
       return { type: 'task', id };
     }
@@ -287,16 +304,35 @@ export class TrashService {
     throw new NotFoundException('Item not found in trash');
   }
 
-  private async getSubtaskIdsRecursive(taskId: string): Promise<string[]> {
-    const subtasks = await this.prisma.task.findMany({
-      where: { parentId: taskId },
-      select: { id: true },
-    });
-    let ids = subtasks.map((t) => t.id);
-    for (const id of ids) {
-      const subIds = await this.getSubtaskIdsRecursive(id);
-      ids = [...ids, ...subIds];
+  private async deletePhysicalFilesForTasks(taskIds: string[]) {
+    if (!taskIds.length) return;
+    try {
+      const versions = await this.prisma.fileVersion.findMany({
+        where: {
+          attachment: {
+            taskId: { in: taskIds },
+          },
+        },
+        select: { storageKey: true },
+      });
+      for (const v of versions) {
+        await this.storage.delete(v.storageKey).catch(() => {});
+      }
+    } catch (err) {
+      // Don't crash purge if storage deletion fails
     }
-    return ids;
+  }
+
+  private async getSubtaskIdsRecursive(taskId: string): Promise<string[]> {
+    const subtaskIds = await this.prisma.$queryRaw<{ id: string }[]>`
+      WITH RECURSIVE subtasks AS (
+        SELECT id FROM tasks WHERE "parentId" = ${taskId}
+        UNION ALL
+        SELECT t.id FROM tasks t
+        INNER JOIN subtasks s ON t."parentId" = s.id
+      )
+      SELECT id FROM subtasks;
+    `;
+    return subtaskIds.map((row) => row.id);
   }
 }

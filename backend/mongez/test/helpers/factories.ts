@@ -32,12 +32,22 @@ export class TestFactories {
   async createSpace(overrides: Partial<{
     name: string;
     prefix: string;
+    subscriptionPlanId: string;
   }> = {}) {
     const random = Math.random().toString(36).substring(7);
+    let planId = overrides.subscriptionPlanId;
+    if (!planId) {
+      const enterprisePlan = await this.prisma.subscriptionPlan.findFirst({
+        where: { name: 'ENTERPRISE' },
+      });
+      planId = enterprisePlan?.id ?? undefined;
+    }
+
     const space = await this.prisma.space.create({
       data: {
         name: overrides.name || `Space ${random}`,
         prefix: overrides.prefix || `SP${random.substring(0, 3).toUpperCase()}`,
+        subscriptionPlanId: planId,
       },
     });
 
@@ -100,6 +110,7 @@ export class TestFactories {
     status: TaskStatus;
     priority: Priority;
     identifier: string;
+    position: number;
   }> = {}) {
     const random = Math.random().toString(36).substring(7);
     
@@ -127,6 +138,7 @@ export class TestFactories {
         status: overrides.status || TaskStatus.TODO,
         priority: overrides.priority || Priority.MEDIUM,
         createdById,
+        position: overrides.position !== undefined ? overrides.position : 0,
       },
     });
   }

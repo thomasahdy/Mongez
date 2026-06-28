@@ -11,4 +11,5 @@ export class UpdateTaskDto {
   @IsOptional() @IsDateString() startDate?: string;
   @IsOptional() @IsInt() @Min(0) estimatedHours?: number;
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[];
+  @IsOptional() @IsArray() @IsString({ each: true }) assigneeIds?: string[];
 }

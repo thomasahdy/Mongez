@@ -79,7 +79,7 @@ const RegisterContainer = () => {
         password: values.account.password,
         name: fullName,
       });
-      window.location.href = "/onboarding";
+      window.location.href = "/";
     } catch (error) {
       const errorMessage = error?.message || error?.toString?.() || "Something went wrong";
       setSubmitError(errorMessage);
@@ -133,6 +133,7 @@ const RegisterContainer = () => {
               onSubmit={handleSubmit}
               loading={loading}
               submitError={submitError}
+              
             />
           )}
         </div>
