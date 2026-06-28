@@ -61,14 +61,17 @@ const LoginForm = () => {
       await authService.login({ email, password });
       window.location.href = "/spaces";
     } catch (error) {
+      const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message || "Something went wrong";
+      
       setErrors((prev) => ({
-        ...prev,
-        submit: error?.message || t("authUi.somethingWentWrong"),
-      }));
-    } finally {
+        ...prev, submit: Array.isArray(message) ? message.join(", ") : message,}));
+    
+    }finally {
       setLoading(false);
     }
-
   };
 
   return (

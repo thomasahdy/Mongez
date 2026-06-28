@@ -6,13 +6,13 @@ import SessionsCard from "./SessionsCard";
 
 const SecuritySkeleton = () => {
     return (
-        <div className="space-y-6">
+        <>
             <SecurityHeader />
             <PasswordCard />
             <TwoFactorCard />
             <SessionManagementCard />
             <SessionsCard />
-        </div>
+        </>
     );
 };
 

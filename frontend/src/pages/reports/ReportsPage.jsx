@@ -13,86 +13,11 @@ import TaskVolumeChart from "./TaskVolumeChart";
 import TopPerformersList from "./TopPerformersList";
 import PriorityBreakdown from "./PriorityBreakdown";
 import CumulativeFlowChart from "./CumulativeFlowChart";
+import StatsSection from "./StatsSection";
 
 // ─────────────────────────────────────────────
 // CONSTANTS / DATA
 // ─────────────────────────────────────────────
-
-
-const METRICS = [
-  {
-    id: "completed",
-    title: "Tasks Completed",
-    value: "428",
-    unit: null,
-    icon: "fa-check-double",
-    trend: { direction: "up", label: "12% from last month" },
-    accentColor: "#00a8e8",
-    iconBg: "bg-sky-100 dark:bg-sky-900/40",
-    iconColor: "text-sky-500",
-  },
-  {
-    id: "ontime",
-    title: "On-Time Rate",
-    value: "84",
-    unit: "%",
-    icon: "fa-regular fa-clock",
-    trend: { direction: "up", label: "4% from last month" },
-    accentColor: "#10b981",
-    iconBg: "bg-emerald-100 dark:bg-emerald-900/40",
-    iconColor: "text-emerald-500",
-  },
-  {
-    id: "overdue",
-    title: "Overdue Tasks",
-    value: "32",
-    unit: null,
-    icon: "fa-triangle-exclamation",
-    trend: { direction: "down", label: "8% from last month" },
-    accentColor: "#f59e0b",
-    iconBg: "bg-amber-100 dark:bg-amber-900/40",
-    iconColor: "text-amber-500",
-  },
-  {
-    id: "avg-time",
-    title: "Avg. Completion Time",
-    value: "2.4",
-    unit: "days",
-    icon: "fa-stopwatch",
-    trend: { direction: "up", label: "0.5d faster", isPositive: true },
-    accentColor: "#6366f1",
-    iconBg: "bg-indigo-100 dark:bg-indigo-900/40",
-    iconColor: "text-indigo-500",
-  },
-];
-
-const AI_INSIGHTS = [
-  {
-    id: "velocity",
-    icon: "fa-arrow-trend-up",
-    iconColor: "text-sky-500",
-    title: "Velocity Increased",
-    description:
-      'The team completed 24% more tasks this month compared to last month. "Website Redesign" was the most active project.',
-  },
-  {
-    id: "bottleneck",
-    icon: "fa-triangle-exclamation",
-    iconColor: "text-amber-500",
-    title: "Bottleneck Detected",
-    description:
-      'Tasks in the "Design Review" column are averaging 4.2 days to resolution, which is 2× slower than the workspace average.',
-  },
-];
-
-const BAR_CHART_DATA = [
-  { week: "W1", created: 38, completed: 28 },
-  { week: "W2", created: 55, completed: 47 },
-  { week: "W3", created: 49, completed: 51 },
-  { week: "W4", created: 74, completed: 68 },
-  { week: "W5", created: 82, completed: 79 },
-  { week: "W6", created: 68, completed: 63 },
-];
 
 const TOP_PERFORMERS = [
   { id: "sm", name: "Sarah Miller", initials: "SM", color: "#10b981", tasks: 124 },
@@ -135,9 +60,31 @@ const FLOW_DATA = [
 
 
 const ReportsPage = ({setPath}) => {
+  const [selectedSpace, setSelectedSpace] = useState({});
+  
+
+
+  const [insights] = useState([{
+    id: "velocity",
+    icon: "fa-arrow-trend-up",
+    iconColor: "text-sky-500",
+    title: "Velocity Increased",
+    description:
+      'The team completed 24% more tasks this month compared to last month. "Website Redesign" was the most active project.',
+  },
+  {
+    id: "bottleneck",
+    icon: "fa-triangle-exclamation",
+    iconColor: "text-amber-500",
+    title: "Bottleneck Detected",
+    description:
+      'Tasks in the "Design Review" column are averaging 4.2 days to resolution, which is 2× slower than the workspace average.',
+  },])
   useEffect(()=>{
       setPath(path)
     }, []);
+
+
   return (
 
 
@@ -165,32 +112,25 @@ const ReportsPage = ({setPath}) => {
               </div>
 
               {/* Toolbar */}
-              <ReportsToolbar />
+              <ReportsToolbar selectedSpace={selectedSpace} setSelectedSpace={setSelectedSpace}/>
 
               {/* AI Insights */}
-              <AIInsightsPanel insights={AI_INSIGHTS} />
+              <AIInsightsPanel insights={insights} />
 
               {/* KPI metrics */}
-              <section
-                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6"
-                aria-label="Key performance metrics"
-              >
-                {METRICS.map((m) => (
-                  <MetricCard key={m.id} metric={m} />
-                ))}
-              </section>
+              <StatsSection spaceId={selectedSpace.id} />
 
               {/* Charts row 1: bar chart (2/3) + top performers (1/3) */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div className="lg:col-span-2">
-                  <TaskVolumeChart data={BAR_CHART_DATA} />
+                  <TaskVolumeChart spaceId={selectedSpace.id}/>
                 </div>
                 <TopPerformersList performers={TOP_PERFORMERS} />
               </div>
 
               {/* Charts row 2: priority breakdown (1/2) + cumulative flow (1/2) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
-                <PriorityBreakdown priorities={PRIORITIES} />
+                <PriorityBreakdown spaceId={selectedSpace.id} />
                 <CumulativeFlowChart data={FLOW_DATA} />
               </div>
 

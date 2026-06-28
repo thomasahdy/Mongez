@@ -21,7 +21,7 @@ export const getDashboardActivity = async (spaceId) => {
   return toArrayPayload(response.data, ["data", "items", "logs"]);
 };
 
-export const getDashboardTaskCompletion = async (spaceId) => {
+export const getDashboardTaskCompletion = async (spaceId, period) => {
   const response = await apiClient.get("/analytics/tasks", {
     params: { spaceId, period: "month" },
   });

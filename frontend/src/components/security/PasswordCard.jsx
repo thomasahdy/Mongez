@@ -64,58 +64,54 @@ const handleSubmit = async (e) => {
     }
 };
 return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6">
-        <form className="space-y-5" onSubmit={handleSubmit}>
-            <div className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-                <i className="fa-solid fa-key text-blue-600"></i>
-                <span>Password</span>
+    <div className="security-section">
+        <form onSubmit={handleSubmit}>
+            <div className="security-section-title">
+                <i className="fa-solid fa-key channel-email"></i>
+                Password
             </div>
             
-            <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700"> Current Password </label>
+            <div className="form-group">
+                <label className="form-label">Current Password</label>
                 
-                <input type="password" placeholder="Enter your current password" className={`w-full rounded-lg border px-3 py-2.5 outline-none transition focus:ring-2 ${ errors.currentPassword
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"}`}
+                <input type="password" placeholder="Enter your current password" className="form-input"
                 
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}/>
-                {errors.currentPassword && ( <p className="text-xs text-red-500"> {errors.currentPassword} </p>)}
+                {errors.currentPassword && ( <p className="form-error">{errors.currentPassword}</p>)}
             </div>
 
-            <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700"> New Password </label>
+            <div className="form-group">
+                <label className="form-label">New Password</label>
                 
-                <input type="password" placeholder="Create a new password" className={`w-full rounded-lg border px-3 py-2.5 outline-none transition focus:ring-2 ${ errors.newPassword
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"}`}
+                <input type="password" placeholder="Create a new password" className="form-input"
                 
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}/>
                 
-                {errors.newPassword && ( <p className="text-xs text-red-500"> {errors.newPassword} </p>)}
-                <p className="text-xs text-gray-500"> Must be at least 8 characters long and contain an uppercase letter, lowercase letter, and a number.</p>
+                {errors.newPassword && ( <p className="form-error">{errors.newPassword}</p>)}
+                <p className="form-hint">Must be at least 8 characters long and contain an uppercase letter, lowercase letter, and a number.</p>
             </div>
             
-            <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700"> Confirm New Password </label>
+            <div className="form-group">
+                <label className="form-label">Confirm New Password</label>
                 
-                <input type="password" placeholder="Confirm your new password" className={`w-full rounded-lg border px-3 py-2.5 outline-none transition focus:ring-2 ${errors.confirmPassword
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"}`}
+                <input type="password" placeholder="Confirm your new password" className="form-input"
                 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}/>
                 
-                {errors.confirmPassword && ( <p className="text-xs text-red-500"> {errors.confirmPassword} </p>)}
+                {errors.confirmPassword && ( <p className="form-error">{errors.confirmPassword}</p>)}
             </div>
             
-            {errors.api && ( <p className="text-sm text-red-500"> {errors.api}</p>)}
-            {success && ( <p className="text-sm text-green-600"> {success} </p>)}
+            {errors.api && ( <p className="form-error">{errors.api}</p>)}
+            {success && ( <p className="form-success">{success}</p>)}
             
-            <button type="submit" disabled={loading} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+            <div style={{ marginTop: 16 }}>
+            <button type="submit" disabled={loading} className="btn btn-primary">
                 {loading ? "Updating..." : "Update Password"}
-            </button> 
+            </button>
+            </div>
         </form>
     </div>
 );

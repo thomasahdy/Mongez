@@ -15,40 +15,41 @@ const SessionRow = ({ session, onTerminate, disabled }) => {
     else if (isLinux) iconClass = "fa-brands fa-linux";
 
     return (
-        <tr className="hover:bg-gray-50">
-            <td className="px-4 py-4">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600">
+        <tr>
+            <td>
+                <div className="device-info">
+                    <div className="device-icon">
                         <i className={iconClass}/>
                     </div>
                     
                     <div>
-                        <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900">
+                        <div>
                             <span>{device}</span>
                             
                             {isCurrent && (
-                                <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                                <span className="current-session-badge">
                                     Current Session
                                 </span>
                             )}
                             
                         </div>
-                        <div className="text-xs text-gray-500"> {location} </div>
+                        <div style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 400 }}>{location}</div>
                     </div>
                 </div>
             </td>
             
-            <td className="px-4 py-4 font-mono text-sm text-gray-600"> {ipAddress} </td>
+            <td style={{ fontFamily: "monospace" }}>{ipAddress}</td>
             
-            <td className="px-4 py-4 text-sm text-gray-600"> {lastActive} </td>
+            <td>{lastActive}</td>
             
-            <td className="px-4 py-4 text-right">
+            <td style={{ textAlign: "right" }}>
                 {!isCurrent && (
                     <button
                         type="button"
                         onClick={() => onTerminate(id)}
                         disabled={disabled}
-                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="btn btn-outline"
+                        style={{ fontSize: 11, padding: "4px 10px" }}
                     >
                         Sign Out
                     </button>

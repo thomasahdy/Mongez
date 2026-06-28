@@ -62,15 +62,20 @@ const RegisterContainer = () => {
   const handleSubmit = async ({ skipInvites = false } = {}) => {
     setLoading(true);
     setSubmitError("");
+    const validInvites = values.invites.filter((invite) => invite.email.trim());
+
+    if (!skipInvites && validInvites.length === 0) {
+      setSubmitError("Invite at least one team member or skip this step.");
+      setLoading(false);
+      return;
+    }
 
     localStorage.setItem(
       "pendingOnboarding",
       JSON.stringify({
         organization: values.organization,
         template: values.template,
-        invites: skipInvites
-          ? []
-          : values.invites.filter((invite) => invite.email.trim()),
+        invites: skipInvites ? [] : validInvites,
       })
     );
 
@@ -81,7 +86,7 @@ const RegisterContainer = () => {
         password: values.account.password,
         name: fullName,
       });
-      window.location.href = "/";
+      window.location.href = skipInvites ? "/dashboard" : "/";
     } catch (error) {
       const errorMessage = error?.message || error?.toString?.() || t("registerUi.registrationFailed");
       setSubmitError(errorMessage);
@@ -136,6 +141,8 @@ const RegisterContainer = () => {
               onSkip={() => handleSubmit({ skipInvites: true })}
               loading={loading}
               submitError={submitError}
+              onSkip={() => handleSubmit({ skipInvites: true })}
+              
             />
           )}
         </div>

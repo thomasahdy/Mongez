@@ -13,8 +13,7 @@ const providerConfig = {
     labelKey: "microsoft",
     icon: FaMicrosoft,
     iconColor: "#00a8e8",
-    disabled: true,
-    oauthUrl: "/api/v1/auth/google", // Use Google for now, add Microsoft later
+    oauthUrl: "/api/v1/auth/microsoft", 
   },
   whatsapp: {
     labelKey: "whatsapp",
