@@ -14,7 +14,7 @@ export const createTaskValidationSchema = z.object({
   // Changed to a pure string with a default fallback value
   status: z.string(),
 
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
+  priority: z.enum(['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
   type: z.enum(['Bug', 'Feature', 'Task', 'Milestone']).optional(),
   
   startDate: z.string().optional().or(z.literal('')),

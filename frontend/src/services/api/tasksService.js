@@ -19,7 +19,19 @@ import { toArrayPayload, toPagedPayload } from "./responseUtils";
  * @returns {Promise<Object>} Created task details
  */
 export const createTask = async (data) => {
-  const response = await apiClient.post("/tasks", data);
+  const cleaned = { ...data };
+  if (cleaned.dueDate === "") delete cleaned.dueDate;
+  if (cleaned.startDate === "") delete cleaned.startDate;
+  if (cleaned.parentId === "") delete cleaned.parentId;
+  if (cleaned.description === "") delete cleaned.description;
+  if (cleaned.labels) delete cleaned.labels;
+
+  if (cleaned.assignees) {
+    cleaned.assigneeIds = cleaned.assignees;
+    delete cleaned.assignees;
+  }
+
+  const response = await apiClient.post("/tasks", cleaned);
   return response.data;
 };
 
@@ -83,7 +95,12 @@ export const getTask = async (id) => {
  * @returns {Promise<Object>} Updated task details
  */
 export const updateTask = async (id, data) => {
-  const response = await apiClient.patch(`/tasks/${id}`, data);
+  const cleaned = { ...data };
+  if (cleaned.assignees) {
+    cleaned.assigneeIds = cleaned.assignees;
+    delete cleaned.assignees;
+  }
+  const response = await apiClient.patch(`/tasks/${id}`, cleaned);
   return normalizeTask(response.data);
 };
 
@@ -120,18 +137,38 @@ export const createBoardTask = async (board, taskData) => {
     board.columns?.find((column) => !column.isArchived) ||
     board.columns?.[0];
 
-  return createTask({
+  const payload = {
     title: taskData.title,
     description: taskData.description || "",
     boardId: board.id,
     columnId: taskData.columnId || firstColumn?.id,
-    spaceId: board.spaceId,
-    spacePrefix: board.space?.prefix || board.spacePrefix,
+    spaceId: board.spaceId || taskData.spaceId,
+    spacePrefix: board.space?.prefix || board.spacePrefix || taskData.spacePrefix,
     priority: taskData.priority || "MEDIUM",
-    assigneeId: taskData.assigneeId,
-    dueDate: taskData.dueDate,
-    labels: taskData.labels || [],
-  });
+    type: taskData.type || "Task",
+    tags: taskData.tags || [],
+  };
+
+  if (taskData.assigneeIds && taskData.assigneeIds.length > 0) {
+    payload.assigneeIds = taskData.assigneeIds;
+  } else if (taskData.assigneeId) {
+    payload.assigneeIds = [taskData.assigneeId];
+  }
+
+  if (taskData.dueDate && taskData.dueDate !== "") {
+    payload.dueDate = new Date(taskData.dueDate).toISOString();
+  }
+  if (taskData.startDate && taskData.startDate !== "") {
+    payload.startDate = new Date(taskData.startDate).toISOString();
+  }
+  if (taskData.estimatedHours) {
+    payload.estimatedHours = Number(taskData.estimatedHours);
+  }
+  if (taskData.parentId && taskData.parentId !== "") {
+    payload.parentId = taskData.parentId;
+  }
+
+  return createTask(payload);
 };
 
 /**
@@ -217,6 +254,15 @@ export const uploadTaskAttachment = async (id, file) => {
   return response.data;
 };
 
+export const getMyWorkTasks = async () => {
+  const response = await apiClient.get("/tasks/me/assigned");
+  return response.data;
+};
+
+export const deleteTaskFile = async (fileId) => {
+  await apiClient.delete(`/files/${fileId}`);
+};
+
 const tasksService = {
   createTask,
   getBoardTasks,
@@ -236,6 +282,8 @@ const tasksService = {
   getTimeLogs,
   getTaskFiles,
   uploadTaskAttachment,
+  getMyWorkTasks,
+  deleteTaskFile,
 };
 
 export default tasksService;

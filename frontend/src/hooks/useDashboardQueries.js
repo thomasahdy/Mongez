@@ -99,9 +99,12 @@ export function useCreateBoardTaskMutation() {
   return useMutation({
     mutationFn: ({ board, taskData }) => tasksService.createBoardTask(board, taskData),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["board", "table", variables.board?.id] });
-      queryClient.invalidateQueries({ queryKey: ["board", "tasks", variables.board?.id] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["board", "table"] });
+      queryClient.invalidateQueries({ queryKey: ["board", "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["board", "timeline"] });
+      queryClient.invalidateQueries({ queryKey: ["task", "details"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar", "events"] });
     },
   });
 }

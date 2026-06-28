@@ -7,17 +7,23 @@ describe('Migration Integrity & Schema Evolution (Layer 8)', () => {
   let prisma: PrismaService;
   const migrationsDir = path.resolve(__dirname, '../prisma/migrations');
   const backupDir = path.resolve(__dirname, '../prisma/migrations_backup');
-  const targetMigration = '20260620120707_add_governance_models';
-  const sourcePath = path.join(migrationsDir, targetMigration);
-  const backupPath = path.join(backupDir, targetMigration);
+  const targetMigrations = [
+    '20260620120707_add_governance_models',
+    '20260623213943_add_integration_relations',
+    '20260625000000_add_task_views',
+  ];
 
   beforeAll(async () => {
-    // 1. Move the target migration folder to backup
-    if (fs.existsSync(sourcePath)) {
-      if (!fs.existsSync(backupDir)) {
-        fs.mkdirSync(backupDir, { recursive: true });
+    // 1. Move target migrations to backup
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    for (const migration of targetMigrations) {
+      const src = path.join(migrationsDir, migration);
+      const bkp = path.join(backupDir, migration);
+      if (fs.existsSync(src)) {
+        fs.renameSync(src, bkp);
       }
-      fs.renameSync(sourcePath, backupPath);
     }
 
     // 2. Instantiate direct PrismaService
@@ -27,8 +33,8 @@ describe('Migration Integrity & Schema Evolution (Layer 8)', () => {
     // 3. Drop existing database schema to ensure clean slate
     await prisma.$executeRawUnsafe(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`);
 
-    // 4. Deploy initial migrations (without the latest one)
-    console.log('Deploying initial migrations (without governance models)...');
+    // 4. Deploy initial migrations (without governance models and subsequent ones)
+    console.log('Deploying initial migrations...');
     execSync('npx prisma migrate deploy', {
       env: { ...process.env },
       cwd: path.resolve(__dirname, '..'),
@@ -36,18 +42,34 @@ describe('Migration Integrity & Schema Evolution (Layer 8)', () => {
   });
 
   afterAll(async () => {
-    // Restore migration folder if still in backup
-    if (fs.existsSync(backupPath)) {
-      if (fs.existsSync(sourcePath)) {
-        // If target already exists for some reason, clean up the backup to avoid conflict
-        fs.rmSync(backupPath, { recursive: true, force: true });
-      } else {
-        fs.renameSync(backupPath, sourcePath);
+    // Restore all migration folders
+    for (const migration of targetMigrations) {
+      const src = path.join(migrationsDir, migration);
+      const bkp = path.join(backupDir, migration);
+      if (fs.existsSync(bkp)) {
+        if (fs.existsSync(src)) {
+          fs.rmSync(bkp, { recursive: true, force: true });
+        } else {
+          fs.renameSync(bkp, src);
+        }
       }
     }
     if (fs.existsSync(backupDir) && fs.readdirSync(backupDir).length === 0) {
       fs.rmdirSync(backupDir);
     }
+
+    // Restore full database schema for subsequent tests
+    try {
+      console.log('Restoring test database schema for other tests...');
+      const schemaPath = path.resolve(__dirname, '../prisma/schema.prisma');
+      execSync(`npx prisma db push --schema="${schemaPath}" --accept-data-loss --force-reset`, {
+        stdio: 'inherit',
+        env: { ...process.env },
+      });
+    } catch (err) {
+      console.error('Failed to restore schema in afterAll:', err);
+    }
+
     if (prisma) {
       await prisma.onModuleDestroy();
     }
@@ -95,15 +117,19 @@ describe('Migration Integrity & Schema Evolution (Layer 8)', () => {
     const taskCountBefore = await prisma.$queryRaw<any[]>`SELECT count(*) FROM tasks;`;
     expect(Number(taskCountBefore[0].count)).toBe(1);
 
-    // 2. Move the target migration folder back
-    if (fs.existsSync(backupPath)) {
-      if (!fs.existsSync(sourcePath)) {
-        fs.renameSync(backupPath, sourcePath);
+    // 2. Move target migrations back from backup
+    for (const migration of targetMigrations) {
+      const src = path.join(migrationsDir, migration);
+      const bkp = path.join(backupDir, migration);
+      if (fs.existsSync(bkp)) {
+        if (!fs.existsSync(src)) {
+          fs.renameSync(bkp, src);
+        }
       }
     }
 
-    // 3. Deploy the latest migration (governance models) on top of the seeded DB
-    console.log('Deploying latest migration (governance models)...');
+    // 3. Deploy all remaining migrations on top of the seeded DB
+    console.log('Deploying remaining migrations...');
     execSync('npx prisma migrate deploy', {
       env: { ...process.env },
       cwd: path.resolve(__dirname, '..'),

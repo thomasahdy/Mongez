@@ -55,7 +55,7 @@ export class SearchService {
 
     // Raw SQL for FTS (tsvector column is Unsupported in Prisma client)
     const tasks = await this.prisma.$queryRaw<any[]>`
-      SELECT t.id, t.identifier, t.title, t.status, t.priority, t."dueDate",
+      SELECT t.id, t.identifier, t.title, t.description, t.tags, t.status, t.priority, t."dueDate",
              ts_rank(t."searchVector", plainto_tsquery(${query})) AS rank
       FROM "tasks" t
       JOIN "boards" b ON t."boardId" = b.id
@@ -91,6 +91,8 @@ export class SearchService {
           id: true,
           identifier: true,
           title: true,
+          description: true,
+          tags: true,
           status: true,
           priority: true,
           dueDate: true,

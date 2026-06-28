@@ -199,3 +199,22 @@ export function useLeaveSpaceMutation(spaceId) {
     mutationFn: () => leaveSpace(spaceId),
   });
 }
+
+export function useUploadAvatarMutation() {
+  const dispatch = useDispatch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file) => userService.uploadAvatar(file),
+    onSuccess: (updatedUser) => {
+      dispatch(
+        setAuthSession({
+          user: updatedUser,
+          isAuthenticated: true,
+        }),
+      );
+      queryClient.invalidateQueries({ queryKey: SETTINGS_PROFILE_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+    },
+  });
+}

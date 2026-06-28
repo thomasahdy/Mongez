@@ -34,6 +34,15 @@ export class AIDataProviderController {
   }
 
   /**
+   * GET /internal/ai/tasks/single/:taskId
+   * Returns a single task details for indexing/RAG.
+   */
+  @Get('tasks/single/:taskId')
+  async getTaskById(@Param('taskId') taskId: string) {
+    return this.dataProvider.getTaskById(taskId);
+  }
+
+  /**
    * GET /internal/ai/comments/:taskId
    * Returns all comments for a single task.
    */

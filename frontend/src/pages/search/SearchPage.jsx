@@ -1,214 +1,259 @@
-import { useState, useMemo, useCallback, useRef } from "react";
-import Button from '../../components/ui/Button'
-import HighlightedText from "../../components/ui/HighlightedText";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router";
 import NoResults from "./NoResults";
-import ResultIconBadge from "../../components/search/ResultIconBadge";
-import ResultTag from "../../components/search/ResultTag";
-import AIAnswerCard from "../../components/search/AIAnswerCard";
 import ResultFilterTabs from "./sections/ResultFilterTabs";
-import SearchBar from "./sections/SearchBar";
-import SuggestionChips from "./sections/SuggestionChips";
 import SearchHero from "./sections/SearchHero";
 import ResultItem from "../../components/search/ResultItem";
+import { useAppContext } from "../AppContext";
+import { useGlobalSearch } from "../../hooks/api/useSearch";
+import { useSpaceMembersQuery } from "../../hooks/useSettingsQueries";
 
-// ─────────────────────────────────────────────
-// CONSTANTS / DATA
-// ─────────────────────────────────────────────
+export default function SearchPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const qParam = searchParams.get("q") || "";
 
-
-const RESULT_FILTER_TABS = [
-  { id: "all",      label: "All",      count: 8 },
-  { id: "tasks",    label: "Tasks",    count: 4 },
-  { id: "files",    label: "Files",    count: 2 },
-  { id: "people",   label: "People",   count: 1 },
-  { id: "comments", label: "Comments", count: 1 },
-];
-
-/** All result items — type drives filter tab */
-const ALL_RESULTS = [
-  {
-    id: "r1",
-    type: "tasks",
-    iconBg:    "bg-amber-100 dark:bg-amber-900/30",
-    iconColor: "text-amber-600",
-    icon:      "fa-pause",
-    title:     "Funding Release — Tranche 2",
-    description:
-      "Stuck at Central Bank since Oct 15, 2024 (23 days). External dependency. Blocked status.",
-    tags: ["Waiting", "Upper Egypt Edu", "Omar M."],
-  },
-  {
-    id: "r2",
-    type: "tasks",
-    iconBg:    "bg-sky-100 dark:bg-sky-900/30",
-    iconColor: "text-sky-500",
-    icon:      "fa-spinner",
-    title:     "Finalize Budget Allocation for Q1 2025",
-    description:
-      "Depends on funding release. 90% complete. Assigned to Nour. Due Oct 18.",
-    tags: ["In Progress", "Finance"],
-  },
-  {
-    id: "r3",
-    type: "tasks",
-    iconBg:    "bg-red-100 dark:bg-red-900/30",
-    iconColor: "text-red-500",
-    icon:      "fa-file-lines",
-    title:     "Q4 Impact Assessment Report",
-    description:
-      "Funding data required for donor reporting. 30% complete, 2 days overdue.",
-    tags: ["To Do", "Donors"],
-  },
-  {
-    id: "r4",
-    type: "tasks",
-    iconBg:    "bg-amber-100 dark:bg-amber-900/30",
-    iconColor: "text-amber-600",
-    icon:      "fa-triangle-exclamation",
-    title:     "Submit Curriculum Approval Doc",
-    description:
-      "Ministry deadline overdue. Funding confirmation needed for budget section.",
-    tags: ["To Do", "Min. of Edu"],
-  },
-  {
-    id: "r5",
-    type: "files",
-    iconBg:    "bg-sky-100 dark:bg-sky-900/30",
-    iconColor: "text-sky-700",
-    icon:      "fa-file-pdf",
-    title:     "Funding_Agreement_T2_2024.pdf",
-    description:
-      "Original agreement for Tranche 2 funding. Uploaded by Ahmed H. on Sep 28.",
-    tags: ["PDF · 2.4 MB", "Contracts"],
-  },
-  {
-    id: "r6",
-    type: "files",
-    iconBg:    "bg-sky-100 dark:bg-sky-900/30",
-    iconColor: "text-sky-700",
-    icon:      "fa-file-excel",
-    title:     "Budget_Projection_With_Funding.xlsx",
-    description:
-      "Financial projections assuming Tranche 2 release. Last modified Oct 10.",
-    tags: ["XLSX · 840 KB", "Finance"],
-  },
-  {
-    id: "r7",
-    type: "people",
-    iconBg:    "bg-slate-100 dark:bg-slate-700",
-    iconColor: "text-slate-500",
-    icon:      "fa-user",
-    title:     "Omar Mostafa (OM)",
-    description:
-      "Assigned to Funding Release — Tranche 2. Finance Dept. Contact for bank liaison.",
-    tags: ["Team Member", "Finance"],
-  },
-  {
-    id: "r8",
-    type: "comments",
-    iconBg:    "bg-yellow-100 dark:bg-yellow-900/30",
-    iconColor: "text-yellow-700",
-    icon:      "fa-regular fa-comment",
-    title:     "Comment by Omar M. on Funding Release",
-    description:
-      '"Called the bank again today. They say it\'s in final committee review. Expected within 2 weeks."',
-    tags: ["Oct 12", "Upper Egypt Edu"],
-  },
-];
-
-const AI_ANSWER = {
-  text: [
-    { bold: false, value: "" },
-    { bold: true,  value: "Funding Release — Tranche 2" },
-    { bold: false, value: " has been blocked at Central Bank for " },
-    { bold: true,  value: "23 days" },
-    { bold: false, value: " (since Oct 15). This is longer than " },
-    { bold: true,  value: "89%" },
-    { bold: false, value: " of similar cases. It affects 3 downstream tasks including Teacher Training Workshop and Budget Allocation. AI recommends escalation to Dept Head." },
-  ],
-  sources: [
-    { icon: "fa-list-check", label: "Task: Funding Release" },
-    { icon: "fa-regular fa-comment", label: "7 comments" },
-    { icon: "fa-chart-bar",  label: "12 similar cases" },
-  ],
-};
-
-
-
-
-
-
-export default function SearchPage({ initialQuery = "" }) {
-  const [query,       setQuery]       = useState(initialQuery);
-  const [activeQuery, setActiveQuery] = useState(initialQuery); // committed query (on Enter)
+  const [query, setQuery] = useState(qParam);
+  const [activeQuery, setActiveQuery] = useState(qParam);
   const [activeFilter, setActiveFilter] = useState("all");
+
+  const { activeSpaceId } = useAppContext();
+
+  // Fetch search results from NestJS backend
+  const { data: rawSearchResults, isLoading: searchLoading } = useGlobalSearch(
+    activeQuery,
+    activeSpaceId
+  );
+
+  // Fetch space members to filter locally for the "people" tab
+  const { data: spaceMembers, isLoading: membersLoading } = useSpaceMembersQuery(activeSpaceId);
+
+  useEffect(() => {
+    setQuery(qParam);
+    setActiveQuery(qParam);
+  }, [qParam]);
 
   const hasResults = Boolean(activeQuery.trim());
 
-  // Filter results by type tab
+  // Map backend results to the expected ResultItem flat structure
+  const mappedResults = useMemo(() => {
+    if (!activeQuery.trim() || (!rawSearchResults && !spaceMembers)) return [];
+
+    const list = [];
+    const term = activeQuery.toLowerCase().trim();
+
+    // 1. Map Tasks
+    if (rawSearchResults && Array.isArray(rawSearchResults.tasks)) {
+      rawSearchResults.tasks.forEach((task) => {
+        let iconBg = "bg-sky-100 dark:bg-sky-900/30";
+        let iconColor = "text-sky-500";
+        let icon = "fa-clipboard-list";
+
+        const status = (task.status || "").toUpperCase();
+        if (status.includes("DONE")) {
+          iconBg = "bg-emerald-100 dark:bg-emerald-900/30";
+          iconColor = "text-emerald-500";
+          icon = "fa-circle-check";
+        } else if (status.includes("PROGRESS")) {
+          iconBg = "bg-sky-100 dark:bg-sky-900/30";
+          iconColor = "text-sky-500";
+          icon = "fa-spinner fa-spin"; // Subtle spin animation for tasks in progress
+        } else if (status.includes("WAIT")) {
+          iconBg = "bg-amber-100 dark:bg-amber-900/30";
+          iconColor = "text-amber-500";
+          icon = "fa-pause";
+        }
+
+        list.push({
+          id: task.id,
+          type: "tasks",
+          iconBg,
+          iconColor,
+          icon,
+          title: task.title,
+          description: task.description || `Task ID: ${task.identifier}`,
+          tags: [task.status, task.priority, ...(task.tags || [])].filter(Boolean),
+          targetUrl: `/tasks/${task.id}`,
+        });
+      });
+    }
+
+    // 2. Map Approvals
+    if (rawSearchResults && Array.isArray(rawSearchResults.approvals)) {
+      rawSearchResults.approvals.forEach((approval) => {
+        list.push({
+          id: approval.id,
+          type: "tasks", // Show approvals under Tasks tab
+          iconBg: "bg-indigo-100 dark:bg-indigo-900/30",
+          iconColor: "text-indigo-500",
+          icon: "fa-file-signature",
+          title: approval.definition?.name || "Approval Request",
+          description: `Requested by ${approval.requester?.name || "Unknown"} · Status: ${approval.status}`,
+          tags: ["Approval", approval.status, approval.entityType].filter(Boolean),
+          targetUrl: approval.entityType === "task" && approval.entityId ? `/tasks/${approval.entityId}` : null,
+        });
+      });
+    }
+
+    // 3. Map Files
+    if (rawSearchResults && Array.isArray(rawSearchResults.files)) {
+      rawSearchResults.files.forEach((file) => {
+        let icon = "fa-file-lines";
+        const mime = (file.mimeType || "").toLowerCase();
+        if (mime.includes("pdf")) icon = "fa-file-pdf";
+        else if (mime.includes("excel") || mime.includes("spreadsheet") || mime.includes("xls")) icon = "fa-file-excel";
+        else if (mime.includes("image")) icon = "fa-file-image";
+        else if (mime.includes("word") || mime.includes("doc")) icon = "fa-file-word";
+
+        list.push({
+          id: file.id,
+          type: "files",
+          iconBg: "bg-sky-100 dark:bg-sky-900/30",
+          iconColor: "text-sky-700",
+          icon,
+          title: file.fileName,
+          description: file.task?.title ? `Uploaded in: ${file.task.title}` : "Workspace Attachment",
+          tags: [file.mimeType, file.createdAt ? new Date(file.createdAt).toLocaleDateString() : null].filter(Boolean),
+          targetUrl: file.task?.id ? `/tasks/${file.task.id}` : null,
+        });
+      });
+    }
+
+    // 4. Map Comments
+    if (rawSearchResults && Array.isArray(rawSearchResults.comments)) {
+      rawSearchResults.comments.forEach((comment) => {
+        list.push({
+          id: comment.id,
+          type: "comments",
+          iconBg: "bg-yellow-100 dark:bg-yellow-900/30",
+          iconColor: "text-yellow-700",
+          icon: "fa-regular fa-comment",
+          title: `Comment by ${comment.author?.name || "User"}`,
+          description: comment.content,
+          tags: ["Comment", comment.createdAt ? new Date(comment.createdAt).toLocaleDateString() : null].filter(Boolean),
+          targetUrl: comment.task?.id ? `/tasks/${comment.task.id}` : null,
+        });
+      });
+    }
+
+    // 5. Map Space Members (filter locally)
+    if (Array.isArray(spaceMembers)) {
+      spaceMembers.forEach((member) => {
+        const user = member.user || {};
+        const userName = user.name || "";
+        const userEmail = user.email || "";
+
+        if (userName.toLowerCase().includes(term) || userEmail.toLowerCase().includes(term)) {
+          list.push({
+            id: member.id || user.id,
+            type: "people",
+            iconBg: "bg-slate-100 dark:bg-slate-700",
+            iconColor: "text-slate-500",
+            icon: "fa-user",
+            title: userName,
+            description: `${member.role || "Member"} · ${userEmail}`,
+            tags: ["Team Member", member.role].filter(Boolean),
+            targetUrl: "/settings/members",
+          });
+        }
+      });
+    }
+
+    return list;
+  }, [rawSearchResults, spaceMembers, activeQuery]);
+
   const filteredResults = useMemo(() => {
-    if (activeFilter === "all") return ALL_RESULTS;
-    return ALL_RESULTS.filter((r) => r.type === activeFilter);
-  }, [activeFilter]);
+    if (activeFilter === "all") return mappedResults;
+    return mappedResults.filter((r) => r.type === activeFilter);
+  }, [mappedResults, activeFilter]);
+
+  const tabCounts = useMemo(() => {
+    return {
+      all: mappedResults.length,
+      tasks: mappedResults.filter((r) => r.type === "tasks").length,
+      files: mappedResults.filter((r) => r.type === "files").length,
+      people: mappedResults.filter((r) => r.type === "people").length,
+      comments: mappedResults.filter((r) => r.type === "comments").length,
+    };
+  }, [mappedResults]);
+
+  const tabs = useMemo(() => [
+    { id: "all",      label: "All",      count: tabCounts.all },
+    { id: "tasks",    label: "Tasks",    count: tabCounts.tasks },
+    { id: "files",    label: "Files",    count: tabCounts.files },
+    { id: "people",   label: "People",   count: tabCounts.people },
+    { id: "comments", label: "Comments", count: tabCounts.comments },
+  ], [tabCounts]);
 
   const handleSearch = useCallback((q) => {
     if (!q.trim()) return;
-    setActiveQuery(q);
-    setActiveFilter("all");
-  }, []);
+    setSearchParams({ q });
+  }, [setSearchParams]);
 
   const handleQueryChange = useCallback((val) => {
     setQuery(val);
-    // Clear results immediately when input is cleared
-    if (!val.trim()) setActiveQuery("");
-  }, []);
+    if (!val.trim()) {
+      setSearchParams({});
+    }
+  }, [setSearchParams]);
+
+  const isLoading = searchLoading || membersLoading;
 
   return (
     <>
-          {/* Scrollable content area */}
-          <main
-            className="flex-1 overflow-y-auto"
-            aria-label={hasResults ? `Search results for "${activeQuery}"` : "Search"}
-          >
-            {!hasResults ? (
-              /* ── EMPTY STATE ── */
-              <SearchHero
-                query={query}
-                onQueryChange={handleQueryChange}
-                onSearch={handleSearch}
-              />
-            ) : (
-              /* ── RESULTS STATE ── */
-              <div className="px-6 py-6 max-w-[820px] mx-auto">
+      {/* Scrollable content area */}
+      <main
+        className="flex-1 overflow-y-auto"
+        aria-label={hasResults ? `Search results for "${activeQuery}"` : "Search"}
+      >
+        {!hasResults ? (
+          /* ── EMPTY STATE ── */
+          <SearchHero
+            query={query}
+            onQueryChange={handleQueryChange}
+            onSearch={handleSearch}
+          />
+        ) : (
+          /* ── RESULTS STATE ── */
+          <div className="px-6 py-6 max-w-[820px] mx-auto">
+            {/* Filter tabs */}
+            <ResultFilterTabs
+              tabs={tabs}
+              activeId={activeFilter}
+              onChange={setActiveFilter}
+            />
 
-                {/* AI Answer */}
-                <AIAnswerCard answer={AI_ANSWER} />
-
-                {/* Filter tabs */}
-                <ResultFilterTabs
-                  tabs={RESULT_FILTER_TABS}
-                  activeId={activeFilter}
-                  onChange={setActiveFilter}
-                />
-
-                {/* Results or empty */}
-                {filteredResults.length === 0 ? (
-                  <NoResults query={activeQuery} />
-                ) : (
+            {/* Results, Loading Skeletons, or Empty */}
+            {isLoading ? (
+              <div className="flex flex-col gap-3">
+                {[1, 2, 3].map((n) => (
                   <div
-                    className="flex flex-col gap-2"
-                    role="list"
-                    aria-label={`${filteredResults.length} search results`}
+                    key={n}
+                    className="flex gap-3 px-4 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl animate-pulse"
                   >
-                    {filteredResults.map((result) => (
-                      <ResultItem key={result.id} result={result} query={activeQuery} />
-                    ))}
+                    <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+                      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
+                    </div>
                   </div>
-                )}
+                ))}
+              </div>
+            ) : filteredResults.length === 0 ? (
+              <NoResults query={activeQuery} />
+            ) : (
+              <div
+                className="flex flex-col gap-2"
+                role="list"
+                aria-label={`${filteredResults.length} search results`}
+              >
+                {filteredResults.map((result) => (
+                  <ResultItem key={result.id} result={result} query={activeQuery} />
+                ))}
               </div>
             )}
-          </main>
-        
+          </div>
+        )}
+      </main>
     </>
   );
 }

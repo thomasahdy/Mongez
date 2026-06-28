@@ -2,7 +2,7 @@ import { IsString, IsOptional, Length, Matches } from 'class-validator';
 
 export class CreateDepartmentDto {
   @IsString()
-  @Length(2, 100)
+  @Length(2, 50)
   name: string;
 
   @IsOptional()
@@ -19,7 +19,7 @@ export class CreateDepartmentDto {
 export class UpdateDepartmentDto {
   @IsOptional()
   @IsString()
-  @Length(2, 100)
+  @Length(2, 50)
   name?: string;
 
   @IsOptional()

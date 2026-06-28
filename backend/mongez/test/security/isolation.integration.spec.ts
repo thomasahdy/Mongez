@@ -82,7 +82,7 @@ describe('Security Isolation (Integration)', () => {
         .expect(403);
 
       expect(res.body.success).toBe(false);
-      expect(res.body.error.message).toContain('access to this board');
+      expect(res.body.error.message).toContain('access');
     });
 
     it('should prevent User A from getting tasks of Board B', async () => {

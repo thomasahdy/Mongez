@@ -445,17 +445,15 @@ function ChatBubble({
 }) {
   if (message.kind === "welcome") {
     return (
-      <div className="rounded-[24px] rounded-tl-md border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 text-[13px] leading-6 text-slate-655 dark:text-slate-350 shadow-sm" dir="auto">
-        <div className="font-semibold text-slate-800 dark:text-slate-100">
-          <MarkdownRenderer content={message.text} />
-        </div>
+      <div className="text-[13.5px] leading-relaxed text-slate-700 dark:text-slate-300 p-2 font-medium" dir="auto">
+        <MarkdownRenderer content={message.text} />
       </div>
     );
   }
 
   if (message.role === "user") {
     return (
-      <div className="rounded-[24px] rounded-tr-md bg-slate-900 dark:bg-slate-100 px-5 py-4 text-[13px] leading-6 whitespace-pre-wrap text-white dark:text-slate-900 shadow-md font-medium" dir="auto">
+      <div className="rounded-[22px] rounded-tr-sm bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white px-5 py-3 text-[13.5px] leading-relaxed whitespace-pre-wrap shadow-md shadow-indigo-500/10 font-semibold" dir="auto">
         {message.text}
       </div>
     );
@@ -464,19 +462,19 @@ function ChatBubble({
   // 1. ERROR: Retry Card
   if (message.error) {
     return (
-      <div className="rounded-[24px] rounded-tl-md border border-slate-100 dark:border-slate-808 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4" dir="auto">
+      <div className="rounded-3xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4" dir="auto">
         {message.label && (
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-            <i className={`fa-solid ${message.icon || "fa-sparkles"} text-indigo-500`} />
+            <i className={`fa-solid ${message.icon || "fa-sparkles"} text-rose-500`} />
             <span>{message.label}</span>
           </div>
         )}
-        <div className="rounded-xl bg-rose-50/50 dark:bg-rose-955/10 px-3.5 py-2.5 flex items-center justify-between gap-3 border border-rose-100/50 dark:border-rose-900/30">
-          <span className="text-[12px] text-rose-605 dark:text-rose-455 font-bold leading-relaxed">⚠️ {message.error}</span>
+        <div className="rounded-2xl bg-rose-50/50 dark:bg-rose-955/10 px-4 py-3 flex items-center justify-between gap-3 border border-rose-100/50 dark:border-rose-900/30 animate-pulse">
+          <span className="text-[12.5px] text-rose-605 dark:text-rose-455 font-bold leading-relaxed">⚠️ {message.error}</span>
           <button
             type="button"
             onClick={() => onRetry?.(message.id)}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-rose-500 hover:bg-rose-600 px-3 py-1 text-[11px] font-bold text-white transition-all cursor-pointer shadow-sm"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-rose-500 hover:bg-rose-600 px-3.5 py-1 text-[11px] font-bold text-white transition-all cursor-pointer shadow-sm"
           >
             <i className="fa-solid fa-arrows-rotate" />
             Retry
@@ -489,29 +487,21 @@ function ChatBubble({
   // 2. LOADING: Thinking Steps indicator
   if (message.loading) {
     return (
-      <div className="rounded-[24px] rounded-tl-md border border-slate-100 dark:border-slate-808 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4" dir="auto">
-        {message.label && (
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-            <i className={`fa-solid ${message.icon || "fa-sparkles"} text-indigo-500`} />
-            <span>{message.label}</span>
+      <div className="text-[13px] leading-relaxed text-slate-750 dark:text-slate-300 p-2 space-y-3.5" dir="auto">
+        <div className="flex items-center gap-2.5 text-slate-500 dark:text-slate-400">
+          <div className="flex gap-1 items-center shrink-0">
+            <span className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+            <span className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+            <span className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce" />
           </div>
-        )}
-        <div className="text-[13px] leading-6 text-slate-750 dark:text-slate-300">
-          <div className="flex items-center gap-2.5 py-1 text-slate-500 dark:text-slate-400">
-            <div className="flex gap-1 items-center shrink-0">
-              <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce" />
-            </div>
-            <span className="text-[12.5px] font-semibold tracking-wide animate-pulse">
-              {message.status || "Thinking..."}
-            </span>
-          </div>
+          <span className="text-[12.5px] font-bold tracking-wide animate-pulse">
+            {message.status || "Thinking..."}
+          </span>
         </div>
         {message.thinkingSteps && message.thinkingSteps.length > 0 && (
-          <div className="py-2.5 border-l-2 border-slate-100 dark:border-slate-800 pl-4 space-y-2.5">
+          <div className="py-1 border-l-2 border-slate-100 dark:border-slate-800 pl-4 space-y-2.5">
             {message.thinkingSteps.map((step, idx) => (
-              <div key={idx} className="flex items-center gap-2.5 text-[11.5px] font-semibold">
+              <div key={idx} className="flex items-center gap-2.5 text-[11.5px] font-bold">
                 {step.active ? (
                   <i className="fa-solid fa-circle-notch fa-spin text-indigo-500 shrink-0 text-[10px]" />
                 ) : step.status.startsWith("✗") || step.status.includes("Failed") ? (
@@ -519,7 +509,7 @@ function ChatBubble({
                 ) : (
                   <i className="fa-solid fa-circle-check text-emerald-500 shrink-0 text-[10px]" />
                 )}
-                <span className={step.active ? "text-slate-800 dark:text-slate-205" : "text-slate-400 dark:text-slate-500"}>
+                <span className={step.active ? "text-slate-805 dark:text-slate-200" : "text-slate-400 dark:text-slate-500"}>
                   {step.status}
                 </span>
               </div>
@@ -534,11 +524,11 @@ function ChatBubble({
 
   // 3. PLAN and CHAT layouts
   return (
-    <div className="space-y-3">
-      <div className={`rounded-[24px] rounded-tl-md px-5 py-4 text-[13px] leading-6 shadow-sm ${
+    <div className="space-y-3.5">
+      <div className={`text-[13.5px] leading-relaxed ${
         hasActions 
-          ? "border border-slate-100 dark:border-slate-808 bg-white dark:bg-slate-900 p-6" 
-          : "bg-slate-100 dark:bg-slate-800/60 text-slate-750 dark:text-slate-300 font-normal"
+          ? "rounded-3xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-6 shadow-sm" 
+          : "text-slate-755 dark:text-slate-200 font-normal p-2"
       }`} dir="auto">
         {hasActions && message.label && (
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-4">
@@ -551,7 +541,7 @@ function ChatBubble({
         {/* Suggested Actions for Plan layout */}
         {hasActions && (
           <div className="border-t border-slate-100 dark:border-slate-808/40 pt-4 mt-4">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2.5">Suggested Action Tasks</span>
+            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-2.5">Suggested Action Tasks</span>
             <div className="grid grid-cols-1 gap-2.5">
               {message.actions.map((act, index) => (
                 <div key={index} className="rounded-2xl bg-slate-50 dark:bg-slate-955 p-3.5 border border-slate-150/60 dark:border-slate-808 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm text-left">
@@ -588,7 +578,7 @@ function ChatBubble({
 
       {/* Message feedback buttons */}
       {message.traceId && (
-        <div className="flex flex-wrap items-center gap-2 px-1">
+        <div className="flex flex-wrap items-center gap-2 px-2">
           <button
             type="button"
             disabled={feedbackState?.submitting}
@@ -623,7 +613,7 @@ function ChatBubble({
 
 function ToastContainer({ toasts, onClose }) {
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none">
+    <div className="fixed bottom-5 right-5 z-55 flex flex-col gap-2.5 max-w-sm pointer-events-none">
       {toasts.map((t) => (
         <div
           key={t.id}
@@ -665,7 +655,13 @@ function AiAssistantPage() {
   const navigate = useNavigate();
   const { activeSpace, activeBoard, spaces, activeBoards, setActiveSpace, setActiveBoard, user } = useAppContext();
   const [composer, setComposer] = useState("");
-  const [contextOpen, setContextOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
+  const [headerSpaceOpen, setHeaderSpaceOpen] = useState(false);
+  const [headerBoardOpen, setHeaderBoardOpen] = useState(false);
+  const [spaceDropdownOpen, setSpaceDropdownOpen] = useState(false);
+  const [boardDropdownOpen, setBoardDropdownOpen] = useState(false);
+  const [toneDropdownOpen, setToneDropdownOpen] = useState(false);
+  const [taskDropdownOpen, setTaskDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview"); // overview, actions, approvals, insights, chat
   const [toasts, setToasts] = useState([]);
   
@@ -1110,201 +1106,223 @@ function AiAssistantPage() {
     setCurrentSessionId(session.id);
     setMessages(session.messages);
     setContextValues(session.context || contextValues);
-    setContextOpen(false);
     setActiveTab("chat");
   };
 
   const filteredMessages = messages.filter((m) => m.kind !== "welcome");
 
+  // Relative timestamp helper
+  const relativeTime = (iso) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days === 1) return "Yesterday";
+    return new Date(iso).toLocaleDateString();
+  };
+
   return (
-    <div className="relative flex flex-1 overflow-hidden bg-slate-55 dark:bg-slate-950 font-sans">
-      {/* Configuration Drawer Overlay Backdrop */}
-      {contextOpen && (
-        <button
-          type="button"
-          aria-label="Close context panel"
-          onClick={() => setContextOpen(false)}
-          className="absolute inset-0 z-40 bg-slate-900/20 backdrop-blur-[2px] transition-all"
-        />
-      )}
-
-      {/* Configuration Slider Panel Drawer (Slide over right) */}
-      <aside
-        className={`fixed top-0 right-0 bottom-0 z-50 w-85 border-l border-slate-200 dark:border-slate-808 bg-white dark:bg-slate-900 p-5 shadow-2xl transition-transform duration-300 flex flex-col gap-6 ${
-          contextOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Settings</span>
-            <h2 className="text-[15px] font-black text-slate-900 dark:text-slate-150">Workspace Context</h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => setContextOpen(false)}
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-          >
-            <i className="fa-solid fa-xmark text-sm" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-          <div>
-            <FieldLabel>Current Workspace</FieldLabel>
-            <select
-              value={contextValues.spaceId}
-              onChange={(e) => {
-                const val = e.target.value;
-                setContextValue("spaceId", val);
-                setContextValue("boardId", "");
-                setContextValue("taskId", "");
-                setActiveSpace(val);
-              }}
-              className="w-full rounded-xl border border-slate-205 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 px-3 py-2 text-[12px] font-semibold text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-400 cursor-pointer"
+    <div className="relative flex flex-1 overflow-hidden font-sans h-full w-full" style={{background:'var(--bg-depth-0)'}}>
+      {historyOpen && activeTab === "chat" && (
+        <aside className="w-64 border-r border-slate-150/80 dark:border-slate-800/60 bg-white dark:bg-slate-900 flex flex-col shrink-0 h-full transition-all duration-300 animate-slideRight shadow-[2px_0_12px_rgba(15,23,42,0.04)]">
+          {/* Header of Sidebar */}
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0">
+            <span className="text-[9.5px] font-black uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Conversations</span>
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 transition-all cursor-pointer hover:scale-105 duration-150 shadow-sm"
+              title="New Chat Session"
             >
-              <option value="">Select Workspace...</option>
-              {spaces.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+              <i className="fa-solid fa-plus text-[10px]" />
+            </button>
           </div>
-
-          <div>
-            <FieldLabel>Current Board</FieldLabel>
-            <select
-              value={contextValues.boardId}
-              onChange={(e) => {
-                const val = e.target.value;
-                setContextValue("boardId", val);
-                setContextValue("taskId", "");
-                setActiveBoard(val);
-              }}
-              disabled={!contextValues.spaceId}
-              className="w-full rounded-xl border border-slate-205 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 px-3 py-2 text-[12px] font-semibold text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <option value="">Select Board...</option>
-              {activeBoards.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <FieldLabel>Focus Task</FieldLabel>
-            <select
-              value={contextValues.taskId}
-              onChange={(e) => setContextValue("taskId", e.target.value)}
-              disabled={!contextValues.boardId || tasksQuery.isLoading}
-              className="w-full rounded-xl border border-slate-205 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 px-3 py-2 text-[12px] font-semibold text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {tasksQuery.isLoading ? (
-                <option value="">Loading tasks...</option>
-              ) : boardTasks.length === 0 ? (
-                <option value="">No tasks available</option>
-              ) : (
-                <>
-                  <option value="">Select Task...</option>
-                  {boardTasks.map((t) => (
-                    <option key={t.id} value={t.id}>{t.title || t.name}</option>
-                  ))}
-                </>
-              )}
-            </select>
-          </div>
-
-          <div>
-            <FieldLabel>Response Style</FieldLabel>
-            <select
-              value={contextValues.commentTone}
-              onChange={(e) => setContextValue("commentTone", e.target.value)}
-              className="w-full rounded-xl border border-slate-205 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 px-3 py-2 text-[12px] font-semibold text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-400 cursor-pointer"
-            >
-              {["professional", "friendly", "concise", "urgent"].map((tone) => (
-                <option key={tone} value={tone}>{tone.charAt(0).toUpperCase() + tone.slice(1)}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-6">
-            <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3">Recent Sessions</h3>
+          {/* Recent Sessions list */}
+          <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1.5">
             {recentSessions.length === 0 ? (
-              <div className="text-[11px] text-slate-400 p-2 text-center border border-dashed border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-955/20">
-                No recent conversations
+              <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                <div className="mb-3 h-10 w-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center">
+                  <i className="fa-solid fa-comments text-indigo-400 text-sm" />
+                </div>
+                <p className="text-[11.5px] font-semibold text-slate-500 dark:text-slate-400 leading-relaxed">No conversations yet</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Start a chat to see your history here</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {recentSessions.map((session) => (
-                  <button
-                    key={session.id}
-                    type="button"
-                    onClick={() => loadSession(session.id)}
-                    className="w-full rounded-xl border border-slate-150 dark:border-slate-800/80 bg-white dark:bg-slate-955 px-3 py-2.5 text-left transition hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-909 cursor-pointer shadow-sm"
-                  >
-                    <div className="text-[12px] font-bold text-slate-808 dark:text-slate-200 truncate">{session.title}</div>
-                    <div className="mt-1 text-[10px] text-slate-400 font-semibold">{new Date(session.createdAt).toLocaleDateString()}</div>
-                  </button>
-                ))}
-              </div>
+              recentSessions.map((session) => (
+                <button
+                  key={session.id}
+                  type="button"
+                  onClick={() => loadSession(session.id)}
+                  className={`ai-session-card ${currentSessionId === session.id ? "active" : ""} w-full rounded-xl pl-4 pr-3 py-2.5 text-left transition-all cursor-pointer flex flex-col gap-0.5 group ${
+                    currentSessionId === session.id
+                      ? "bg-indigo-50/60 dark:bg-indigo-950/15 text-indigo-700 dark:text-indigo-300"
+                      : "bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:-translate-y-px"
+                  } duration-150`}
+                >
+                  <div className="text-[12px] font-semibold truncate w-full leading-normal">{session.title}</div>
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{relativeTime(session.createdAt)}</div>
+                </button>
+              ))
             )}
           </div>
-        </div>
-      </aside>
+        </aside>
+      )}
 
       {/* Main Framework Dashboard Workspace */}
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Top Header - Spacious, borderless feel */}
-        <header className="bg-white dark:bg-slate-900 px-6 py-5 border-b border-slate-100 dark:border-slate-800/60 shadow-[0_2px_8px_rgba(15,23,42,0.01)] shrink-0">
+        {/* Top Header — premium command center */}
+        <header className="bg-white dark:bg-slate-900 px-6 py-4 shrink-0" style={{borderBottom:'1px solid rgba(226,232,240,0.7)',boxShadow:'0 1px 0 rgba(226,232,240,0.5), 0 2px 8px rgba(15,23,42,0.03)'}}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[20px] bg-gradient-to-tr from-indigo-500 to-indigo-400 text-white shadow-[0_8px_20px_rgba(99,102,241,0.2)]">
-                <i className="fa-solid fa-sparkles text-md" />
+            {/* Logo + title */}
+            <div className="flex items-center gap-3.5 shrink-0">
+              <div
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] text-white shadow-[0_6px_18px_rgba(99,102,241,0.28)] animate-gradShift"
+                style={{background:'linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#06b6d4 100%)',backgroundSize:'200% 200%'}}
+              >
+                <i className="fa-solid fa-sparkles text-[14px]" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-[20px] font-black tracking-[-0.04em] text-slate-900 dark:text-white">Mongez Intelligence</h1>
-                  <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-indigo-600 dark:text-indigo-400">
+                  <h1 className="text-[19px] font-black tracking-[-0.04em] ai-gradient-text">Mongez Intelligence</h1>
+                  <span className="rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase tracking-[0.15em]" style={{background:'linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.1))',color:'#7c3aed',border:'1px solid rgba(139,92,246,0.15)'}}>
                     AI OS
                   </span>
                 </div>
-                <p className="text-[12px] text-slate-550 mt-0.5 font-medium">AI-driven workspace insights, approvals, workload capacities, and execution logs.</p>
+                <p className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">AI-driven workspace insights, approvals, workload capacities, and execution logs.</p>
               </div>
             </div>
 
-            {/* Premium Tab bar navigation */}
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/80 dark:bg-slate-950/60 p-1 rounded-full border border-slate-202/50 dark:border-slate-808/50">
+            {/* Premium underline tab navigation */}
+            <nav className="flex items-center gap-0">
               {[
-                { id: "overview", label: "Overview", icon: "fa-chart-pie" },
-                { id: "actions", label: "Actions", icon: "fa-bolt-lightning" },
-                { id: "approvals", label: "Approvals", icon: "fa-shield-halved" },
-                { id: "insights", label: "Insights", icon: "fa-eye" },
-                { id: "chat", label: "Chat Assistant", icon: "fa-comments" },
+                { id: "overview",  label: "Overview",       icon: "fa-chart-pie" },
+                { id: "actions",   label: "Actions",        icon: "fa-bolt-lightning" },
+                { id: "approvals", label: "Approvals",      icon: "fa-shield-halved" },
+                { id: "insights",  label: "Insights",       icon: "fa-eye" },
+                { id: "chat",      label: "Chat Assistant", icon: "fa-comments" },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[11px] font-bold transition-all duration-150 cursor-pointer ${
+                  className={`relative inline-flex items-center gap-1.5 px-3.5 py-2 text-[11.5px] font-semibold transition-all duration-150 cursor-pointer rounded-lg ${
                     activeTab === tab.id
-                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm"
-                      : "text-slate-550 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-250"
+                      ? "text-indigo-600 dark:text-indigo-400"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                   }`}
                 >
-                  <i className={`fa-solid ${tab.icon} text-[10px]`} />
+                  <i className={`fa-solid ${tab.icon} text-[10px] ${ activeTab === tab.id ? "text-indigo-500" : "opacity-60" }`} />
                   {tab.label}
+                  {activeTab === tab.id && (
+                    <span
+                      className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full animate-tabLine"
+                      style={{background:'linear-gradient(90deg,#6366f1,#8b5cf6)'}}
+                    />
+                  )}
                 </button>
               ))}
-            </div>
+            </nav>
 
-            {/* Sidebar toggle config button */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setContextOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-808 bg-white dark:bg-slate-900 px-4 py-2 text-[11px] font-bold text-slate-655 dark:text-slate-335 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-808 cursor-pointer"
-              >
-                <i className="fa-solid fa-sliders" />
-                Context Setup
-              </button>
+            {/* Context selectors + history toggle */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Space Select Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setHeaderSpaceOpen(!headerSpaceOpen)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 px-3 py-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:border-indigo-200 hover:bg-indigo-50/30 dark:hover:bg-slate-800 cursor-pointer transition-all duration-150"
+                >
+                  <i className="fa-solid fa-folder text-indigo-500 text-[10px]" />
+                  {spaces.find(s => s.id === contextValues.spaceId)?.name || "Workspace"}
+                  <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                </button>
+                {headerSpaceOpen && (
+                  <>
+                    <div className="fixed inset-0 z-35" onClick={() => setHeaderSpaceOpen(false)} />
+                    <div className="absolute top-full right-0 mt-1.5 z-45 w-52 rounded-2xl border border-slate-150 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                      {spaces.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            setContextValue("spaceId", s.id);
+                            setContextValue("boardId", "");
+                            setContextValue("taskId", "");
+                            setActiveSpace(s.id);
+                            setHeaderSpaceOpen(false);
+                          }}
+                          className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                            contextValues.spaceId === s.id ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/40" : "text-slate-700 dark:text-slate-300"
+                          }`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Board Select Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  disabled={!contextValues.spaceId}
+                  onClick={() => setHeaderBoardOpen(!headerBoardOpen)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 px-3 py-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:border-emerald-200 hover:bg-emerald-50/30 dark:hover:bg-slate-800 cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <i className="fa-solid fa-columns text-emerald-500 text-[10px]" />
+                  {activeBoards.find(b => b.id === contextValues.boardId)?.name || "Board"}
+                  <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                </button>
+                {headerBoardOpen && (
+                  <>
+                    <div className="fixed inset-0 z-35" onClick={() => setHeaderBoardOpen(false)} />
+                    <div className="absolute top-full right-0 mt-1.5 z-45 w-52 rounded-2xl border border-slate-150 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                      {activeBoards.length === 0 ? (
+                        <div className="px-3.5 py-2.5 text-[11.5px] text-slate-400 font-semibold">No boards found</div>
+                      ) : (
+                        activeBoards.map((b) => (
+                          <button
+                            key={b.id}
+                            type="button"
+                            onClick={() => {
+                              setContextValue("boardId", b.id);
+                              setContextValue("taskId", "");
+                              setActiveBoard(b.id);
+                              setHeaderBoardOpen(false);
+                            }}
+                            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                              contextValues.boardId === b.id ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/40" : "text-slate-700 dark:text-slate-300"
+                            }`}
+                          >
+                            {b.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Collapsible History Toggle */}
+              {activeTab === "chat" && (
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen(!historyOpen)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition-all cursor-pointer duration-150 ${
+                    historyOpen
+                      ? "border-indigo-200 bg-indigo-50 text-indigo-600 dark:border-indigo-800/50 dark:bg-indigo-950/20 dark:text-indigo-400"
+                      : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  <i className="fa-solid fa-sidebar text-[10px]" />
+                  {historyOpen ? "Hide History" : "Show History"}
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -1331,53 +1349,49 @@ function AiAssistantPage() {
               {/* Metrics Grid */}
               <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {dashboardLoading ? (
-                  // Skeleton cards when loading
                   Array.from({ length: 8 }).map((_, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm border-none animate-pulse"
-                    >
-                      <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded mb-3" />
-                      <div className="h-8 w-12 bg-slate-200 dark:bg-slate-700 rounded" />
-                    </div>
+                    <div key={idx} className="rounded-2xl bg-white dark:bg-slate-900 p-5 ai-skeleton border-none" style={{minHeight:88}} />
                   ))
                 ) : (
-                  // Actual metrics when loaded
                   [
-                  { label: "Open Tasks", value: dashboardData.metrics.openTasks, color: "text-slate-900 dark:text-slate-100" },
-                  { label: "Overdue Tasks", value: dashboardData.metrics.overdueTasks, color: dashboardData.metrics.overdueTasks > 0 ? "text-rose-600 dark:text-rose-455 font-black" : "text-slate-900 dark:text-slate-100", highlight: dashboardData.metrics.overdueTasks > 0 },
-                  { label: "Blocked Tasks", value: dashboardData.metrics.blockedTasks, color: dashboardData.metrics.blockedTasks > 0 ? "text-amber-600 dark:text-amber-400 font-black" : "text-slate-900 dark:text-slate-100", highlight: dashboardData.metrics.blockedTasks > 0 },
-                  { label: "Pending Approvals", value: dashboardData.metrics.pendingApprovals, color: "text-violet-600 dark:text-violet-405", sub: `${dashboardData.metrics.staleApprovals} stale >48h` },
-                  { label: "High Risk Boards", value: dashboardData.metrics.highRiskProjects, color: dashboardData.metrics.highRiskProjects > 0 ? "text-rose-500" : "text-slate-900 dark:text-slate-100" },
-                  { label: "Overloaded Members", value: dashboardData.metrics.overloadedMembers, color: "text-amber-505" },
-                  { label: "Upcoming Deadlines", value: dashboardData.metrics.upcomingDeadlines, color: "text-sky-505" },
-                  { label: "Meeting Actions", value: dashboardData.metrics.meetingActionsWaitingReview, color: "text-indigo-500" },
+                  { label: "Open Tasks",          value: dashboardData.metrics.openTasks,                    bar: "neutral", color: "text-slate-900 dark:text-slate-100" },
+                  { label: "Overdue Tasks",         value: dashboardData.metrics.overdueTasks,                 bar: dashboardData.metrics.overdueTasks > 0 ? "danger" : "neutral",  color: dashboardData.metrics.overdueTasks > 0 ? "text-rose-600" : "text-slate-900 dark:text-slate-100" },
+                  { label: "Blocked Tasks",         value: dashboardData.metrics.blockedTasks,                 bar: dashboardData.metrics.blockedTasks > 0 ? "warning" : "neutral", color: dashboardData.metrics.blockedTasks > 0 ? "text-amber-600" : "text-slate-900 dark:text-slate-100" },
+                  { label: "Pending Approvals",     value: dashboardData.metrics.pendingApprovals,             bar: "info",    color: "text-violet-600 dark:text-violet-400", sub: `${dashboardData.metrics.staleApprovals} stale >48h` },
+                  { label: "High Risk Boards",      value: dashboardData.metrics.highRiskProjects,             bar: dashboardData.metrics.highRiskProjects > 0 ? "danger" : "neutral",  color: dashboardData.metrics.highRiskProjects > 0 ? "text-rose-500" : "text-slate-900 dark:text-slate-100" },
+                  { label: "Overloaded Members",    value: dashboardData.metrics.overloadedMembers,            bar: "warning", color: "text-amber-600" },
+                  { label: "Upcoming Deadlines",    value: dashboardData.metrics.upcomingDeadlines,            bar: "sky",     color: "text-sky-600" },
+                  { label: "Meeting Actions",       value: dashboardData.metrics.meetingActionsWaitingReview,  bar: "info",    color: "text-indigo-600" },
                 ].map((stat, idx) => (
                   <div
                     key={idx}
-                    className={`rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-md transition duration-200 border-none ${
-                      stat.highlight ? "ring-1 ring-rose-100 dark:ring-rose-955/20" : ""
-                    }`}
+                    className={`ai-metric-bar ${stat.bar} rounded-2xl bg-white dark:bg-slate-900 pl-6 pr-5 py-5 transition-all duration-200 hover:-translate-y-0.5 cursor-default group`}
+                    style={{boxShadow:'var(--shadow-card)'}}
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">{stat.label}</span>
+                    <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500 block mb-2">{stat.label}</span>
                     <div className="flex items-baseline gap-2">
-                      <span className={`text-[26px] font-black tracking-tight ${stat.color}`}>{stat.value}</span>
-                      {stat.sub && <span className="text-[10px] font-semibold text-slate-400">{stat.sub}</span>}
+                      <span className={`text-[30px] font-black tracking-tight leading-none ${stat.color}`}>{stat.value}</span>
                     </div>
+                    {stat.sub && <span className="text-[9.5px] font-semibold text-slate-400 block mt-1">{stat.sub}</span>}
                   </div>
                 )))}
               </section>
 
               {/* Action Center & Executive Feed Split */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* AI Proposed Actions - Action Center */}
-                <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm flex flex-col">
-                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
-                    <div>
-                      <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">AI Action Center</h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Approve or reject automated CQRS proposed tasks.</p>
+                <section className="ai-card-accent rounded-3xl bg-white dark:bg-slate-900 p-6 flex flex-col" style={{boxShadow:'var(--shadow-card)'}}>
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/50">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-xl flex items-center justify-center" style={{background:'linear-gradient(135deg,rgba(99,102,241,0.12),rgba(139,92,246,0.08))'}}>
+                        <i className="fa-solid fa-bolt-lightning text-indigo-500 text-[11px]" />
+                      </div>
+                      <div>
+                        <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">AI Action Center</h3>
+                        <p className="text-[10.5px] text-slate-400 mt-0.5">Review automated proposed tasks</p>
+                      </div>
                     </div>
-                    <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-450">
+                    <span className="rounded-full px-2.5 py-0.5 text-[9px] font-bold" style={{background:'linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.08))',color:'#6366f1',border:'1px solid rgba(99,102,241,0.15)'}}>
                       {dashboardData.pendingActions.length} Pending
                     </span>
                   </div>
@@ -1426,11 +1440,16 @@ function AiAssistantPage() {
                 </section>
 
                 {/* Executive Feed - Activity Log */}
-                <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm flex flex-col">
-                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
-                    <div>
-                      <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">Executive Feed</h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Real-time alerts, blockages, and capacity highlights.</p>
+                <section className="ai-card-accent rounded-3xl bg-white dark:bg-slate-900 p-6 flex flex-col" style={{boxShadow:'var(--shadow-card)'}}>
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/50">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-xl flex items-center justify-center" style={{background:'linear-gradient(135deg,rgba(239,68,68,0.10),rgba(245,158,11,0.06))'}}>
+                        <i className="fa-solid fa-circle-exclamation text-rose-500 text-[11px]" />
+                      </div>
+                      <div>
+                        <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">Executive Feed</h3>
+                        <p className="text-[10.5px] text-slate-400 mt-0.5">Real-time alerts, blockages, capacity highlights</p>
+                      </div>
                     </div>
                     <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
                   </div>
@@ -1466,12 +1485,17 @@ function AiAssistantPage() {
               </div>
 
               {/* Workflow, Decisions & Meeting Intelligence Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* Meeting Intelligence Widget */}
-                <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm">
-                  <div className="mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
-                    <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">Recent Meeting Intelligence</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Analyzed transcripts with task extraction statistics.</p>
+                <section className="ai-card-accent rounded-3xl bg-white dark:bg-slate-900 p-6" style={{boxShadow:'var(--shadow-card)'}}>
+                  <div className="mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/50 flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-xl flex items-center justify-center" style={{background:'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(99,102,241,0.06))'}}>
+                      <i className="fa-solid fa-microphone-lines text-sky-500 text-[11px]" />
+                    </div>
+                    <div>
+                      <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">Meeting Intelligence</h3>
+                      <p className="text-[10.5px] text-slate-400 mt-0.5">Analyzed transcripts &amp; task extraction stats</p>
+                    </div>
                   </div>
 
                   {dashboardData.meetingIntelligence.length === 0 ? (
@@ -1508,10 +1532,15 @@ function AiAssistantPage() {
                 </section>
 
                 {/* Decision Register Widget */}
-                <section className="rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm">
-                  <div className="mb-4 pb-2 border-b border-slate-50 dark:border-slate-800/40">
-                    <h3 className="text-[14px] font-black text-slate-900 dark:text-slate-100">Recent Decisions (Decision Register)</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Latest logs, outcomes, and justifications.</p>
+                <section className="ai-card-accent rounded-3xl bg-white dark:bg-slate-900 p-6" style={{boxShadow:'var(--shadow-card)'}}>
+                  <div className="mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/50 flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-xl flex items-center justify-center" style={{background:'linear-gradient(135deg,rgba(16,185,129,0.12),rgba(6,182,212,0.06))'}}>
+                      <i className="fa-solid fa-scale-balanced text-emerald-500 text-[11px]" />
+                    </div>
+                    <div>
+                      <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">Decision Register</h3>
+                      <p className="text-[10.5px] text-slate-400 mt-0.5">Latest logs, outcomes &amp; justifications</p>
+                    </div>
                   </div>
 
                   {dashboardData.recentDecisions.length === 0 ? (
@@ -1736,41 +1765,55 @@ function AiAssistantPage() {
             </div>
           )}
 
-          {/* CHAT TAB: Collapsed conversational intelligence console */}
+          {/* CHAT TAB: Conversational intelligence console */}
           {activeTab === "chat" && (
-            <div className="flex flex-1 flex-col overflow-hidden w-full max-w-245 mx-auto bg-white dark:bg-slate-905 rounded-t-[28px] shadow-sm border-t border-x border-slate-100 dark:border-slate-800/60 h-full animate-fadeIn">
+            <div className="relative flex flex-1 flex-col overflow-hidden w-full max-w-4xl mx-auto bg-white dark:bg-slate-900 rounded-t-[24px] h-full animate-fadeIn" style={{boxShadow:'0 -2px 20px rgba(15,23,42,0.05)',borderTop:'1px solid rgba(226,232,240,0.8)',borderLeft:'1px solid rgba(226,232,240,0.5)',borderRight:'1px solid rgba(226,232,240,0.5)'}}>
               {pageError && (
-                <div className="mx-6 mt-4 mb-2 rounded-2xl border border-rose-100 bg-rose-50/50 dark:border-rose-900/20 dark:bg-rose-950/10 px-4 py-3 text-[12px] leading-relaxed text-rose-605 dark:text-rose-455 flex items-center justify-between">
-                  <span>{pageError}</span>
-                  <button onClick={() => setPageError("")} className="text-rose-405 hover:text-rose-600"><i className="fa-solid fa-xmark" /></button>
+                <div className="mx-5 mt-4 mb-2 rounded-2xl border border-rose-100 bg-rose-50 dark:border-rose-900/20 dark:bg-rose-950/10 px-4 py-3 text-[12px] leading-relaxed text-rose-700 dark:text-rose-400 flex items-center justify-between">
+                  <span className="flex items-center gap-2"><i className="fa-solid fa-circle-exclamation" />{pageError}</span>
+                  <button onClick={() => setPageError("")} className="text-rose-400 hover:text-rose-600 ml-3"><i className="fa-solid fa-xmark" /></button>
                 </div>
               )}
               {/* Messages container */}
-              <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5">
+              <div className="flex-1 overflow-y-auto px-6 pt-6 pb-52 space-y-5">
                 {filteredMessages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center text-center py-10 max-w-md mx-auto h-full">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-indigo-50 dark:bg-indigo-950/50 text-indigo-500 shadow-[0_12px_24px_rgba(99,102,241,0.12)] mb-5">
-                      <i className="fa-solid fa-sparkles text-xl animate-pulse" />
+                  <div className="flex flex-col items-center justify-center text-center py-8 max-w-lg mx-auto h-full pb-28">
+                    {/* Animated gradient orb */}
+                    <div className="relative mb-6">
+                      <div
+                        className="absolute inset-0 rounded-full blur-2xl animate-orbPulse"
+                        style={{background:'linear-gradient(135deg,rgba(99,102,241,0.35),rgba(139,92,246,0.25),rgba(6,182,212,0.20))',width:80,height:80,top:-8,left:-8}}
+                      />
+                      <div
+                        className="relative flex h-16 w-16 items-center justify-center rounded-2xl text-white shadow-[0_12px_32px_rgba(99,102,241,0.28)]"
+                        style={{background:'linear-gradient(135deg,#6366f1 0%,#8b5cf6 55%,#06b6d4 100%)'}}
+                      >
+                        <i className="fa-solid fa-sparkles text-xl" />
+                      </div>
                     </div>
-                    <h3 className="text-[16px] font-black text-slate-900 dark:text-slate-150">Workspace Chat Assistant</h3>
-                    <p className="text-[12px] leading-relaxed text-slate-450 mt-1.5 mb-6">
-                      Ask me to analyze project timelines, extract meeting highlights, or compile status summaries.
+                    <h3 className="text-[18px] font-black tracking-tight ai-gradient-text mb-1">Mongez Intelligence</h3>
+                    <p className="text-[12.5px] leading-relaxed text-slate-500 dark:text-slate-400 max-w-sm mb-7">
+                      Ask me to analyze project timelines, extract meeting highlights, or compile workspace status summaries.
                     </p>
 
-                    <div className="w-full space-y-2 text-left">
-                      <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 pl-1 block mb-2">Workspace queries</span>
-                      <div className="grid grid-cols-1 gap-2.5">
+                    <div className="w-full text-left">
+                      <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400 block mb-3 pl-1">Quick Workspace Queries</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         {quickPromptItems.map((item) => (
                           <button
                             key={item.label}
                             type="button"
                             onClick={() => void runChat(item.prompt)}
-                            className="flex items-center gap-3 w-full rounded-2xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-3 text-left hover:border-indigo-400 hover:shadow-sm transition cursor-pointer"
+                            className="flex items-center gap-3 w-full rounded-2xl bg-white dark:bg-slate-800/80 p-3.5 text-left transition-all cursor-pointer group hover:-translate-y-0.5 animate-popIn"
+                            style={{border:'1px solid rgba(226,232,240,0.8)',boxShadow:'var(--shadow-card)'}}
                           >
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${item.accentClassName}`}>
+                            <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 duration-150 ${item.accentClassName}`}>
                               <i className={`fa-solid ${item.icon} text-[11px]`} />
                             </div>
-                            <span className="text-[11.5px] font-bold text-slate-700 dark:text-slate-300 leading-normal">{item.label}</span>
+                            <div className="min-w-0">
+                              <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300 leading-snug block">{item.label}</span>
+                            </div>
+                            <i className="fa-solid fa-arrow-right text-[9px] text-slate-300 dark:text-slate-600 ml-auto shrink-0 group-hover:text-indigo-400 transition-colors" />
                           </button>
                         ))}
                       </div>
@@ -1781,13 +1824,16 @@ function AiAssistantPage() {
                     {filteredMessages.map((message) => {
                       const isUser = message.role === "user";
                       return (
-                        <div key={message.id} className={`flex gap-3.5 ${isUser ? "justify-end" : "justify-start"}`}>
+                        <div key={message.id} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
                           {!isUser && (
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-indigo-500">
-                              <i className="fa-solid fa-robot text-xs" />
+                            <div
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-[0_4px_12px_rgba(99,102,241,0.22)] shrink-0"
+                              style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)'}}
+                            >
+                              <i className="fa-solid fa-sparkles text-[11px]" />
                             </div>
                           )}
-                          <div className={`${isUser ? "max-w-[85%] order-first" : "max-w-[850px] w-full h-auto"}`}>
+                          <div className={`${isUser ? "max-w-[82%] order-first" : "max-w-[860px] w-full h-auto"}`}>
                             <ChatBubble
                               message={message}
                               feedbackState={message.traceId ? messageFeedback[message.traceId] : null}
@@ -1799,7 +1845,10 @@ function AiAssistantPage() {
                             />
                           </div>
                           {isUser && (
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-[11px] font-bold text-white uppercase shadow-sm">
+                            <div
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold text-white uppercase"
+                              style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',boxShadow:'0 3px 10px rgba(99,102,241,0.25)'}}
+                            >
                               {(user?.name || user?.email || "U").slice(0, 2)}
                             </div>
                           )}
@@ -1811,126 +1860,292 @@ function AiAssistantPage() {
                 )}
               </div>
 
-              {/* Chat action control bar */}
-              <div className="px-4 py-3 bg-slate-50/50 dark:bg-slate-955/20 border-t border-slate-100 dark:border-slate-800/40 flex flex-wrap gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleNewChat}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-808 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-808 dark:text-slate-400 dark:hover:text-slate-205 shadow-sm cursor-pointer"
-                >
-                  <i className="fa-solid fa-rotate" />
-                  Clear Session
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void triggerDirectScan("report")}
-                  disabled={Boolean(activeActionKey) || isStreaming}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-808 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-808 dark:text-slate-400 dark:hover:text-slate-205 shadow-sm disabled:cursor-not-allowed cursor-pointer"
-                >
-                  <i className="fa-solid fa-file-invoice" />
-                  Generate Status Report
-                </button>
-              </div>
-
-              {/* Ask Mongez Search Input bar - Rendered ONLY inside chat tab */}
-              <footer className="bg-white dark:bg-slate-900 px-6 py-4 border-t border-slate-100 dark:border-slate-800/60 shadow-[0_-4px_16px_rgba(15,23,42,0.01)] shrink-0">
-                <div className="mx-auto w-full">
-                  {/* Dynamic Suggestion Chips */}
-                  <div className="flex flex-wrap gap-2 mb-3.5 items-center">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">💡 Try asking:</span>
+              {/* Floating Input Area — premium composer */}
+              <div className="absolute bottom-0 left-0 right-0 px-5 pt-4 pb-5 bg-gradient-to-t from-white via-white/98 to-transparent dark:from-slate-900 dark:via-slate-900/98 dark:to-transparent z-10 w-full shrink-0">
+                <div className="max-w-3xl mx-auto w-full">
+                  {/* Suggestion Chips */}
+                  <div className="flex flex-wrap gap-1.5 mb-3 items-center">
+                    <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-[0.12em] mr-0.5">Try asking</span>
                     {[
-                      { label: "Blocked tasks", prompt: "Show me all blocked tasks on my board." },
-                      { label: "Weekly report", prompt: "Generate a weekly status report." },
-                      { label: "Overloaded users", prompt: "Who is overloaded right now?" },
-                      { label: "Release risks", prompt: "Are there any risks to our release timeline?" },
-                      { label: "Remind overdue", prompt: "Propose reminders for overdue tasks." },
+                      { label: "Blocked tasks",   prompt: "Show me all blocked tasks on my board." },
+                      { label: "Weekly report",   prompt: "Generate a weekly status report." },
+                      { label: "Overloaded users",prompt: "Who is overloaded right now?" },
+                      { label: "Release risks",   prompt: "Are there any risks to our release timeline?" },
+                      { label: "Remind overdue",  prompt: "Propose reminders for overdue tasks." },
                     ].map((chip) => (
                       <button
                         key={chip.label}
                         type="button"
                         onClick={() => void runChat(chip.prompt)}
-                        className="rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-808 px-3 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-350 transition cursor-pointer shadow-sm"
+                        className="rounded-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 px-3 py-1 text-[10.5px] font-semibold text-slate-600 dark:text-slate-300 transition-all cursor-pointer shadow-sm hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 duration-150"
                       >
                         {chip.label}
                       </button>
                     ))}
                   </div>
 
-                  <div className="rounded-[24px] border border-slate-202/90 dark:border-slate-808 bg-slate-50 dark:bg-slate-955 p-2 shadow-sm transition focus-within:border-indigo-400">
-                    <div className="flex items-end gap-3">
-                      <textarea
-                        ref={textareaRef}
-                        rows={1}
-                        value={composer}
-                        onChange={(e) => {
-                          setComposer(e.target.value.slice(0, MAX_COMPOSER_LENGTH));
-                          setPageError("");
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSubmit();
-                          }
-                        }}
-                        placeholder="Ask Mongez Intelligence anything..."
-                        className="min-h-11 flex-1 resize-none border-0 bg-transparent px-3 py-2.5 text-[13px] leading-relaxed text-slate-755 dark:text-slate-350 outline-none placeholder:text-slate-400"
-                      />
+                  {/* Gradient-border composer shell */}
+                  <div className="ai-composer-shell">
+                    <div className="ai-composer-inner p-3.5 shadow-[0_4px_20px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.06)] dark:bg-slate-900">
+                      <div className="flex items-end gap-3">
+                        <textarea
+                          ref={textareaRef}
+                          rows={1}
+                          value={composer}
+                          onChange={(e) => {
+                            setComposer(e.target.value.slice(0, MAX_COMPOSER_LENGTH));
+                            setPageError("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSubmit();
+                            }
+                          }}
+                          placeholder="Ask Mongez Intelligence anything..."
+                          className="min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-[13.5px] leading-relaxed text-slate-800 dark:text-slate-200 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        />
 
-                      {isStreaming ? (
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-[10px] font-medium shrink-0 self-center pr-1 tabular-nums ${
+                              composer.length >= MAX_COMPOSER_LENGTH - 200
+                                ? "text-rose-500 animate-pulse"
+                                : "text-slate-300 dark:text-slate-600"
+                            }`}
+                          >
+                            {composer.length}/{MAX_COMPOSER_LENGTH}
+                          </span>
+
+                          {isStreaming ? (
+                            <button
+                              type="button"
+                              onClick={() => chatAbortRef.current?.abort()}
+                              className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500 hover:bg-rose-600 text-white transition cursor-pointer hover:scale-105 duration-150"
+                              aria-label="Stop streaming response"
+                              style={{boxShadow:'0 4px 12px rgba(239,68,68,0.28)'}}
+                            >
+                              <i className="fa-solid fa-stop text-[11px]" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleSubmit}
+                              disabled={!composer.trim()}
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition disabled:opacity-35 disabled:cursor-not-allowed disabled:scale-100 hover:scale-105 cursor-pointer duration-150"
+                              aria-label="Send message"
+                              style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',boxShadow:'var(--shadow-send)'}}
+                            >
+                              <i className="fa-solid fa-arrow-up text-[11px]" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Inline Interactive Selectors Row */}
+                    <div className="mt-3.5 flex flex-wrap items-center gap-1.5 border-t border-slate-100 dark:border-slate-800/80 pt-3 text-[11px] font-bold">
+                      {/* Space Select Dropdown */}
+                      <div className="relative">
                         <button
                           type="button"
-                          onClick={() => chatAbortRef.current?.abort()}
-                          className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-rose-500 hover:bg-rose-600 px-3 text-white transition cursor-pointer shadow-sm"
-                          aria-label="Stop streaming response"
+                          onClick={() => setSpaceDropdownOpen(!spaceDropdownOpen)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors"
                         >
-                          <i className="fa-solid fa-stop text-xs" />
+                          <i className="fa-solid fa-folder text-indigo-500 text-[10px]" />
+                          {spaces.find(s => s.id === contextValues.spaceId)?.name || "Workspace"}
+                          <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
                         </button>
-                      ) : (
+                        {spaceDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setSpaceDropdownOpen(false)} />
+                            <div className="absolute bottom-full left-0 mb-2.5 z-40 w-52 rounded-2xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                              {spaces.map((s) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setContextValue("spaceId", s.id);
+                                    setContextValue("boardId", "");
+                                    setContextValue("taskId", "");
+                                    setActiveSpace(s.id);
+                                    setSpaceDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                                    contextValues.spaceId === s.id
+                                      ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
+                                      : "text-slate-700 dark:text-slate-300"
+                                  }`}
+                                >
+                                  {s.name}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Board Select Dropdown */}
+                      <div className="relative">
                         <button
                           type="button"
-                          onClick={handleSubmit}
-                          disabled={!composer.trim()}
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-505 text-white transition hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
-                          aria-label="Send message"
+                          disabled={!contextValues.spaceId}
+                          onClick={() => setBoardDropdownOpen(!boardDropdownOpen)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          <i className="fa-solid fa-arrow-up text-xs" />
+                          <i className="fa-solid fa-columns text-emerald-500 text-[10px]" />
+                          {activeBoards.find(b => b.id === contextValues.boardId)?.name || "Board"}
+                          <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
                         </button>
-                      )}
-                    </div>
+                        {boardDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setBoardDropdownOpen(false)} />
+                            <div className="absolute bottom-full left-0 mb-2.5 z-40 w-52 rounded-2xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                              {activeBoards.length === 0 ? (
+                                <div className="px-3.5 py-2.5 text-[11.5px] text-slate-400 font-semibold">No boards found</div>
+                              ) : (
+                                activeBoards.map((b) => (
+                                  <button
+                                    key={b.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setContextValue("boardId", b.id);
+                                      setContextValue("taskId", "");
+                                      setActiveBoard(b.id);
+                                      setBoardDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                                      contextValues.boardId === b.id
+                                        ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
+                                        : "text-slate-700 dark:text-slate-300"
+                                    }`}
+                                  >
+                                    {b.name}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
 
-                    {/* Character counter */}
-                    <div className="flex justify-end px-2">
-                      <span
-                        className={`text-[10px] font-bold ${
-                          composer.length >= MAX_COMPOSER_LENGTH - 200
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-slate-400 dark:text-slate-500"
-                        }`}
-                      >
-                        {composer.length}/{MAX_COMPOSER_LENGTH}
-                      </span>
-                    </div>
+                      {/* Task Select Dropdown */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          disabled={!contextValues.boardId || tasksQuery.isLoading}
+                          onClick={() => setTaskDropdownOpen(!taskDropdownOpen)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <i className="fa-solid fa-list-check text-sky-500 text-[10px]" />
+                          {boardTasks.find(t => t.id === contextValues.taskId)?.title || "Focus Task"}
+                          <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                        </button>
+                        {taskDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setTaskDropdownOpen(false)} />
+                            <div className="absolute bottom-full left-0 mb-2.5 z-40 w-64 rounded-2xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                              {boardTasks.length === 0 ? (
+                                <div className="px-3.5 py-2.5 text-[11.5px] text-slate-400 font-semibold">No tasks found</div>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setContextValue("taskId", "");
+                                      setTaskDropdownOpen(false);
+                                    }}
+                                    className="w-full text-left px-3.5 py-2 rounded-xl text-[11.5px] font-bold text-rose-505 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                  >
+                                    Clear Task Focus
+                                  </button>
+                                  {boardTasks.map((t) => (
+                                    <button
+                                      key={t.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setContextValue("taskId", t.id);
+                                        setTaskDropdownOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 truncate ${
+                                        contextValues.taskId === t.id
+                                          ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
+                                          : "text-slate-700 dark:text-slate-300"
+                                      }`}
+                                    >
+                                      {t.title || t.name}
+                                    </button>
+                                  ))}
+                                </>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
 
-                    {/* Status Context Indicator line */}
-                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 px-2 border-t border-slate-100 dark:border-slate-850 pt-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">
-                      <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                        Space: {activeSpace?.name || "None"}
-                      </span>
-                      <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                        Board: {activeBoard?.name || "None"}
-                      </span>
-                      {contextValues.taskId && (
-                        <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                          Task: {boardTasks.find(t => t.id === contextValues.taskId)?.title || "Selected"}
-                        </span>
-                      )}
-                      <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-1">
-                        Tone: {contextValues.commentTone}
-                      </span>
+                      {/* Tone Select Dropdown */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setToneDropdownOpen(!toneDropdownOpen)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors"
+                        >
+                          <i className="fa-solid fa-signature text-violet-500 text-[10px]" />
+                          {contextValues.commentTone.charAt(0).toUpperCase() + contextValues.commentTone.slice(1)} Tone
+                          <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                        </button>
+                        {toneDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setToneDropdownOpen(false)} />
+                            <div className="absolute bottom-full left-0 mb-2.5 z-40 w-36 rounded-2xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-1.5 shadow-xl animate-slideUp">
+                              {["professional", "friendly", "concise", "urgent"].map((tone) => (
+                                <button
+                                  key={tone}
+                                  type="button"
+                                  onClick={() => {
+                                    setContextValue("commentTone", tone);
+                                    setToneDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3.5 py-2 rounded-xl text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                                    contextValues.commentTone === tone
+                                      ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
+                                      : "text-slate-700 dark:text-slate-300"
+                                  }`}
+                                >
+                                  {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Action buttons (Clear / Report) */}
+                      <div className="ml-auto flex gap-1 border-l border-slate-100/80 dark:border-slate-800/60 pl-2">
+                        <button
+                          type="button"
+                          onClick={handleNewChat}
+                          className="inline-flex items-center gap-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1 text-[10.5px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer transition-colors"
+                          title="New Chat Session"
+                        >
+                          <i className="fa-solid fa-rotate text-[9px]" />
+                          New Chat
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void triggerDirectScan("report")}
+                          disabled={Boolean(activeActionKey) || isStreaming}
+                          className="inline-flex items-center gap-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 px-2.5 py-1 text-[10.5px] font-semibold text-indigo-500 hover:text-indigo-600 disabled:opacity-40 cursor-pointer transition-colors"
+                          title="Generate Status Report"
+                        >
+                          <i className="fa-solid fa-file-invoice text-[9px]" />
+                          Report
+                        </button>
+                      </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </footer>
+              </div>
             </div>
           )}
         </div>

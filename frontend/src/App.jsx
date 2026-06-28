@@ -29,9 +29,13 @@ const SearchPage = lazy(() => import("./pages/search/SearchPage"));
 const MyWorkPage = lazy(() => import("./pages/mywork/MyWorkPage"));
 const InboxPage = lazy(() => import("./pages/Inbox/InboxPage"));
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
+const NotificationsPage = lazy(() => import("./pages/notifications/NotificationsPage"));
 const SecurityPage = lazy(() => import("./pages/security/SecurityPage"));
 const AuditLogPage = lazy(() => import("./pages/audit-log/AuditLogPage"));
 const KanbanBoard = lazy(() => import("./pages/kanbanboard/KanbanBoard"));
+const ApprovalsPage = lazy(() => import("./pages/approvals/ApprovalsPage"));
+const WorkflowInstancesList = lazy(() => import("./pages/workflow/WorkflowInstancesList"));
+const WorkflowBuilder = lazy(() => import("./pages/workflow/WorkflowBuilder"));
 
 function FullScreenLoader() {
   return (
@@ -142,6 +146,9 @@ function AppContent() {
               <Route path="board/:boardId/table" element={<TableView />} />
               <Route path="board/:boardId/timeline" element={<TimelineView />} />
               <Route path="calendar" element={<CalendarPage />} />
+              <Route path="approvals" element={<ApprovalsPage />} />
+              <Route path="workflows" element={<WorkflowInstancesList />} />
+              <Route path="workflows/builder" element={<WorkflowBuilder />} />
               <Route path="settings/integrations" element={<IntegrationsPage setPath={setPath} />} />
               <Route path="settings/members" element={<SettingsMembersPage setPath={setPath} />} />
               <Route path="reports" element={<ReportsPage setPath={setPath} />} />
@@ -150,6 +157,7 @@ function AppContent() {
               <Route path="my-work" element={<MyWorkPage setPath={setPath} />} />
               <Route path="inbox" element={<InboxPage setPath={setPath} />} />
               <Route path="settings" element={<SettingsPage setPath={setPath} />} />
+              <Route path="settings/notifications" element={<NotificationsPage setPath={setPath} />} />
               <Route path="settings/security" element={<SecurityPage setPath={setPath} />} />
               <Route path="audit-log" element={<AuditLogPage />} />
               <Route path="audit-logs" element={<AuditLogPage setPath={setPath} />} />

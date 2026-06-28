@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 @Injectable()
@@ -12,8 +13,9 @@ export class IdentifierService {
    *
    * @example nextIdentifier('clxyz...', 'MGZ') → 'MGZ-1', 'MGZ-2', ...
    */
-  async nextIdentifier(spaceId: string, prefix: string): Promise<string> {
-    const result = await this.prisma.$queryRaw<[{ seq: number }]>`
+  async nextIdentifier(spaceId: string, prefix: string, tx?: Prisma.TransactionClient): Promise<string> {
+    const client = tx || this.prisma;
+    const result = await client.$queryRaw<[{ seq: number }]>`
       INSERT INTO "space_counters" ("spaceId", "seq")
       VALUES (${spaceId}, 1)
       ON CONFLICT ("spaceId")

@@ -78,9 +78,20 @@ export class AIGatewayService {
     }
 
     const sanitizedMessage = this.sanitizeForPrompt(dto.message);
+    const memoryContext = dto.spaceId
+      ? await this.memory.getConversationContext(userId, dto.spaceId)
+      : '';
+    const profile = await this.aiMemoryProfileService.getMemoryProfile(userId);
+    const enrichedMemoryContext = profile
+      ? `User Preferences:\n${profile}\n\n${memoryContext}`
+      : memoryContext;
+
+    const enrichedMessage = enrichedMemoryContext
+      ? `${enrichedMemoryContext}\n\nUser request: ${sanitizedMessage}`
+      : sanitizedMessage;
 
     const result = (await this.circuit.call(() =>
-      this.llm.chatStream(userId, { ...dto, message: sanitizedMessage }),
+      this.llm.chatStream(userId, { ...dto, message: enrichedMessage }),
     )) as any;
 
     if (result && !result.degraded) {

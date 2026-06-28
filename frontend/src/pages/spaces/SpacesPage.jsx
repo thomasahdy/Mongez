@@ -6,6 +6,7 @@ import CreateSpaceCard from "./CreateSpaceCard";
 import QuotaBanner from "./QuotaBanner";
 import CreateSpaceModal from "./CreateSpaceModal";
 import { useSpaces, useCreateSpace, useUpdateSpace, useDeleteSpace } from "../../hooks/api/useSpaces";
+import { useToast } from "../../context/ToastContext";
  
 const QUOTA = { total: 5 };
 
@@ -24,6 +25,7 @@ let path = [
  
 export default function SpacesPage({ setPath }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const { data: spaces, isLoading, error } = useSpaces();
   const createMutation = useCreateSpace();
   const updateMutation = useUpdateSpace();
@@ -60,7 +62,7 @@ export default function SpacesPage({ setPath }) {
       await createMutation.mutateAsync(data);
       setShowCreateModal(false);
     } catch (err) {
-      alert(err.response?.data?.message || err.message || "Failed to create space.");
+      toast.error(err.response?.data?.message || err.message || "Failed to create space.");
     }
   };
 
@@ -70,7 +72,7 @@ export default function SpacesPage({ setPath }) {
       await updateMutation.mutateAsync({ spaceId: editingSpace.id, data });
       setEditingSpace(null);
     } catch (err) {
-      alert(err.response?.data?.message || err.message || "Failed to update space.");
+      toast.error(err.response?.data?.message || err.message || "Failed to update space.");
     }
   };
 
@@ -89,7 +91,7 @@ export default function SpacesPage({ setPath }) {
           }
         },
         onError: (err) => {
-          alert(err.response?.data?.message || err.message || "Failed to delete workspace.");
+          toast.error(err.response?.data?.message || err.message || "Failed to delete workspace.");
         }
       });
     }
@@ -114,7 +116,7 @@ export default function SpacesPage({ setPath }) {
             <QuotaBanner
               used={normalizedSpaces.length}
               total={QUOTA.total}
-              onUpgrade={() => alert("Upgrade to business plan to add more spaces!")}
+              onUpgrade={() => toast.info("Upgrade to business plan to add more spaces!")}
             />
 
             {/* Space cards */}

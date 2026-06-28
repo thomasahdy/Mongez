@@ -4,7 +4,9 @@ import { useAppContext } from "../AppContext";
 import {
   useCalendarEventsQuery,
   useCalendarPreferencesQuery,
+  useGoogleCalendarStatusQuery,
 } from "../../hooks/useCalendarQueries";
+import calendarService from "../../services/api/calendarService";
 
 const STORAGE_KEY = "mongez.calendar.filters";
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -248,6 +250,39 @@ export default function CalendarPage() {
   const [pageError, setPageError] = useState("");
   const [selectedDayEventsExpanded, setSelectedDayEventsExpanded] = useState(false);
   const preferencesQuery = useCalendarPreferencesQuery();
+  const googleStatusQuery = useGoogleCalendarStatusQuery(activeSpaceId);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleConnectGoogle = async () => {
+    try {
+      const { url } = await calendarService.connectGoogleCalendar(activeSpaceId);
+      if (url) {
+        const popup = window.open(url, "_blank", "width=600,height=600");
+        const interval = setInterval(() => {
+          if (!popup || popup.closed) {
+            clearInterval(interval);
+            googleStatusQuery.refetch();
+            calendarEventsQuery.refetch();
+          }
+        }, 1000);
+      }
+    } catch (err) {
+      console.error("Failed to connect Google Calendar:", err);
+    }
+  };
+
+  const handleSyncGoogle = async () => {
+    setIsSyncing(true);
+    try {
+      await calendarService.syncGoogleCalendar(activeSpaceId);
+      googleStatusQuery.refetch();
+      calendarEventsQuery.refetch();
+    } catch (err) {
+      console.error("Failed to sync Google Calendar:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const visibleRange = useMemo(() => getVisibleRange(anchorDate, calendarView), [anchorDate, calendarView]);
   const preferences = preferencesQuery.data || null;
@@ -769,6 +804,48 @@ export default function CalendarPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
+                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Google Calendar</div>
+                <div className="space-y-3">
+                  {googleStatusQuery.data?.connected ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[13px] font-semibold text-slate-700">Connected</span>
+                      </div>
+                      {googleStatusQuery.data?.lastSyncAt && (
+                        <div className="text-[11px] text-slate-400">
+                          Last Synced: {new Date(googleStatusQuery.data.lastSyncAt).toLocaleString()}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleSyncGoogle}
+                        disabled={isSyncing}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-[12px] font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50 transition"
+                      >
+                        <i className={`fa-solid fa-arrows-rotate ${isSyncing ? "animate-spin" : ""}`} />
+                        {isSyncing ? "Syncing..." : "Sync Now"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[12px] text-slate-500 leading-normal">
+                        Link your Mongez calendar with Google Calendar to sync tasks, deadlines, and meetings automatically.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleConnectGoogle}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-[12px] font-bold text-white hover:bg-indigo-700 transition"
+                      >
+                        <i className="fa-brands fa-google" />
+                        Connect Google Calendar
+                      </button>
+                    </>
+                  )}
                 </div>
               </section>
 

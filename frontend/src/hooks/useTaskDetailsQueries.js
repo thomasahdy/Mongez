@@ -7,17 +7,20 @@ export function useTaskDetailsQuery(taskId) {
   return useQuery({
     queryKey: ["task", "details", taskId],
     queryFn: async () => {
-      const task = await tasksService.getTask(taskId);
-      const [comments, files, timeLogs, risk] = await Promise.all([
+      // Fetch task details, comments, files, and time logs in parallel to eliminate waterfall
+      const [task, comments, files, timeLogs] = await Promise.all([
+        tasksService.getTask(taskId),
         tasksService.getComments(taskId).catch(() => ({ items: [] })),
         tasksService.getTaskFiles(taskId).catch(() => []),
         tasksService.getTimeLogs(taskId).catch(() => []),
-        aiService.analyzeRisk({
-          spaceId: task.spaceId,
-          boardId: task.boardId,
-          taskId,
-        }).catch(() => null),
       ]);
+
+      // Fetch AI risk analysis with spaceId and boardId resolved from task
+      const risk = await aiService.analyzeRisk({
+        spaceId: task.board?.department?.spaceId,
+        boardId: task.boardId,
+        taskId,
+      }).catch(() => null);
 
       return {
         task,
@@ -37,7 +40,12 @@ export function useTaskUpdateMutation(taskId) {
   return useMutation({
     mutationFn: (updates) => tasksService.updateTask(taskId, updates),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["board", "table"] });
+      queryClient.invalidateQueries({ queryKey: ["board", "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["board", "timeline"] });
       queryClient.invalidateQueries({ queryKey: ["task", "details", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["calendar", "events"] });
     },
   });
 }
@@ -65,7 +73,17 @@ export function useTaskUploadMutation(taskId) {
 }
 
 export function useTaskDeleteMutation(taskId) {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: () => tasksService.deleteTask(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["board", "table"] });
+      queryClient.invalidateQueries({ queryKey: ["board", "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["board", "timeline"] });
+      queryClient.invalidateQueries({ queryKey: ["task", "details", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["calendar", "events"] });
+    },
   });
 }

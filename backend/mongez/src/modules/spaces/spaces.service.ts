@@ -8,7 +8,7 @@ import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { CacheService } from '../../infrastructure/cache/cache.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { QUEUE_NAMES } from '../../infrastructure/queue/queue.constants';
+import { QUEUE_NAMES, JOB_NAMES } from '../../infrastructure/queue/queue.constants';
 import { TraceContextService } from '../../infrastructure/logging/trace-context.service';
 import {
   SpaceRepository,
@@ -35,6 +35,7 @@ export class SpacesService {
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
     @InjectQueue(QUEUE_NAMES.WORKSPACE_EXPORT) private readonly workspaceExportQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.EMAILS) private readonly emailsQueue: Queue,
     private readonly traceContext: TraceContextService,
   ) {}
 
@@ -171,11 +172,10 @@ export class SpacesService {
     }
 
     const invitation = await this.invitationRepo.create(spaceId, dto.email, dto.role ?? 'MEMBER');
-    // TODO Phase 5: queue SEND_EMAIL job with invitation link
-    // await this.queue.add(JOB_NAMES.SEND_EMAIL, {
-    //   type: 'invitation',
-    //   payload: { to: dto.email, token: invitation.token, spaceId }
-    // });
+    await this.emailsQueue.add(JOB_NAMES.SEND_EMAIL, {
+      type: 'invitation',
+      payload: { to: dto.email, token: invitation.token, spaceId }
+    });
     return invitation;
   }
 

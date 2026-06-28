@@ -51,6 +51,11 @@ describe('Spaces → Departments → Boards → Tasks Flow (Integration)', () =>
     authCookie = await getAuthCookie(app, 'flow-test@mongez.test');
   });
 
+  afterEach(async () => {
+    // Let background events/queues settle before truncating
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  });
+
   describe('Complete Flow: Space → Department → Board → Task', () => {
     it('IT-FLOW-001: should create complete workspace hierarchy', async () => {
       // Step 1: Create Space
@@ -121,7 +126,7 @@ describe('Spaces → Departments → Boards → Tasks Flow (Integration)', () =>
       const firstColumn = board?.columns.find((c) => c.name === 'To Do');
       expect(firstColumn).toBeDefined();
 
-      const taskRes = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/api/v1/tasks')
         .set('Cookie', authCookie)
         .send({
@@ -130,8 +135,13 @@ describe('Spaces → Departments → Boards → Tasks Flow (Integration)', () =>
           columnId: firstColumn!.id,
           priority: Priority.HIGH,
           description: 'Fix useCreateBoard hook anti-pattern',
-        })
-        .expect(201);
+        });
+
+      if (res.status !== 201) {
+        console.log('DEBUG TASK CREATION ERROR:', res.status, JSON.stringify(res.body));
+      }
+      expect(res.status).toBe(201);
+      const taskRes = res;
 
       expect(taskRes.body.success).toBe(true);
       const taskId = taskRes.body.data.id;
@@ -191,15 +201,14 @@ describe('Spaces → Departments → Boards → Tasks Flow (Integration)', () =>
     });
 
     it('IT-FLOW-003: should enforce subscription limits on board creation', async () => {
-      const space = await factories.createSpace();
+      const freePlan = await prisma.subscriptionPlan.findFirst({
+        where: { name: 'FREE' },
+      });
+      const space = await factories.createSpace({
+        subscriptionPlanId: freePlan!.id,
+      });
       await factories.createMembership(testUser.id, space.id, 'ADMIN');
       const department = await factories.createDepartment(space.id);
-
-      // Update space to FREE plan with 2 board limit
-      await prisma.space.update({
-        where: { id: space.id },
-        data: { plan: 'FREE' },
-      });
 
       // Create first board - should succeed
       await request(app.getHttpServer())
@@ -223,12 +232,23 @@ describe('Spaces → Departments → Boards → Tasks Flow (Integration)', () =>
         })
         .expect(201);
 
-      // Create third board - should fail (limit exceeded)
+      // Create third board - should succeed (limit is 3)
       await request(app.getHttpServer())
         .post('/api/v1/boards')
         .set('Cookie', authCookie)
         .send({
           name: 'Board 3',
+          type: BoardType.KANBAN,
+          departmentId: department.id,
+        })
+        .expect(201);
+
+      // Create fourth board - should fail (limit exceeded)
+      await request(app.getHttpServer())
+        .post('/api/v1/boards')
+        .set('Cookie', authCookie)
+        .send({
+          name: 'Board 4',
           type: BoardType.KANBAN,
           departmentId: department.id,
         })
@@ -390,8 +410,8 @@ describe('Spaces → Departments → Boards → Tasks Flow (Integration)', () =>
         .set('Cookie', authCookie)
         .expect(200);
 
-      expect(res.body.data.departments).toHaveLength(3);
-      const deptNames = res.body.data.departments.map((d: any) => d.name).sort();
+      expect(res.body.data).toHaveLength(3);
+      const deptNames = res.body.data.map((d: any) => d.name).sort();
       expect(deptNames).toEqual(['Design', 'Engineering', 'Marketing']);
     });
   });

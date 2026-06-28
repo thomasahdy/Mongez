@@ -6,6 +6,7 @@ import {
   setTokens,
   clearTokens,
 } from "./tokenService";
+import { showToastBridge } from "../../context/ToastContext";
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
 const unsafeMethods = new Set(["post", "put", "patch", "delete"]);
@@ -71,11 +72,22 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      const refreshToken = getRefreshToken();
+      const path = window.location.pathname;
+      const isPublicRoute = ['/login', '/register', '/reset-password', '/verify-email', '/'].includes(path);
+
+      if (!refreshToken) {
+        clearTokens();
+        if (!isPublicRoute) {
+          showToastBridge('Please sign in to access this page.', 'error');
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
 
       try {
-        const refreshToken = getRefreshToken();
-
         const response = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
           { refreshToken },
@@ -95,6 +107,15 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         clearTokens();
+        if (!isPublicRoute) {
+          showToastBridge('Your session has expired. Please sign in again.', 'error');
+
+          // Redirect to login — use a small delay so the toast renders first
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 300);
+        }
+
         return Promise.reject(refreshError);
       }
     }

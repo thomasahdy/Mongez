@@ -4,20 +4,20 @@ import StatItem from '../../components/ui/StatItem';
 import BoardChips from './BoardChips';
 import CreateBoardModal from './CreateBoardModal';
 import { useCreateBoard } from '../../hooks/api/useBoards';
+import { useToast } from '../../context/ToastContext';
 
 const DepartmentRow = ({ dept}) => {
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
   const createBoard = useCreateBoard();
+  const toast = useToast();
   const handleCreateBoard = async(data) => {
-    console.log("handleCreateBoard called with:", data);
     try {
-      const result = await createBoard.mutateAsync(data);
-      console.log("Board created successfully:", result);
+      await createBoard.mutateAsync(data);
+      toast.success('Board created successfully.');
       setShowCreateBoardModal(false);
     }
     catch (err) {
-      console.error("Board creation failed:", err);
-      alert(err.response?.data?.message || err.message || "Failed to create a board.");
+      toast.error(err.response?.data?.message || err.message || "Failed to create a board.");
     }
   };
   return (

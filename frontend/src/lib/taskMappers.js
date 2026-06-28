@@ -19,15 +19,21 @@ function toArray(value) {
 }
 
 function normalizeAssignee(task) {
-  const candidate =
+  let candidate =
     task.assignee ||
     task.assignedTo ||
     task.assignees?.[0] ||
+    task.assignments?.[0] ||
     task.createdBy ||
     null;
 
   if (!candidate) {
     return null;
+  }
+
+  // If candidate is a TaskAssignment prisma relation, unwrap the nested user object
+  if (candidate && typeof candidate === "object" && candidate.user) {
+    candidate = candidate.user;
   }
 
   if (typeof candidate === "string") {

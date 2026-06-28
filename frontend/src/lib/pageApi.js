@@ -275,6 +275,7 @@ export async function getDashboardTaskCompletion(spaceId) {
 }
 
 export async function getDashboardPriorityBreakdown(spaceId) {
+  if (!spaceId) return [];
   const tasks = await searchTasks({ spaceId, q: "", limit: 100 });
   const counts = tasks.reduce((accumulator, task) => {
     const key = task.priority || "MEDIUM";

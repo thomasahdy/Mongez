@@ -25,7 +25,7 @@ export class AIExecutorService {
 
   async execute(actionId: string, reviewerId: string): Promise<ExecutionResult> {
     return this.prisma.$transaction(async (tx) => {
-      const action = await tx.aiProposedAction.findUnique({
+      const action = await tx.aIProposedAction.findUnique({
         where: { id: actionId },
       });
 
@@ -192,7 +192,7 @@ export class AIExecutorService {
         }
 
         // Update database record status and audits
-        await tx.aiProposedAction.update({
+        await tx.aIProposedAction.update({
           where: { id: action.id },
           data: {
             status: 'APPROVED',
@@ -216,7 +216,7 @@ export class AIExecutorService {
       } catch (err: any) {
         this.logger.error(`Failed to execute AI action ${actionId}: ${err.message}`);
 
-        await tx.aiProposedAction.update({
+        await tx.aIProposedAction.update({
           where: { id: action.id },
           data: {
             status: 'FAILED',

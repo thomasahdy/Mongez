@@ -32,7 +32,7 @@ describe('GDPR & Disaster Recovery Compliance (Integration)', () => {
 
   afterAll(async () => {
     await app.close();
-  });
+  }, 60000);
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
@@ -141,25 +141,34 @@ describe('GDPR & Disaster Recovery Compliance (Integration)', () => {
       const spaceCountBefore = await prisma.space.count();
       expect(spaceCountBefore).toBe(2);
 
-      // 4. Restore the database from the backup dump
+      // 4. Close NestJS app first to avoid connection pool hanging during dump restore
+      await app.close();
+
+      // Restore the database from the backup dump
       execSync('docker exec -i mongez_postgres_test psql -U mongez_test -d mongez_db_test', {
         input: sqlDump,
       });
 
       // 5. Verify the state has reverted back: Transient Space and User are gone
-      const restoredSpaceCount = await prisma.space.count();
-      const restoredUserCount = await prisma.user.count();
+      // 5. Verify the state has reverted back using a direct Prisma instance
+      const directPrisma = new PrismaService();
+      await directPrisma.onModuleInit();
+
+      const restoredSpaceCount = await directPrisma.space.count();
+      const restoredUserCount = await directPrisma.user.count();
 
       expect(restoredSpaceCount).toBe(1);
       expect(restoredUserCount).toBe(1);
 
-      const oldSpace = await prisma.space.findFirst({ where: { id: space.id } });
-      const oldUser = await prisma.user.findFirst({ where: { id: user.id } });
-      const transientSpace = await prisma.space.findFirst({ where: { id: newSpace.id } });
+      const oldSpace = await directPrisma.space.findFirst({ where: { id: space.id } });
+      const oldUser = await directPrisma.user.findFirst({ where: { id: user.id } });
+      const transientSpace = await directPrisma.space.findFirst({ where: { id: newSpace.id } });
 
       expect(oldSpace).toBeDefined();
       expect(oldUser).toBeDefined();
       expect(transientSpace).toBeNull();
+
+      await directPrisma.onModuleDestroy();
 
       // Clean up backup file
       if (fs.existsSync(backupPath)) {

@@ -1,6 +1,7 @@
 import logging
 from langgraph.graph import StateGraph, END
 from app.agents.state import MongezAgentState
+from app.agents.nodes.query_rewriter import query_rewriter_node
 from app.agents.nodes.intent_router import intent_router_node
 from app.agents.nodes.executor import executor_node
 from app.agents.nodes.aggregator import aggregator_node
@@ -13,12 +14,14 @@ def build_graph() -> StateGraph:
     graph = StateGraph(MongezAgentState)
 
     # ── Register nodes ────────────────────────────────────────────────────────
+    graph.add_node("query_rewriter", query_rewriter_node)
     graph.add_node("intent_router", intent_router_node)
     graph.add_node("executor", executor_node)
     graph.add_node("aggregator", aggregator_node)
 
     # ── Define edges ──────────────────────────────────────────────────────────
-    graph.set_entry_point("intent_router")
+    graph.set_entry_point("query_rewriter")
+    graph.add_edge("query_rewriter", "intent_router")
     graph.add_edge("intent_router", "executor")
     graph.add_edge("executor", "aggregator")
     graph.add_edge("aggregator", END)

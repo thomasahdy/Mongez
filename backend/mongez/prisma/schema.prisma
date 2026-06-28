@@ -560,6 +560,7 @@ model Task {
   views           TaskView[]
 
   @@index([boardId])
+  @@index([boardId, columnId, position])
   @@index([columnId])
   @@index([parentId])
   @@index([status])
@@ -988,6 +989,7 @@ model Activity {
   @@index([taskId])
   @@index([type])
   @@index([createdAt])
+  @@index([data], type: Gin)
   @@map("activities")
 }
 
@@ -1559,8 +1561,8 @@ model DecisionRecord {
   @@index([entityType, entityId])
   @@map("decision_records")
 
-  space            Space            @relation(fields: [spaceId], references: [id], onDelete: Restrict)
-  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict)
+  space            Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
 }
 
 model TaskView {

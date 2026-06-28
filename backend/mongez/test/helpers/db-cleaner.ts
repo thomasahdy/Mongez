@@ -85,5 +85,26 @@ export async function cleanDatabase(prisma: PrismaService) {
       });
     }
   }
+
+  // Seed default subscription plans for testing
+  await prisma.subscriptionPlan.createMany({
+    data: [
+      {
+        name: 'ENTERPRISE',
+        maxSpaces: 9999,
+        maxUsers: 9999,
+        maxBoards: 9999,
+        price: 0,
+      },
+      {
+        name: 'FREE',
+        maxSpaces: 1,
+        maxUsers: 5,
+        maxBoards: 2, // Set to 2 to match the test's board limit check
+        price: 0,
+      },
+    ],
+    skipDuplicates: true,
+  });
 }
 

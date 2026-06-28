@@ -65,8 +65,16 @@ export class WorkflowResolvedDecisionListener implements IEventHandler<WorkflowR
         validUntil = new Date(now.getTime() + 180 * 24 * 3600 * 1000);
       }
 
-      await this.prisma.decisionRecord.create({
-        data: {
+      await this.prisma.decisionRecord.upsert({
+        where: { workflowInstanceId: fullInstance.id },
+        update: {
+          outcome,
+          decidedById,
+          summary,
+          validUntil,
+          metadata: (fullInstance.context as any) || {},
+        },
+        create: {
           spaceId: fullInstance.spaceId,
           workflowInstanceId: fullInstance.id,
           entityType: fullInstance.entityType,
@@ -77,7 +85,7 @@ export class WorkflowResolvedDecisionListener implements IEventHandler<WorkflowR
           summary,
           confidence: 1.0,
           validUntil,
-          metadata: fullInstance.context || {},
+          metadata: (fullInstance.context as any) || {},
         },
       });
       this.logger.log(`Successfully logged DecisionRecord for workflow instance ${instance.id}`);

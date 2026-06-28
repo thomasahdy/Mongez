@@ -11,6 +11,7 @@ import { useAppContext } from "../../pages/AppContext";
 
 const OVERVIEW_LINKS = [
   { href: "/my-work", icon: "fa-circle-check", label: "My Work", badge: { label: "5", variant: "danger" } },
+  { href: "/approvals", icon: "fa-stamp", label: "Approvals" },
   { href: "/inbox", icon: "fa-inbox", label: "Inbox", badge: { label: "3", variant: "danger" } },
   { href: "/dashboard", icon: "fa-chart-pie", label: "Dashboard" },
   { href: "/search", icon: "fa-magnifying-glass", label: "Search", kbd: "Ctrl K" },
@@ -19,6 +20,7 @@ const OVERVIEW_LINKS = [
 
 const VIEW_LINKS = [
   { href: "/calendar", icon: "fa-regular fa-calendar", label: "Calendar", badge: { label: "2 mtgs", variant: "neutral" } },
+  { href: "/workflows", icon: "fa-route", label: "Workflows" },
   { href: "/timeline", icon: "fa-bars-staggered", label: "Timeline" },
   { href: "/whiteboard", icon: "fa-chalkboard", label: "Whiteboard" },
   { href: "/reports", icon: "fa-chart-line", label: "Reports" },

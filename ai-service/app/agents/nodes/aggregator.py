@@ -99,7 +99,7 @@ Output ONLY the JSON. No other text. Do not wrap in markdown tags."""
 
 async def aggregator_node(state: MongezAgentState) -> dict:
     """Aggregator Node — synthesizes the final response in a single LLM invocation."""
-    from app.dependencies import llm_client, nestjs_client
+    from app.dependencies import llm_client, nestjs_client, get_prompt_loader
 
     query = state.get("rewritten_query") or state.get("raw_input") or ""
     intent = state.get("intent", "chat")
@@ -168,7 +168,8 @@ async def aggregator_node(state: MongezAgentState) -> dict:
             if content.endswith("```"):
                 content = content.rsplit("```", 1)[0]
             
-            parsed = json.loads(content.strip(), strict=False)
+            from app.utils.json_parser import safe_json_parse
+            parsed = safe_json_parse(content.strip())
             answer = parsed.get("answer", "")
             tasks = parsed.get("tasks", [])
 
@@ -276,12 +277,30 @@ async def aggregator_node(state: MongezAgentState) -> dict:
             }
         }
 
+    # Clean tool results to strip execution metadata (like duration, cache hit) and parse JSON contents
+    cleaned_results = []
+    for r in tool_results:
+        tool_name = r.get("tool")
+        content_raw = r.get("content", "")
+        # Safely parse stringified JSON content for cleaner representation
+        parsed_content = content_raw
+        if isinstance(content_raw, str) and content_raw.strip().startswith(("[", "{")):
+            try:
+                parsed_content = json.loads(content_raw)
+            except Exception:
+                pass
+        cleaned_results.append({
+            "tool": tool_name,
+            "data": parsed_content,
+            "warnings": r.get("warnings", [])
+        })
+
     # Context budgeting and compression
     try:
-        tool_results_str = json.dumps(tool_results, indent=2, ensure_ascii=False)
+        tool_results_str = json.dumps(cleaned_results, indent=2, ensure_ascii=False)
         compressed_results = await compress_context(tool_results_str, query)
     except Exception:
-        compressed_results = json.dumps(tool_results)
+        compressed_results = json.dumps(cleaned_results, ensure_ascii=False)
 
     # Format RAG retrieved context if present
     retrieved_context = state.get("retrieved_context") or []
@@ -294,14 +313,36 @@ async def aggregator_node(state: MongezAgentState) -> dict:
     else:
         rag_context_str = "No semantic comments or logs retrieved for this query."
 
-    system_prompt = _SYSTEM.format(
-        query=query,
-        role=state.get("user_role", "Member"),
-        name=state.get("user_name", "User"),
-        space=state.get("space_name", "Workspace"),
-        tool_results_json=compressed_results,
-        rag_context=rag_context_str
-    )
+    # Load specialized aggregator system prompt based on intent
+    try:
+        prompt_loader = get_prompt_loader()
+        prompt_name = "aggregator_chat"
+        if intent == "risk":
+            prompt_name = "aggregator_risk"
+        elif intent == "report":
+            prompt_name = "aggregator_report"
+        elif intent == "calendar":
+            prompt_name = "aggregator_calendar"
+            
+        system_prompt = prompt_loader.load(
+            prompt_name,
+            query=query,
+            role=state.get("user_role", "Member"),
+            name=state.get("user_name", "User"),
+            space=state.get("space_name", "Workspace"),
+            tool_results_json=compressed_results,
+            rag_context=rag_context_str
+        )
+    except Exception as prompt_exc:
+        logger.warning("Failed to load specialized prompt %s, falling back to static prompt: %s", intent, prompt_exc)
+        system_prompt = _SYSTEM.format(
+            query=query,
+            role=state.get("user_role", "Member"),
+            name=state.get("user_name", "User"),
+            space=state.get("space_name", "Workspace"),
+            tool_results_json=compressed_results,
+            rag_context=rag_context_str
+        )
 
     try:
         # Call primary LLM
@@ -329,15 +370,8 @@ async def aggregator_node(state: MongezAgentState) -> dict:
             
         content = content.strip()
 
-        try:
-            parsed = json.loads(content, strict=False)
-        except Exception:
-            # Fallback: find the first '{' and last '}'
-            match = re.search(r'\{.*\}', content, re.DOTALL)
-            if match:
-                parsed = json.loads(match.group(0), strict=False)
-            else:
-                raise
+        from app.utils.json_parser import safe_json_parse_with_answer
+        parsed = safe_json_parse_with_answer(content)
         
         # Map actions key correctly to actions metadata, only if explicitly requested by action keywords
         actions = []

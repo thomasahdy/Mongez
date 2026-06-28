@@ -36,7 +36,14 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (!redis) return;
 
     try {
-      const boardKeys = await redis.keys('presence:board:*');
+      const boardKeys: string[] = [];
+      let cursor = '0';
+      do {
+        const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', 'presence:board:*', 'COUNT', 100);
+        cursor = nextCursor;
+        boardKeys.push(...keys);
+      } while (cursor !== '0');
+
       const now = Date.now();
 
       for (const key of boardKeys) {
@@ -56,7 +63,14 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
         }
       }
 
-      const taskKeys = await redis.keys('presence:task:*');
+      const taskKeys: string[] = [];
+      cursor = '0';
+      do {
+        const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', 'presence:task:*', 'COUNT', 100);
+        cursor = nextCursor;
+        taskKeys.push(...keys);
+      } while (cursor !== '0');
+
       for (const key of taskKeys) {
         if (key.endsWith(':states')) continue;
         const taskId = key.replace('presence:task:', '');

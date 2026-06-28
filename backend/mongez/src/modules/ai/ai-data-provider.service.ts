@@ -33,6 +33,20 @@ export class AIDataProviderService {
     });
   }
 
+  /**
+   * Returns a single task details by ID.
+   */
+  async getTaskById(taskId: string) {
+    return this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        assignments: { include: { user: { select: { id: true, name: true } } } },
+        board: { select: { id: true, name: true } },
+        _count: { select: { comments: true, subtasks: true, attachments: true } },
+      },
+    });
+  }
+
 
   /**
    * Returns all comments for a specific task.

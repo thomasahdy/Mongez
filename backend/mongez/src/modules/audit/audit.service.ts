@@ -36,6 +36,16 @@ export class AuditService {
    */
   async record(input: AuditLogInput): Promise<void> {
     try {
+      // Guard against FK violation: user may have been deleted before the queued job runs
+      const userExists = await this.prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { id: true },
+      });
+      if (!userExists) {
+        this.logger.warn(`Skipping audit log for deleted user ${input.userId} (action: ${input.action})`);
+        return;
+      }
+
       await this.prisma.auditLog.create({
         data: {
           userId: input.userId,

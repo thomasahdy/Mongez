@@ -23,24 +23,26 @@ export class OutboxRelayService {
     try {
       const events = await this.outboxRepository.getUnprocessedEvents(50);
       
-      for (const event of events) {
-        try {
-          // Push to BullMQ. We pass the whole event object.
-          await this.notificationQueue.add('process_event', event, {
-            jobId: event.id, // BullMQ native deduplication key
-            removeOnComplete: true,
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 5000 },
-          });
+      await Promise.all(
+        events.map(async (event) => {
+          try {
+            // Push to BullMQ. We pass the whole event object.
+            await this.notificationQueue.add('process_event', event, {
+              jobId: event.id, // BullMQ native deduplication key
+              removeOnComplete: true,
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 5000 },
+            });
 
-          // Mark as processed in Postgres
-          await this.outboxRepository.markAsProcessed(event.id);
-        } catch (error) {
-          this.logger.error(`Failed to relay OutboxEvent ${event.id}`, error);
-          // Revert status to PENDING so it can be retried on subsequent ticks
-          await this.outboxRepository.revertToPending(event.id);
-        }
-      }
+            // Mark as processed in Postgres
+            await this.outboxRepository.markAsProcessed(event.id);
+          } catch (error) {
+            this.logger.error(`Failed to relay OutboxEvent ${event.id}`, error);
+            // Revert status to PENDING so it can be retried on subsequent ticks
+            await this.outboxRepository.revertToPending(event.id);
+          }
+        })
+      );
     } catch (error) {
       this.logger.error('Error in OutboxRelay loop', error);
     } finally {

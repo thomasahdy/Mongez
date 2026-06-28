@@ -5,8 +5,9 @@ const SECTION_CONFIG = {
   overdue:  { icon: "fa-fire",         label: "Overdue",   iconColor: "text-red-500",   countBg: "bg-red-100 dark:bg-red-900/30 text-red-500",   leftBorder: "border-l-red-500"   },
   today:    { icon: "fa-clock",        label: "Due Today", iconColor: "text-amber-500", countBg: "bg-amber-100 dark:bg-amber-900/30 text-amber-500", leftBorder: "border-l-amber-500" },
   upcoming: { icon: "fa-calendar-day", label: "Upcoming",  iconColor: "text-sky-500",   countBg: "bg-slate-100 dark:bg-slate-700 text-slate-500",  leftBorder: ""                   },
+  noDueDate: { icon: "fa-inbox",        label: "No Due Date", iconColor: "text-slate-400 dark:text-slate-500", countBg: "bg-slate-100 dark:bg-slate-700 text-slate-500", leftBorder: "" },
 };
- 
+
 const TaskSection = ({ sectionKey, tasks, completedIds, onComplete }) => {
   const [open, setOpen] = useState(true);
     const cfg = SECTION_CONFIG[sectionKey];
@@ -17,6 +18,7 @@ const TaskSection = ({ sectionKey, tasks, completedIds, onComplete }) => {
       overdue:  "text-red-500",
       today:    "text-amber-500",
       upcoming: "text-slate-400 dark:text-slate-500",
+      noDueDate: "text-slate-400 dark:text-slate-500",
     };
    
     return (

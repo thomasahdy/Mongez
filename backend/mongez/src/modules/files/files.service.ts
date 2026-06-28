@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -267,5 +268,42 @@ export class FilesService {
       }));
     }
     return copy;
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async purgeSoftDeletedFiles() {
+    try {
+      const versions = await this.prisma.fileVersion.findMany({
+        where: {
+          attachment: {
+            currentVersionId: null,
+          },
+        },
+        select: { id: true, storageKey: true, attachmentId: true },
+      });
+
+      if (!versions.length) return;
+
+      for (const v of versions) {
+        await this.storage.delete(v.storageKey).catch(() => {});
+      }
+
+      const attachmentIds = Array.from(new Set(versions.map((v) => v.attachmentId)));
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.fileVersion.deleteMany({
+          where: {
+            id: { in: versions.map((v) => v.id) },
+          },
+        });
+        await tx.attachment.deleteMany({
+          where: {
+            id: { in: attachmentIds },
+          },
+        });
+      });
+    } catch (err) {
+      console.error('Failed to run daily file purge', err);
+    }
   }
 }

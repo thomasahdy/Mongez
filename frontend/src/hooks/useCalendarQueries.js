@@ -22,3 +22,11 @@ export function useCalendarEventsQuery({ from, to, spaceId, boardId, holidayCoun
     enabled: enabled && Boolean(from) && Boolean(to),
   });
 }
+
+export function useGoogleCalendarStatusQuery(spaceId) {
+  return useQuery({
+    queryKey: ["calendar", "google-status", spaceId],
+    queryFn: () => calendarService.getGoogleSyncStatus(spaceId),
+    enabled: Boolean(spaceId),
+  });
+}

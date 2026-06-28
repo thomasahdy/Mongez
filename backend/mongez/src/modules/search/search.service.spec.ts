@@ -115,6 +115,8 @@ describe('SearchService', () => {
           id: true,
           identifier: true,
           title: true,
+          description: true,
+          tags: true,
           status: true,
           priority: true,
           dueDate: true,

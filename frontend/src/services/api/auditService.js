@@ -63,7 +63,7 @@ const normalizeAuditLogsResponse = (data) => {
 }
 
 export const getAuditLogs = async (params = {}, config = {}) => {
-    const { data } = await apiClient.get("/audit-logs", {
+    const { data } = await apiClient.get("/audit-logs/me", {
         params,
         ...config,
     })

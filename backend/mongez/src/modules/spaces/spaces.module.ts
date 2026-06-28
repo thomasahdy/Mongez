@@ -16,6 +16,7 @@ import { SpaceMemberGuard } from './guards/space-member.guard';
     BullModule.registerQueue(
       { name: QUEUE_NAMES.NOTIFICATIONS },
       { name: QUEUE_NAMES.WORKSPACE_EXPORT },
+      { name: QUEUE_NAMES.EMAILS },
     ),
   ],
   controllers: [SpacesController, InvitationsController],

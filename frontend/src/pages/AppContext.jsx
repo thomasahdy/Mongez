@@ -88,12 +88,10 @@ export function AppProvider({ children }) {
         [spaceId]: departments,
       }));
 
-      const boardEntries = await Promise.all(
-        departments.map(async (department) => {
-          const boardsResponse = await boardsService.getDepartmentBoards(department.id).catch(() => ({ items: [] }));
-          return [department.id, boardsResponse?.items || []];
-        }),
-      );
+      const boardEntries = departments.map((department) => [
+        department.id,
+        department.boards || [],
+      ]);
 
       const nextBoardsByDepartment = Object.fromEntries(boardEntries);
 

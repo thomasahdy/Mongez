@@ -12,12 +12,15 @@ const SocketContext = createContext({
   leaveTask: () => {},
   onlineUsers: {},
   getSpacePresence: () => {},
+  typingUsers: {},
+  sendTypingStatus: () => {},
 });
 
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
+  const [typingUsers, setTypingUsers] = useState({});
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -66,6 +69,7 @@ export const SocketProvider = ({ children }) => {
       console.log("Realtime Task Created:", task);
       queryClient.invalidateQueries({ queryKey: ["boards"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["board"] });
     });
 
     socketInstance.on("task:updated", (data) => {
@@ -73,16 +77,19 @@ export const SocketProvider = ({ children }) => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
       queryClient.invalidateQueries({ queryKey: ["tasks", data.id] });
       queryClient.invalidateQueries({ queryKey: ["task", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["board"] });
     });
 
     socketInstance.on("task:moved", (data) => {
       console.log("Realtime Task Moved:", data);
       queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: ["board"] });
     });
 
     socketInstance.on("task:archived", (data) => {
       console.log("Realtime Task Archived:", data);
       queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: ["board"] });
     });
 
     socketInstance.on("task:seen", (data) => {
@@ -128,6 +135,39 @@ export const SocketProvider = ({ children }) => {
       }));
     });
 
+    socketInstance.on("task:typing-status", (data) => {
+      console.log("Realtime Task Typing Status:", data);
+      setTypingUsers((prev) => {
+        const next = { ...prev };
+        if (data.isTyping) {
+          next[data.taskId] = next[data.taskId] || [];
+          if (!next[data.taskId].some((u) => u.userId === data.userId)) {
+            next[data.taskId].push({ userId: data.userId, name: data.name || "Someone" });
+          }
+          // Auto-expire typing indicator after 5s of no update
+          setTimeout(() => {
+            setTypingUsers((current) => {
+              if (!current[data.taskId]) return current;
+              const nextCurrent = { ...current };
+              nextCurrent[data.taskId] = nextCurrent[data.taskId].filter((u) => u.userId !== data.userId);
+              if (nextCurrent[data.taskId].length === 0) {
+                delete nextCurrent[data.taskId];
+              }
+              return nextCurrent;
+            });
+          }, 5000);
+        } else {
+          if (next[data.taskId]) {
+            next[data.taskId] = next[data.taskId].filter((u) => u.userId !== data.userId);
+            if (next[data.taskId].length === 0) {
+              delete next[data.taskId];
+            }
+          }
+        }
+        return next;
+      });
+    });
+
     setSocket(socketInstance);
 
     return () => {
@@ -156,8 +196,27 @@ export const SocketProvider = ({ children }) => {
     if (socket) socket.emit("space:get-presence", spaceId);
   };
 
+  const sendTypingStatus = (taskId, isTyping) => {
+    if (socket) {
+      socket.emit("task:typing", { taskId, isTyping });
+    }
+  };
+
   return (
-    <SocketContext.Provider value={{ socket, isConnected, joinBoard, leaveBoard, joinTask, leaveTask, onlineUsers, getSpacePresence }}>
+    <SocketContext.Provider
+      value={{
+        socket,
+        isConnected,
+        joinBoard,
+        leaveBoard,
+        joinTask,
+        leaveTask,
+        onlineUsers,
+        getSpacePresence,
+        typingUsers,
+        sendTypingStatus,
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );
