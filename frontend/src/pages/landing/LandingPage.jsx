@@ -7,10 +7,13 @@ import ResultsSection from './sections/ResultsSection'
 import TestimonialsSection from './sections/TestimonialsSection'
 import FooterSection from '../../components/landing/FooterSection'
 import OuterNavbar from '../../components/landing/OuterNavbar'
+import { useLocaleDirection } from '../../hooks/useLocaleDirection'
 
 function LandingPage() {
+  const { isRTL } = useLocaleDirection()
+
   return (
-    <div className="bg-white text-slate-900">
+    <div className="bg-white text-slate-900" dir={isRTL ? "rtl" : "ltr"}>
       <OuterNavbar/>
       <main>
         <HeroSection />

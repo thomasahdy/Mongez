@@ -181,6 +181,8 @@ function preprocessMessageContent(text) {
 }
 
 const MarkdownRenderer = ({ content }) => {
+  const { i18n } = useTranslation();
+  const isRTL = i18n.dir(i18n.language) === "rtl";
   const processedText = useMemo(() => preprocessMessageContent(content), [content]);
 
   // Inline formatting helper
@@ -316,15 +318,15 @@ const MarkdownRenderer = ({ content }) => {
             
             let icon = null;
             if (text.toLowerCase().includes("executive summary") || text.toLowerCase().includes("summary")) {
-              icon = <i className="fa-solid fa-robot text-indigo-500 mr-2 shrink-0" />;
+              icon = <i className={`fa-solid fa-robot text-indigo-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
             } else if (text.toLowerCase().includes("insights") || text.toLowerCase().includes("metrics")) {
-              icon = <i className="fa-solid fa-chart-line text-emerald-500 mr-2 shrink-0" />;
+              icon = <i className={`fa-solid fa-chart-line text-emerald-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
             } else if (text.toLowerCase().includes("risks") || text.toLowerCase().includes("blockers")) {
-              icon = <i className="fa-solid fa-triangle-exclamation text-rose-500 mr-2 shrink-0" />;
+              icon = <i className={`fa-solid fa-triangle-exclamation text-rose-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
             } else if (text.toLowerCase().includes("actions") || text.toLowerCase().includes("reminders")) {
-              icon = <i className="fa-solid fa-circle-play text-amber-500 mr-2 shrink-0" />;
+              icon = <i className={`fa-solid fa-circle-play text-amber-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
             } else if (text.toLowerCase().includes("sources") || text.toLowerCase().includes("citations")) {
-              icon = <i className="fa-solid fa-folder-open text-sky-500 mr-2 shrink-0" />;
+              icon = <i className={`fa-solid fa-folder-open text-sky-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
             }
 
             const hClasses = {
@@ -343,7 +345,7 @@ const MarkdownRenderer = ({ content }) => {
           case "list": {
             const ListTag = block.numbered ? "ol" : "ul";
             return (
-              <ListTag key={bIdx} className={`pl-5 space-y-1 mb-2.5 ${block.numbered ? "list-decimal" : "list-disc"}`}>
+              <ListTag key={bIdx} className={`${isRTL ? "pr-5 text-right" : "pl-5 text-left"} space-y-1 mb-2.5 ${block.numbered ? "list-decimal" : "list-disc"}`}>
                 {block.items.map((item, iIdx) => (
                   <li key={iIdx} className="text-slate-705 dark:text-slate-300 leading-relaxed font-medium">
                     {formatInline(item)}
@@ -372,7 +374,7 @@ const MarkdownRenderer = ({ content }) => {
 
             return (
               <div key={bIdx} className="overflow-x-auto border border-slate-150 dark:border-slate-800/80 rounded-2xl shadow-sm my-3">
-                <table className="w-full text-left text-[12px] border-collapse bg-white dark:bg-slate-900">
+                <table className={`w-full text-[12px] border-collapse bg-white dark:bg-slate-900 ${i18n.dir(i18n.language) === "rtl" ? "text-right" : "text-left"}`}>
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-850/50 border-b border-slate-150 dark:border-slate-800/80">
                       {headers.map((h, hIdx) => (
@@ -422,6 +424,7 @@ function ChatBubble({
 }) {
   const { t, i18n } = useTranslation();
   const isArabic = i18n.language?.startsWith("ar");
+  const isRTL = isArabic;
 
   if (message.kind === "welcome") {
     return (
@@ -433,7 +436,12 @@ function ChatBubble({
 
   if (message.role === "user") {
     return (
-      <div className="rounded-[22px] rounded-tr-sm bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white px-5 py-3 text-[13.5px] leading-relaxed whitespace-pre-wrap shadow-md shadow-indigo-500/10 font-semibold" dir="auto">
+      <div
+        className={`rounded-[22px] bg-gradient-to-tr from-indigo-600 to-indigo-500 px-5 py-3 text-[13.5px] font-semibold leading-relaxed whitespace-pre-wrap text-white shadow-md shadow-indigo-500/10 ${
+          isRTL ? "rounded-tl-sm" : "rounded-tr-sm"
+        }`}
+        dir="auto"
+      >
         {message.text}
       </div>
     );
@@ -449,7 +457,11 @@ function ChatBubble({
             <span>{message.label}</span>
           </div>
         )}
-        <div className="rounded-2xl bg-rose-50/50 dark:bg-rose-955/10 px-4 py-3 flex items-center justify-between gap-3 border border-rose-100/50 dark:border-rose-900/30 animate-pulse">
+        <div
+          className={`animate-pulse rounded-2xl border border-rose-100/50 bg-rose-50/50 px-4 py-3 dark:border-rose-900/30 dark:bg-rose-955/10 ${
+            isRTL ? "flex flex-row-reverse items-center justify-between gap-3 text-right" : "flex items-center justify-between gap-3"
+          }`}
+        >
           <span className="text-[12.5px] text-rose-605 dark:text-rose-455 font-bold leading-relaxed">⚠️ {message.error}</span>
           <button
             type="button"
@@ -475,11 +487,11 @@ function ChatBubble({
             <span className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce" />
           </div>
           <span className="text-[12.5px] font-bold tracking-wide animate-pulse">
-            {message.status || "Thinking..."}
+            {message.status || t("aiAssistant.labels.thinking")}
           </span>
         </div>
         {message.thinkingSteps && message.thinkingSteps.length > 0 && (
-          <div className="py-1 border-l-2 border-slate-100 dark:border-slate-800 pl-4 space-y-2.5">
+          <div className={`py-1 space-y-2.5 ${isRTL ? "border-r-2 border-slate-100 pr-4 dark:border-slate-800" : "border-l-2 border-slate-100 pl-4 dark:border-slate-800"}`}>
             {message.thinkingSteps.map((step, idx) => (
               <div key={idx} className="flex items-center gap-2.5 text-[11.5px] font-bold">
                 {step.active ? (
@@ -521,10 +533,15 @@ function ChatBubble({
         {/* Suggested Actions for Plan layout */}
         {hasActions && (
           <div className="border-t border-slate-100 dark:border-slate-808/40 pt-4 mt-4">
-            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-2.5">Suggested Action Tasks</span>
+            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-2.5">{t("aiAssistant.labels.chat.suggestedActionTasks")}</span>
             <div className="grid grid-cols-1 gap-2.5">
               {message.actions.map((act, index) => (
-                <div key={index} className="rounded-2xl bg-slate-50 dark:bg-slate-955 p-3.5 border border-slate-150/60 dark:border-slate-808 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm text-left">
+                <div
+                  key={index}
+                  className={`rounded-2xl border border-slate-150/60 bg-slate-50 p-3.5 shadow-sm dark:border-slate-808 dark:bg-slate-955 ${
+                    isRTL ? "flex flex-col gap-3 text-right md:flex-row-reverse md:items-center md:justify-between" : "flex flex-col gap-3 text-left md:flex-row md:items-center md:justify-between"
+                  }`}
+                >
                   <div className="min-w-0 flex-1">
                     <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-[9px] font-bold text-indigo-655 dark:text-indigo-400 tracking-wide uppercase">
                       {act.commandType || act.type || t("aiAssistant.labels.chat.actionFallback")}
@@ -592,8 +609,11 @@ function ChatBubble({
 }
 
 function ToastContainer({ toasts, onClose }) {
+  const { i18n } = useTranslation();
+  const isRTL = i18n.dir(i18n.language) === "rtl";
+
   return (
-    <div className="fixed bottom-5 right-5 z-55 flex flex-col gap-2.5 max-w-sm pointer-events-none">
+    <div className={`fixed bottom-5 z-55 flex max-w-sm flex-col gap-2.5 pointer-events-none ${isRTL ? "left-5" : "right-5"}`}>
       {toasts.map((t) => (
         <div
           key={t.id}
@@ -620,7 +640,7 @@ function ToastContainer({ toasts, onClose }) {
           <button
             type="button"
             onClick={() => onClose(t.id)}
-            className="ml-auto flex h-5 w-5 items-center justify-center rounded-lg hover:bg-slate-900/5 text-slate-400 hover:text-slate-650 transition cursor-pointer"
+            className={`${isRTL ? "mr-auto" : "ml-auto"} flex h-5 w-5 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-900/5 hover:text-slate-650 cursor-pointer`}
           >
             <i className="fa-solid fa-xmark text-[10px]" />
           </button>
@@ -636,6 +656,7 @@ function AiAssistantPage() {
   const navigate = useNavigate();
   const { activeSpace, activeBoard, spaces, activeBoards, setActiveSpace, setActiveBoard, user } = useAppContext();
   const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
+  const isRTL = i18n.dir(i18n.language) === "rtl";
   const formatDate = (value, options) => new Date(value).toLocaleDateString(locale, options);
   const formatTime = (value, options) => new Date(value).toLocaleTimeString(locale, options);
   const formatDateTime = (value, options) => new Date(value).toLocaleString(locale, options);
@@ -787,10 +808,10 @@ function AiAssistantPage() {
 
   useEffect(() => {
     setPath?.([
-      { name: activeSpace?.name || "Workspace", color: "text-slate-400", ref: "/dashboard" },
-      { name: "Mongez Intelligence", color: "text-slate-800", ref: "" },
+      { name: activeSpace?.name || t("common.workspace"), color: "text-slate-400", ref: "/dashboard" },
+      { name: t("aiAssistant.labels.title"), color: "text-slate-800", ref: "" },
     ]);
-  }, [setPath, activeSpace?.name]);
+  }, [setPath, activeSpace?.name, t]);
 
   useEffect(() => {
     saveJsonStorage(STORAGE_KEYS.context, contextValues);
@@ -1118,7 +1139,7 @@ function AiAssistantPage() {
     setMessages([welcomeMessage]);
     setComposer("");
     setPageError("");
-    showToast("New chat session started", "info");
+    showToast(t("aiAssistant.toasts.newSession"), "info");
   };
 
   const loadSession = (sessionId) => {
@@ -1138,25 +1159,30 @@ function AiAssistantPage() {
     const mins = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days === 1) return "Yesterday";
-    return new Date(iso).toLocaleDateString();
+    if (mins < 1) return t("taskDetails.defaults.justNow");
+    const relativeFormatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+    if (mins < 60) return relativeFormatter.format(-mins, "minute");
+    if (hours < 24) return relativeFormatter.format(-hours, "hour");
+    if (days < 7) return relativeFormatter.format(-days, "day");
+    return new Date(iso).toLocaleDateString(locale);
   };
 
   return (
-    <div className="relative flex flex-1 overflow-hidden font-sans h-full w-full" style={{background:'var(--bg-depth-0)'}}>
+    <div
+      className={`relative flex h-full w-full flex-1 overflow-hidden font-sans ${isRTL ? "flex-row-reverse" : ""}`}
+      style={{background:'var(--bg-depth-0)'}}
+      dir={isRTL ? "rtl" : "ltr"}
+    >
       {historyOpen && activeTab === "chat" && (
-        <aside className="w-64 border-r border-slate-150/80 dark:border-slate-800/60 bg-white dark:bg-slate-900 flex flex-col shrink-0 h-full transition-all duration-300 animate-slideRight shadow-[2px_0_12px_rgba(15,23,42,0.04)]">
+        <aside className={`flex h-full w-64 shrink-0 flex-col bg-white shadow-[2px_0_12px_rgba(15,23,42,0.04)] transition-all duration-300 animate-slideRight dark:bg-slate-900 ${isRTL ? "border-l border-slate-150/80 dark:border-slate-800/60" : "border-r border-slate-150/80 dark:border-slate-800/60"}`}>
           {/* Header of Sidebar */}
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0">
-            <span className="text-[9.5px] font-black uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Conversations</span>
+            <span className="text-[9.5px] font-black uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{t("aiAssistant.labels.conversations")}</span>
             <button
               type="button"
               onClick={handleNewChat}
               className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 transition-all cursor-pointer hover:scale-105 duration-150 shadow-sm"
-              title="New Chat Session"
+              title={t("aiAssistant.labels.chat.newChatSession")}
             >
               <i className="fa-solid fa-plus text-[10px]" />
             </button>
@@ -1168,8 +1194,8 @@ function AiAssistantPage() {
                 <div className="mb-3 h-10 w-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center">
                   <i className="fa-solid fa-comments text-indigo-400 text-sm" />
                 </div>
-                <p className="text-[11.5px] font-semibold text-slate-500 dark:text-slate-400 leading-relaxed">No conversations yet</p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Start a chat to see your history here</p>
+                <p className="text-[11.5px] font-semibold text-slate-500 dark:text-slate-400 leading-relaxed">{t("aiAssistant.labels.noConversationsYet")}</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{t("aiAssistant.labels.startChatHistory")}</p>
               </div>
             ) : (
               recentSessions.map((session) => (
@@ -1177,7 +1203,9 @@ function AiAssistantPage() {
                   key={session.id}
                   type="button"
                   onClick={() => loadSession(session.id)}
-                  className={`ai-session-card ${currentSessionId === session.id ? "active" : ""} w-full rounded-xl pl-4 pr-3 py-2.5 text-left transition-all cursor-pointer flex flex-col gap-0.5 group ${
+                  className={`ai-session-card ${currentSessionId === session.id ? "active" : ""} w-full rounded-xl py-2.5 transition-all cursor-pointer group flex flex-col gap-0.5 ${
+                    isRTL ? "pr-4 pl-3 text-right" : "pl-4 pr-3 text-left"
+                  } ${
                     currentSessionId === session.id
                       ? "bg-indigo-50/60 dark:bg-indigo-950/15 text-indigo-700 dark:text-indigo-300"
                       : "bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:-translate-y-px"
@@ -1207,23 +1235,23 @@ function AiAssistantPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-[19px] font-black tracking-[-0.04em] ai-gradient-text">Mongez Intelligence</h1>
+                  <h1 className="text-[19px] font-black tracking-[-0.04em] ai-gradient-text">{t("aiAssistant.labels.title")}</h1>
                   <span className="rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase tracking-[0.15em]" style={{background:'linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.1))',color:'#7c3aed',border:'1px solid rgba(139,92,246,0.15)'}}>
                     AI OS
                   </span>
                 </div>
-                <p className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">AI-driven workspace insights, approvals, workload capacities, and execution logs.</p>
+                <p className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">{t("aiAssistant.labels.subtitle")}</p>
               </div>
             </div>
 
             {/* Premium underline tab navigation */}
             <nav className="flex items-center gap-0">
               {[
-                { id: "overview",  label: "Overview",       icon: "fa-chart-pie" },
-                { id: "actions",   label: "Actions",        icon: "fa-bolt-lightning" },
-                { id: "approvals", label: "Approvals",      icon: "fa-shield-halved" },
-                { id: "insights",  label: "Insights",       icon: "fa-eye" },
-                { id: "chat",      label: "Chat Assistant", icon: "fa-comments" },
+                { id: "overview",  label: t("aiAssistant.labels.tabs.overview"),  icon: "fa-chart-pie" },
+                { id: "actions",   label: t("aiAssistant.labels.tabs.actions"),   icon: "fa-bolt-lightning" },
+                { id: "approvals", label: t("aiAssistant.labels.tabs.approvals"), icon: "fa-shield-halved" },
+                { id: "insights",  label: t("aiAssistant.labels.tabs.insights"),  icon: "fa-eye" },
+                { id: "chat",      label: t("aiAssistant.labels.tabs.chat"),      icon: "fa-comments" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1257,13 +1285,13 @@ function AiAssistantPage() {
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 px-3 py-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:border-indigo-200 hover:bg-indigo-50/30 dark:hover:bg-slate-800 cursor-pointer transition-all duration-150"
                 >
                   <i className="fa-solid fa-folder text-indigo-500 text-[10px]" />
-                  {spaces.find(s => s.id === contextValues.spaceId)?.name || "Workspace"}
-                  <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                  {spaces.find(s => s.id === contextValues.spaceId)?.name || t("aiAssistant.labels.currentWorkspace")}
+                  <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                 </button>
                 {headerSpaceOpen && (
                   <>
                     <div className="fixed inset-0 z-35" onClick={() => setHeaderSpaceOpen(false)} />
-                    <div className="absolute top-full right-0 mt-1.5 z-45 w-52 rounded-2xl border border-slate-150 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                    <div className={`absolute top-full mt-1.5 z-45 max-h-60 w-52 overflow-y-auto rounded-2xl border border-slate-150 bg-white p-1.5 shadow-xl animate-slideUp dark:border-slate-700 dark:bg-slate-900 ${isRTL ? "left-0" : "right-0"}`}>
                       {spaces.map((s) => (
                         <button
                           key={s.id}
@@ -1275,7 +1303,7 @@ function AiAssistantPage() {
                             setActiveSpace(s.id);
                             setHeaderSpaceOpen(false);
                           }}
-                          className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                          className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} ${
                             contextValues.spaceId === s.id ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/40" : "text-slate-700 dark:text-slate-300"
                           }`}
                         >
@@ -1296,15 +1324,15 @@ function AiAssistantPage() {
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 px-3 py-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:border-emerald-200 hover:bg-emerald-50/30 dark:hover:bg-slate-800 cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <i className="fa-solid fa-columns text-emerald-500 text-[10px]" />
-                  {activeBoards.find(b => b.id === contextValues.boardId)?.name || "Board"}
-                  <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                  {activeBoards.find(b => b.id === contextValues.boardId)?.name || t("aiAssistant.labels.currentBoard")}
+                  <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                 </button>
                 {headerBoardOpen && (
                   <>
                     <div className="fixed inset-0 z-35" onClick={() => setHeaderBoardOpen(false)} />
-                    <div className="absolute top-full right-0 mt-1.5 z-45 w-52 rounded-2xl border border-slate-150 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                    <div className={`absolute top-full mt-1.5 z-45 max-h-60 w-52 overflow-y-auto rounded-2xl border border-slate-150 bg-white p-1.5 shadow-xl animate-slideUp dark:border-slate-700 dark:bg-slate-900 ${isRTL ? "left-0" : "right-0"}`}>
                       {activeBoards.length === 0 ? (
-                        <div className="px-3.5 py-2.5 text-[11.5px] text-slate-400 font-semibold">No boards found</div>
+                        <div className="px-3.5 py-2.5 text-[11.5px] text-slate-400 font-semibold">{t("aiAssistant.labels.noBoardsFound")}</div>
                       ) : (
                         activeBoards.map((b) => (
                           <button
@@ -1316,7 +1344,7 @@ function AiAssistantPage() {
                               setActiveBoard(b.id);
                               setHeaderBoardOpen(false);
                             }}
-                            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                            className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} ${
                               contextValues.boardId === b.id ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/40" : "text-slate-700 dark:text-slate-300"
                             }`}
                           >
@@ -1341,7 +1369,7 @@ function AiAssistantPage() {
                   }`}
                 >
                   <i className="fa-solid fa-sidebar text-[10px]" />
-                  {historyOpen ? "Hide History" : "Show History"}
+                  {historyOpen ? t("aiAssistant.labels.history.hide") : t("aiAssistant.labels.history.show")}
                 </button>
               )}
             </div>
@@ -1375,18 +1403,18 @@ function AiAssistantPage() {
                   ))
                 ) : (
                   [
-                  { label: "Open Tasks",          value: dashboardData.metrics.openTasks,                    bar: "neutral", color: "text-slate-900 dark:text-slate-100" },
-                  { label: "Overdue Tasks",         value: dashboardData.metrics.overdueTasks,                 bar: dashboardData.metrics.overdueTasks > 0 ? "danger" : "neutral",  color: dashboardData.metrics.overdueTasks > 0 ? "text-rose-600" : "text-slate-900 dark:text-slate-100" },
-                  { label: "Blocked Tasks",         value: dashboardData.metrics.blockedTasks,                 bar: dashboardData.metrics.blockedTasks > 0 ? "warning" : "neutral", color: dashboardData.metrics.blockedTasks > 0 ? "text-amber-600" : "text-slate-900 dark:text-slate-100" },
-                  { label: "Pending Approvals",     value: dashboardData.metrics.pendingApprovals,             bar: "info",    color: "text-violet-600 dark:text-violet-400", sub: `${dashboardData.metrics.staleApprovals} stale >48h` },
-                  { label: "High Risk Boards",      value: dashboardData.metrics.highRiskProjects,             bar: dashboardData.metrics.highRiskProjects > 0 ? "danger" : "neutral",  color: dashboardData.metrics.highRiskProjects > 0 ? "text-rose-500" : "text-slate-900 dark:text-slate-100" },
-                  { label: "Overloaded Members",    value: dashboardData.metrics.overloadedMembers,            bar: "warning", color: "text-amber-600" },
-                  { label: "Upcoming Deadlines",    value: dashboardData.metrics.upcomingDeadlines,            bar: "sky",     color: "text-sky-600" },
-                  { label: "Meeting Actions",       value: dashboardData.metrics.meetingActionsWaitingReview,  bar: "info",    color: "text-indigo-600" },
+                  { label: t("aiAssistant.labels.overview.openTasks"), value: dashboardData.metrics.openTasks, bar: "neutral", color: "text-slate-900 dark:text-slate-100" },
+                  { label: t("aiAssistant.labels.overview.overdueTasks"), value: dashboardData.metrics.overdueTasks, bar: dashboardData.metrics.overdueTasks > 0 ? "danger" : "neutral", color: dashboardData.metrics.overdueTasks > 0 ? "text-rose-600" : "text-slate-900 dark:text-slate-100" },
+                  { label: t("aiAssistant.labels.overview.blockedTasks"), value: dashboardData.metrics.blockedTasks, bar: dashboardData.metrics.blockedTasks > 0 ? "warning" : "neutral", color: dashboardData.metrics.blockedTasks > 0 ? "text-amber-600" : "text-slate-900 dark:text-slate-100" },
+                  { label: t("aiAssistant.labels.overview.pendingApprovals"), value: dashboardData.metrics.pendingApprovals, bar: "info", color: "text-violet-600 dark:text-violet-400", sub: t("aiAssistant.labels.overview.staleApprovalsSuffix", { count: dashboardData.metrics.staleApprovals }) },
+                  { label: t("aiAssistant.labels.overview.highRiskBoards"), value: dashboardData.metrics.highRiskProjects, bar: dashboardData.metrics.highRiskProjects > 0 ? "danger" : "neutral", color: dashboardData.metrics.highRiskProjects > 0 ? "text-rose-500" : "text-slate-900 dark:text-slate-100" },
+                  { label: t("aiAssistant.labels.overview.overloadedMembers"), value: dashboardData.metrics.overloadedMembers, bar: "warning", color: "text-amber-600" },
+                  { label: t("aiAssistant.labels.overview.upcomingDeadlines"), value: dashboardData.metrics.upcomingDeadlines, bar: "sky", color: "text-sky-600" },
+                  { label: t("aiAssistant.labels.overview.meetingActions"), value: dashboardData.metrics.meetingActionsWaitingReview, bar: "info", color: "text-indigo-600" },
                 ].map((stat, idx) => (
                   <div
                     key={idx}
-                    className={`ai-metric-bar ${stat.bar} rounded-2xl bg-white dark:bg-slate-900 pl-6 pr-5 py-5 transition-all duration-200 hover:-translate-y-0.5 cursor-default group`}
+                    className={`ai-metric-bar ${stat.bar} rounded-2xl bg-white dark:bg-slate-900 py-5 transition-all duration-200 hover:-translate-y-0.5 cursor-default group ${isRTL ? "pr-6 pl-5" : "pl-6 pr-5"}`}
                     style={{boxShadow:'var(--shadow-card)'}}
                   >
                     <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500 block mb-2">{stat.label}</span>
@@ -1408,12 +1436,12 @@ function AiAssistantPage() {
                         <i className="fa-solid fa-bolt-lightning text-indigo-500 text-[11px]" />
                       </div>
                       <div>
-                        <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">AI Action Center</h3>
-                        <p className="text-[10.5px] text-slate-400 mt-0.5">Review automated proposed tasks</p>
+                        <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">{t("aiAssistant.labels.overview.actionCenter")}</h3>
+                        <p className="text-[10.5px] text-slate-400 mt-0.5">{t("aiAssistant.labels.overview.actionCenterDescription")}</p>
                       </div>
                     </div>
                     <span className="rounded-full px-2.5 py-0.5 text-[9px] font-bold" style={{background:'linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.08))',color:'#6366f1',border:'1px solid rgba(99,102,241,0.15)'}}>
-                      {dashboardData.pendingActions.length} Pending
+                      {t("aiAssistant.labels.overview.pendingBadge", { count: dashboardData.pendingActions.length })}
                     </span>
                   </div>
 
@@ -1426,7 +1454,7 @@ function AiAssistantPage() {
                       <p className="text-[11px] text-slate-400 max-w-xs mt-1">{t("aiAssistant.labels.overview.governanceCleanDescription")}</p>
                     </div>
                   ) : (
-                    <div className="space-y-3 flex-1 overflow-y-auto max-h-[320px] pr-1">
+                    <div className={`space-y-3 flex-1 overflow-y-auto max-h-[320px] ${isRTL ? "pl-1" : "pr-1"}`}>
                       {dashboardData.pendingActions.map((action) => (
                         <div key={action.id} className="rounded-2xl bg-slate-50 dark:bg-slate-955 p-4 border-none shadow-[0_2px_8px_rgba(15,23,42,0.01)]">
                           <div className="flex justify-between items-start gap-2">
@@ -1468,16 +1496,16 @@ function AiAssistantPage() {
                         <i className="fa-solid fa-circle-exclamation text-rose-500 text-[11px]" />
                       </div>
                       <div>
-                        <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">Executive Feed</h3>
-                        <p className="text-[10.5px] text-slate-400 mt-0.5">Real-time alerts, blockages, capacity highlights</p>
+                        <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">{t("aiAssistant.labels.overview.executiveFeed")}</h3>
+                        <p className="text-[10.5px] text-slate-400 mt-0.5">{t("aiAssistant.labels.overview.executiveFeedDescription")}</p>
                       </div>
                     </div>
                     <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
                   </div>
 
-                  <div className="space-y-3.5 flex-1 overflow-y-auto max-h-[320px] pr-1">
+                  <div className={`space-y-3.5 flex-1 overflow-y-auto max-h-[320px] ${isRTL ? "pl-1" : "pr-1"}`}>
                     {dashboardData.insights.map((item) => (
-                      <div key={item.id} className="flex gap-3 items-start text-left">
+                      <div key={item.id} className={`flex gap-3 items-start ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}>
                         <div className={`mt-0.5 flex h-7 w-7 items-center justify-center rounded-xl ${
                           item.severity === "high"
                             ? "bg-rose-50 text-rose-500 dark:bg-rose-950/25"
@@ -1514,10 +1542,10 @@ function AiAssistantPage() {
                       <i className="fa-solid fa-microphone-lines text-sky-500 text-[11px]" />
                     </div>
                     <div>
-                      <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">Meeting Intelligence</h3>
-                      <p className="text-[10.5px] text-slate-400 mt-0.5">Analyzed transcripts &amp; task extraction stats</p>
+                        <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">{t("aiAssistant.labels.overview.recentMeetingIntelligence")}</h3>
+                        <p className="text-[10.5px] text-slate-400 mt-0.5">{t("aiAssistant.labels.overview.recentMeetingDescription")}</p>
+                      </div>
                     </div>
-                  </div>
 
                   {dashboardData.meetingIntelligence.length === 0 ? (
                     <div className="py-8 text-center text-[12px] text-slate-400">
@@ -1559,10 +1587,10 @@ function AiAssistantPage() {
                       <i className="fa-solid fa-scale-balanced text-emerald-500 text-[11px]" />
                     </div>
                     <div>
-                      <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">Decision Register</h3>
-                      <p className="text-[10.5px] text-slate-400 mt-0.5">Latest logs, outcomes &amp; justifications</p>
+                        <h3 className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 leading-tight">{t("aiAssistant.labels.overview.recentDecisions")}</h3>
+                        <p className="text-[10.5px] text-slate-400 mt-0.5">{t("aiAssistant.labels.overview.recentDecisionsDescription")}</p>
+                      </div>
                     </div>
-                  </div>
 
                   {dashboardData.recentDecisions.length === 0 ? (
                     <div className="py-8 text-center text-[12px] text-slate-400">
@@ -1792,7 +1820,7 @@ function AiAssistantPage() {
               {pageError && (
                 <div className="mx-5 mt-4 mb-2 rounded-2xl border border-rose-100 bg-rose-50 dark:border-rose-900/20 dark:bg-rose-950/10 px-4 py-3 text-[12px] leading-relaxed text-rose-700 dark:text-rose-400 flex items-center justify-between">
                   <span className="flex items-center gap-2"><i className="fa-solid fa-circle-exclamation" />{pageError}</span>
-                  <button onClick={() => setPageError("")} className="text-rose-400 hover:text-rose-600 ml-3"><i className="fa-solid fa-xmark" /></button>
+                  <button onClick={() => setPageError("")} className={`text-rose-400 hover:text-rose-600 ${isRTL ? "mr-3" : "ml-3"}`}><i className="fa-solid fa-xmark" /></button>
                 </div>
               )}
               {/* Messages container */}
@@ -1812,20 +1840,20 @@ function AiAssistantPage() {
                         <i className="fa-solid fa-sparkles text-xl" />
                       </div>
                     </div>
-                    <h3 className="text-[18px] font-black tracking-tight ai-gradient-text mb-1">Mongez Intelligence</h3>
-                    <p className="text-[12.5px] leading-relaxed text-slate-500 dark:text-slate-400 max-w-sm mb-7">
-                      Ask me to analyze project timelines, extract meeting highlights, or compile workspace status summaries.
-                    </p>
+                  <h3 className="text-[18px] font-black tracking-tight ai-gradient-text mb-1">{t("aiAssistant.labels.title")}</h3>
+                  <p className="text-[12.5px] leading-relaxed text-slate-500 dark:text-slate-400 max-w-sm mb-7">
+                      {t("aiAssistant.labels.chat.emptyDescription")}
+                  </p>
 
-                    <div className="w-full text-left">
-                      <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400 block mb-3 pl-1">Quick Workspace Queries</span>
+                    <div className={`w-full ${isRTL ? "text-right" : "text-left"}`}>
+                      <span className={`text-[9px] font-black uppercase tracking-[0.14em] text-slate-400 block mb-3 ${isRTL ? "pr-1" : "pl-1"}`}>{t("aiAssistant.labels.chat.workspaceQueries")}</span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         {quickPromptItems.map((item) => (
                           <button
                             key={item.label}
                             type="button"
                             onClick={() => void runChat(item.prompt)}
-                            className="flex items-center gap-3 w-full rounded-2xl bg-white dark:bg-slate-800/80 p-3.5 text-left transition-all cursor-pointer group hover:-translate-y-0.5 animate-popIn"
+                            className={`flex items-center gap-3 w-full rounded-2xl bg-white dark:bg-slate-800/80 p-3.5 transition-all cursor-pointer group hover:-translate-y-0.5 animate-popIn ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
                             style={{border:'1px solid rgba(226,232,240,0.8)',boxShadow:'var(--shadow-card)'}}
                           >
                             <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 duration-150 ${item.accentClassName}`}>
@@ -1834,7 +1862,7 @@ function AiAssistantPage() {
                             <div className="min-w-0">
                               <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300 leading-snug block">{item.label}</span>
                             </div>
-                            <i className="fa-solid fa-arrow-right text-[9px] text-slate-300 dark:text-slate-600 ml-auto shrink-0 group-hover:text-indigo-400 transition-colors" />
+                            <i className={`fa-solid ${isRTL ? "fa-arrow-left" : "fa-arrow-right"} text-[9px] text-slate-300 dark:text-slate-600 ${isRTL ? "mr-auto" : "ml-auto"} shrink-0 group-hover:text-indigo-400 transition-colors`} />
                           </button>
                         ))}
                       </div>
@@ -1886,14 +1914,8 @@ function AiAssistantPage() {
                 <div className="max-w-3xl mx-auto w-full">
                   {/* Suggestion Chips */}
                   <div className="flex flex-wrap gap-1.5 mb-3 items-center">
-                    <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-[0.12em] mr-0.5">Try asking</span>
-                    {[
-                      { label: "Blocked tasks",   prompt: "Show me all blocked tasks on my board." },
-                      { label: "Weekly report",   prompt: "Generate a weekly status report." },
-                      { label: "Overloaded users",prompt: "Who is overloaded right now?" },
-                      { label: "Release risks",   prompt: "Are there any risks to our release timeline?" },
-                      { label: "Remind overdue",  prompt: "Propose reminders for overdue tasks." },
-                    ].map((chip) => (
+                    <span className={`text-[9.5px] font-bold text-slate-400 uppercase tracking-[0.12em] ${isRTL ? "ml-0.5" : "mr-0.5"}`}>{t("aiAssistant.labels.chat.tryAsking")}</span>
+                    {t("aiAssistant.suggestionChips", { returnObjects: true }).map((chip) => (
                       <button
                         key={chip.label}
                         type="button"
@@ -1923,13 +1945,13 @@ function AiAssistantPage() {
                               handleSubmit();
                             }
                           }}
-                          placeholder="Ask Mongez Intelligence anything..."
-                          className="min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-[13.5px] leading-relaxed text-slate-800 dark:text-slate-200 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                          placeholder={t("aiAssistant.labels.chat.composerPlaceholder")}
+                          className={`min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-[13.5px] leading-relaxed text-slate-800 dark:text-slate-200 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 ${isRTL ? "text-right" : "text-left"}`}
                         />
 
                         <div className="flex items-center gap-2">
                           <span
-                            className={`text-[10px] font-medium shrink-0 self-center pr-1 tabular-nums ${
+                            className={`text-[10px] font-medium shrink-0 self-center tabular-nums ${isRTL ? "pl-1" : "pr-1"} ${
                               composer.length >= MAX_COMPOSER_LENGTH - 200
                                 ? "text-rose-500 animate-pulse"
                                 : "text-slate-300 dark:text-slate-600"
@@ -1943,7 +1965,7 @@ function AiAssistantPage() {
                               type="button"
                               onClick={() => chatAbortRef.current?.abort()}
                               className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500 hover:bg-rose-600 text-white transition cursor-pointer hover:scale-105 duration-150"
-                              aria-label="Stop streaming response"
+                              aria-label={t("aiAssistant.labels.chat.stopStreaming")}
                               style={{boxShadow:'0 4px 12px rgba(239,68,68,0.28)'}}
                             >
                               <i className="fa-solid fa-stop text-[11px]" />
@@ -1954,7 +1976,7 @@ function AiAssistantPage() {
                               onClick={handleSubmit}
                               disabled={!composer.trim()}
                               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition disabled:opacity-35 disabled:cursor-not-allowed disabled:scale-100 hover:scale-105 cursor-pointer duration-150"
-                              aria-label="Send message"
+                              aria-label={t("aiAssistant.labels.chat.sendMessage")}
                               style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',boxShadow:'var(--shadow-send)'}}
                             >
                               <i className="fa-solid fa-arrow-up text-[11px]" />
@@ -1973,13 +1995,13 @@ function AiAssistantPage() {
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors"
                         >
                           <i className="fa-solid fa-folder text-indigo-500 text-[10px]" />
-                          {spaces.find(s => s.id === contextValues.spaceId)?.name || "Workspace"}
-                          <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                          {spaces.find(s => s.id === contextValues.spaceId)?.name || t("aiAssistant.labels.currentWorkspace")}
+                          <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                         </button>
                         {spaceDropdownOpen && (
                           <>
                             <div className="fixed inset-0 z-30" onClick={() => setSpaceDropdownOpen(false)} />
-                            <div className="absolute bottom-full left-0 mb-2.5 z-40 w-52 rounded-2xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                            <div className={`absolute bottom-full mb-2.5 z-40 max-h-60 w-52 overflow-y-auto rounded-2xl border border-slate-150 bg-white p-1.5 shadow-xl animate-slideUp dark:border-slate-808 dark:bg-slate-900 ${isRTL ? "right-0" : "left-0"}`}>
                               {spaces.map((s) => (
                                 <button
                                   key={s.id}
@@ -1991,7 +2013,7 @@ function AiAssistantPage() {
                                     setActiveSpace(s.id);
                                     setSpaceDropdownOpen(false);
                                   }}
-                                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                                  className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} ${
                                     contextValues.spaceId === s.id
                                       ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
                                       : "text-slate-700 dark:text-slate-300"
@@ -2014,15 +2036,15 @@ function AiAssistantPage() {
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <i className="fa-solid fa-columns text-emerald-500 text-[10px]" />
-                          {activeBoards.find(b => b.id === contextValues.boardId)?.name || "Board"}
-                          <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                          {activeBoards.find(b => b.id === contextValues.boardId)?.name || t("aiAssistant.labels.currentBoard")}
+                          <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                         </button>
                         {boardDropdownOpen && (
                           <>
                             <div className="fixed inset-0 z-30" onClick={() => setBoardDropdownOpen(false)} />
-                            <div className="absolute bottom-full left-0 mb-2.5 z-40 w-52 rounded-2xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                            <div className={`absolute bottom-full mb-2.5 z-40 max-h-60 w-52 overflow-y-auto rounded-2xl border border-slate-150 bg-white p-1.5 shadow-xl animate-slideUp dark:border-slate-808 dark:bg-slate-900 ${isRTL ? "right-0" : "left-0"}`}>
                               {activeBoards.length === 0 ? (
-                                <div className="px-3.5 py-2.5 text-[11.5px] text-slate-400 font-semibold">No boards found</div>
+                                <div className="px-3.5 py-2.5 text-[11.5px] text-slate-400 font-semibold">{t("aiAssistant.labels.noBoardsFound")}</div>
                               ) : (
                                 activeBoards.map((b) => (
                                   <button
@@ -2034,7 +2056,7 @@ function AiAssistantPage() {
                                       setActiveBoard(b.id);
                                       setBoardDropdownOpen(false);
                                     }}
-                                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                                    className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} ${
                                       contextValues.boardId === b.id
                                         ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
                                         : "text-slate-700 dark:text-slate-300"
@@ -2058,15 +2080,15 @@ function AiAssistantPage() {
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <i className="fa-solid fa-list-check text-sky-500 text-[10px]" />
-                          {boardTasks.find(t => t.id === contextValues.taskId)?.title || "Focus Task"}
-                          <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                          {boardTasks.find(t => t.id === contextValues.taskId)?.title || t("aiAssistant.labels.focusTask")}
+                          <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                         </button>
                         {taskDropdownOpen && (
                           <>
                             <div className="fixed inset-0 z-30" onClick={() => setTaskDropdownOpen(false)} />
-                            <div className="absolute bottom-full left-0 mb-2.5 z-40 w-64 rounded-2xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-1.5 shadow-xl max-h-60 overflow-y-auto animate-slideUp">
+                            <div className={`absolute bottom-full mb-2.5 z-40 max-h-60 w-64 overflow-y-auto rounded-2xl border border-slate-150 bg-white p-1.5 shadow-xl animate-slideUp dark:border-slate-808 dark:bg-slate-900 ${isRTL ? "right-0" : "left-0"}`}>
                               {boardTasks.length === 0 ? (
-                                <div className="px-3.5 py-2.5 text-[11.5px] text-slate-400 font-semibold">No tasks found</div>
+                                <div className="px-3.5 py-2.5 text-[11.5px] text-slate-400 font-semibold">{t("aiAssistant.labels.noTasksFound")}</div>
                               ) : (
                                 <>
                                   <button
@@ -2075,9 +2097,9 @@ function AiAssistantPage() {
                                       setContextValue("taskId", "");
                                       setTaskDropdownOpen(false);
                                     }}
-                                    className="w-full text-left px-3.5 py-2 rounded-xl text-[11.5px] font-bold text-rose-505 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    className={`w-full rounded-xl px-3.5 py-2 text-[11.5px] font-bold text-rose-505 hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"}`}
                                   >
-                                    Clear Task Focus
+                                    {t("aiAssistant.labels.clearTaskFocus")}
                                   </button>
                                   {boardTasks.map((t) => (
                                     <button
@@ -2087,7 +2109,7 @@ function AiAssistantPage() {
                                         setContextValue("taskId", t.id);
                                         setTaskDropdownOpen(false);
                                       }}
-                                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 truncate ${
+                                      className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 truncate ${isRTL ? "text-right" : "text-left"} ${
                                         contextValues.taskId === t.id
                                           ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
                                           : "text-slate-700 dark:text-slate-300"
@@ -2111,13 +2133,13 @@ function AiAssistantPage() {
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors"
                         >
                           <i className="fa-solid fa-signature text-violet-500 text-[10px]" />
-                          {contextValues.commentTone.charAt(0).toUpperCase() + contextValues.commentTone.slice(1)} Tone
-                          <i className="fa-solid fa-chevron-down text-[8px] opacity-50 ml-0.5" />
+                          {t(`aiAssistant.labels.tones.${contextValues.commentTone}`)}
+                          <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                         </button>
                         {toneDropdownOpen && (
                           <>
                             <div className="fixed inset-0 z-30" onClick={() => setToneDropdownOpen(false)} />
-                            <div className="absolute bottom-full left-0 mb-2.5 z-40 w-36 rounded-2xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-1.5 shadow-xl animate-slideUp">
+                            <div className={`absolute bottom-full mb-2.5 z-40 w-36 rounded-2xl border border-slate-150 bg-white p-1.5 shadow-xl animate-slideUp dark:border-slate-808 dark:bg-slate-900 ${isRTL ? "right-0" : "left-0"}`}>
                               {["professional", "friendly", "concise", "urgent"].map((tone) => (
                                 <button
                                   key={tone}
@@ -2126,13 +2148,13 @@ function AiAssistantPage() {
                                     setContextValue("commentTone", tone);
                                     setToneDropdownOpen(false);
                                   }}
-                                  className={`w-full text-left px-3.5 py-2 rounded-xl text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                                  className={`w-full rounded-xl px-3.5 py-2 text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} ${
                                     contextValues.commentTone === tone
                                       ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
                                       : "text-slate-700 dark:text-slate-300"
                                   }`}
                                 >
-                                  {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                                  {t(`aiAssistant.labels.tones.${tone}`)}
                                 </button>
                               ))}
                             </div>
@@ -2141,25 +2163,25 @@ function AiAssistantPage() {
                       </div>
 
                       {/* Action buttons (Clear / Report) */}
-                      <div className="ml-auto flex gap-1 border-l border-slate-100/80 dark:border-slate-800/60 pl-2">
+                      <div className={`${isRTL ? "mr-auto border-r pr-2" : "ml-auto border-l pl-2"} flex gap-1 border-slate-100/80 dark:border-slate-800/60`}>
                         <button
                           type="button"
                           onClick={handleNewChat}
                           className="inline-flex items-center gap-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1 text-[10.5px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer transition-colors"
-                          title="New Chat Session"
+                          title={t("aiAssistant.labels.chat.newChatSession")}
                         >
                           <i className="fa-solid fa-rotate text-[9px]" />
-                          New Chat
+                          {t("aiAssistant.labels.chat.newChat")}
                         </button>
                         <button
                           type="button"
                           onClick={() => void triggerDirectScan("report")}
                           disabled={Boolean(activeActionKey) || isStreaming}
                           className="inline-flex items-center gap-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 px-2.5 py-1 text-[10.5px] font-semibold text-indigo-500 hover:text-indigo-600 disabled:opacity-40 cursor-pointer transition-colors"
-                          title="Generate Status Report"
+                          title={t("aiAssistant.labels.chat.generateStatusReport")}
                         >
                           <i className="fa-solid fa-file-invoice text-[9px]" />
-                          Report
+                          {t("aiAssistant.labels.chat.report")}
                         </button>
                       </div>
                       </div>

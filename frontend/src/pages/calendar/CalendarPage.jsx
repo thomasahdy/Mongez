@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import {
   useCalendarEventsQuery,
   useCalendarPreferencesQuery,
@@ -238,6 +239,7 @@ export default function CalendarPage() {
   const { setPath, activeBoard: outletBoard } = useOutletContext() || {};
   const { activeSpace, activeSpaceId, activeBoard, activeBoardId, user } = useAppContext();
   const { t, i18n } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const resolvedBoard = outletBoard || activeBoard;
   const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
   const viewTabs = buildViewTabs(resolvedBoard?.id || activeBoardId, t);
@@ -474,7 +476,9 @@ export default function CalendarPage() {
               key={dateKey}
               type="button"
               onClick={() => handleSelectDate(date)}
-              className={`min-h-[138px] border-b border-r border-slate-200 p-2.5 text-left transition-colors last:border-r-0 hover:bg-slate-50 ${
+              className={`min-h-[138px] border-b p-2.5 transition-colors hover:bg-slate-50 ${
+                isRTL ? "border-l border-slate-200 text-right last:border-l-0" : "border-r border-slate-200 text-left last:border-r-0"
+              } ${
                 isOtherMonth ? "bg-slate-50/60 text-slate-300" : "bg-white"
               } ${isSelected ? "bg-sky-50/70" : ""} ${isNonWorkingDay ? "bg-slate-100/75" : ""}`}
             >
@@ -523,7 +527,9 @@ export default function CalendarPage() {
             key={dateKey}
             type="button"
             onClick={() => handleSelectDate(date)}
-            className={`min-h-[340px] rounded-[24px] border p-4 text-left shadow-[0_16px_35px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 ${
+            className={`min-h-[340px] rounded-[24px] border p-4 shadow-[0_16px_35px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 ${
+              isRTL ? "text-right" : "text-left"
+            } ${
               today ? "border-sky-200 bg-sky-50/60" : "border-slate-200 bg-white"
             } ${isNonWorkingDay ? "bg-slate-100/75" : ""}`}
           >
@@ -582,9 +588,9 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-slate-50">
+    <div className="flex flex-1 flex-col overflow-hidden bg-slate-50" dir={isRTL ? "rtl" : "ltr"}>
       <div className="shrink-0 border-b border-slate-200 bg-white px-5">
-        <div className="flex items-center gap-0 overflow-x-auto">
+        <div className={`flex items-center gap-0 overflow-x-auto ${isRTL ? "flex-row-reverse" : ""}`}>
           {viewTabs.map((tab) => {
             const iconClassName = tab.icon.includes(" ") ? tab.icon : `fa-solid ${tab.icon}`;
             const content = (
@@ -626,13 +632,13 @@ export default function CalendarPage() {
         <div className="mx-auto max-w-[1500px] space-y-6">
           <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap items-center gap-3">
+              <div className={`flex flex-wrap items-center gap-3 ${isRTL ? "xl:flex-row-reverse" : ""}`}>
                 <button
                   type="button"
                   onClick={() => handleNavigate(-1)}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-slate-300 hover:bg-white"
                 >
-                  <i className="fa-solid fa-chevron-left" />
+                  <i className={`fa-solid ${isRTL ? "fa-chevron-right" : "fa-chevron-left"}`} />
                 </button>
                 <div className="min-w-[180px] text-[26px] font-black tracking-[-0.05em] text-slate-900">{formatMonthLabel(anchorDate, locale)}</div>
                 <button
@@ -640,7 +646,7 @@ export default function CalendarPage() {
                   onClick={() => handleNavigate(1)}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-slate-300 hover:bg-white"
                 >
-                  <i className="fa-solid fa-chevron-right" />
+                  <i className={`fa-solid ${isRTL ? "fa-chevron-left" : "fa-chevron-right"}`} />
                 </button>
                 <button
                   type="button"
@@ -654,12 +660,12 @@ export default function CalendarPage() {
                   onClick={() => handleApplyFilters()}
                   className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-600"
                 >
-                  <i className={`fa-solid ${loading ? "fa-spinner fa-spin" : "fa-rotate-right"} mr-2`} />
+                  <i className={`fa-solid ${loading ? "fa-spinner fa-spin" : "fa-rotate-right"} ${isRTL ? "ml-2" : "mr-2"}`} />
                   {t("calendar.controls.refresh")}
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className={`flex flex-wrap items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
                 {CALENDAR_VIEWS.map((view) => (
                   <button
                     key={view}
@@ -692,7 +698,7 @@ export default function CalendarPage() {
                       value={draftFilters.spaceId}
                       onChange={(event) => setDraftFilters((current) => ({ ...current, spaceId: event.target.value }))}
                       placeholder={t("calendar.filters.workspaceScope")}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
+                      className={`w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white ${isRTL ? "text-right" : "text-left"}`}
                     />
                   </div>
                   <div>
@@ -701,7 +707,7 @@ export default function CalendarPage() {
                       value={draftFilters.boardId}
                       onChange={(event) => setDraftFilters((current) => ({ ...current, boardId: event.target.value }))}
                       placeholder={t("calendar.filters.optionalBoardScope")}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
+                      className={`w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white ${isRTL ? "text-right" : "text-left"}`}
                     />
                   </div>
                   <div>
@@ -710,10 +716,10 @@ export default function CalendarPage() {
                       value={draftFilters.holidayCountry}
                       onChange={(event) => setDraftFilters((current) => ({ ...current, holidayCountry: event.target.value.toUpperCase() }))}
                       placeholder={preferences?.holidayCountry || ""}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] uppercase text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
+                      className={`w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] uppercase text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white ${isRTL ? "text-right" : "text-left"}`}
                     />
                   </div>
-                  <div className="flex items-end gap-2">
+                  <div className={`flex items-end gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
                     <button
                       type="button"
                       onClick={handleApplyFilters}
@@ -794,7 +800,7 @@ export default function CalendarPage() {
               </section>
 
               <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                <div className="mb-3 flex items-center justify-between gap-3">
+                <div className={`mb-3 flex items-center justify-between gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
                   <div>
                     <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.labels.nonWorkingDays")}</div>
                     <div className="mt-1 text-sm text-slate-500">
@@ -817,7 +823,7 @@ export default function CalendarPage() {
 
                   {nonWorkingEntries.map((entry) => (
                     <div key={`${entry.dateKey}-${entry.label}`} className="rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <div className="text-[12px] font-semibold text-slate-700">{entry.dateKey}</div>
+                      <div className={`text-[12px] font-semibold text-slate-700 ${isRTL ? "text-right" : "text-left"}`}>{entry.dateKey}</div>
                       <div className="mt-1 text-[11px] text-slate-500">
                         {t("calendar.labels.holidaySource", {
                           label: entry.label === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.label,
@@ -830,17 +836,19 @@ export default function CalendarPage() {
               </section>
 
               <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Google Calendar</div>
+                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.google.title")}</div>
                 <div className="space-y-3">
                   {googleStatusQuery.data?.connected ? (
                     <>
-                      <div className="flex items-center gap-2">
+                      <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
                         <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[13px] font-semibold text-slate-700">Connected</span>
+                        <span className="text-[13px] font-semibold text-slate-700">{t("calendar.google.connected")}</span>
                       </div>
                       {googleStatusQuery.data?.lastSyncAt && (
                         <div className="text-[11px] text-slate-400">
-                          Last Synced: {new Date(googleStatusQuery.data.lastSyncAt).toLocaleString()}
+                          {t("calendar.google.lastSynced", {
+                            value: new Date(googleStatusQuery.data.lastSyncAt).toLocaleString(locale),
+                          })}
                         </div>
                       )}
                       <button
@@ -850,13 +858,13 @@ export default function CalendarPage() {
                         className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-[12px] font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50 transition"
                       >
                         <i className={`fa-solid fa-arrows-rotate ${isSyncing ? "animate-spin" : ""}`} />
-                        {isSyncing ? "Syncing..." : "Sync Now"}
+                        {isSyncing ? t("calendar.google.syncing") : t("calendar.google.syncNow")}
                       </button>
                     </>
                   ) : (
                     <>
                       <div className="text-[12px] text-slate-500 leading-normal">
-                        Link your Mongez calendar with Google Calendar to sync tasks, deadlines, and meetings automatically.
+                        {t("calendar.google.connectDescription")}
                       </div>
                       <button
                         type="button"
@@ -864,7 +872,7 @@ export default function CalendarPage() {
                         className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-[12px] font-bold text-white hover:bg-indigo-700 transition"
                       >
                         <i className="fa-brands fa-google" />
-                        Connect Google Calendar
+                        {t("calendar.google.connectButton")}
                       </button>
                     </>
                   )}
@@ -872,7 +880,7 @@ export default function CalendarPage() {
               </section>
 
               <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Calendar Scope</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.labels.calendarScope")}</div>
                 <div className="mt-3 space-y-2 text-[13px] text-slate-500">
                   <div>
                     {t("calendar.labels.workspace", { value: activeSpace?.name || draftFilters.spaceId || t("calendar.labels.notSelected") })}

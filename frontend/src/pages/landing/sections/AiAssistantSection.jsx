@@ -1,9 +1,11 @@
 import { Icon } from '../../../components/ui/Icons'
 import SectionBadge from './SectionBadge'
 import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
 
 function AiAssistantSection() {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const aiPrompts = t("landing.aiSection.prompts", { returnObjects: true });
   const messages = t("landing.aiSection.messages", { returnObjects: true });
 
@@ -23,7 +25,7 @@ function AiAssistantSection() {
         </p>
 
         <div className="mt-14 rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_30px_80px_rgba(5,8,18,0.4)] backdrop-blur-xl sm:p-6">
-          <div className="flex items-center gap-4 border-b border-white/10 px-3 pb-4 text-left">
+          <div className={`flex items-center gap-4 border-b border-white/10 px-3 pb-4 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}>
             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white">
               <Icon name="robot" />
             </div>
@@ -33,7 +35,7 @@ function AiAssistantSection() {
             </div>
           </div>
 
-          <div className="grid gap-6 px-2 py-6 text-left lg:grid-cols-[1.15fr_0.85fr]">
+          <div className={`grid gap-6 px-2 py-6 lg:grid-cols-[1.15fr_0.85fr] ${isRTL ? "text-right" : "text-left"}`}>
             <div className="space-y-4">
               {messages.map((message, index) => (
                 <div
@@ -58,7 +60,9 @@ function AiAssistantSection() {
                   <button
                     key={prompt}
                     type="button"
-                    className="flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.06] px-4 py-4 text-left text-sm text-slate-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+                    className={`flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.06] px-4 py-4 text-sm text-slate-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 ${
+                      isRTL ? "flex-row-reverse text-right" : "text-left"
+                    }`}
                   >
                     <Icon name="wand" className="mt-0.5 text-sky-300" />
                     <span>{prompt}</span>
@@ -68,11 +72,13 @@ function AiAssistantSection() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 border-t border-white/10 px-3 pt-4">
+          <div className={`flex items-center gap-3 border-t border-white/10 px-3 pt-4 ${isRTL ? "flex-row-reverse" : ""}`}>
               <input
                 type="text"
                 placeholder={t("landing.aiSection.inputPlaceholder")}
-                className="h-14 flex-1 rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-sm text-white outline-none placeholder:text-slate-500"
+                className={`h-14 flex-1 rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-sm text-white outline-none placeholder:text-slate-500 ${
+                  isRTL ? "text-right" : "text-left"
+                }`}
               />
             <button
               type="button"

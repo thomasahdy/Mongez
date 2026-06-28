@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, Legend,
@@ -826,6 +827,7 @@ function Sidebar() {
   
 ]
 export default function ReportsPagee({setPath}) {
+  const { isRTL } = useLocaleDirection();
 
     useEffect(()=>{
       setPath(path)
@@ -837,7 +839,7 @@ export default function ReportsPagee({setPath}) {
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
       />
 
-      <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans">
+      <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans" dir={isRTL ? "rtl" : "ltr"}>
         {/* Sidebar — hidden on mobile */}
         
         {/* Main column */}
@@ -849,8 +851,8 @@ export default function ReportsPagee({setPath}) {
             <div className="px-6 py-6 max-w-[1400px] mx-auto">
 
               {/* Page title */}
-              <div className="flex items-end justify-between gap-4 mb-6">
-                <div>
+              <div className={`flex items-end justify-between gap-4 mb-6 ${isRTL ? "flex-row-reverse" : ""}`}>
+                <div className={isRTL ? "text-right" : "text-left"}>
                   <h1 className="text-[22px] font-extrabold tracking-tight text-slate-900 dark:text-slate-50 mb-1.5">
                     Workspace Analytics
                   </h1>

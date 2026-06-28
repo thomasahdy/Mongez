@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import NavBreadcrumb from "./NavBreadcrumb";
 import { logout } from "../../services/api/authService";
 import { useAppContext } from "../../pages/AppContext";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [focused, setFocused] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -62,7 +66,7 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
             type="button"
             onClick={onToggleSidebar}
             className="action-btn px-2 lg:hidden"
-            aria-label="Open sidebar"
+            aria-label={t("layout.openSidebar")}
           >
             <i className="fa-solid fa-bars" />
           </button>
@@ -78,7 +82,7 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
             ref={inputRef}
             type="search"
             value={searchValue}
-            placeholder='Search or ask AI... "Show KPI summary" | "budget status"'
+            placeholder={t("layout.searchPlaceholder")}
             className="unified-search-input"
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
@@ -90,9 +94,9 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
                 setFocused(false);
               }
             }}
-            aria-label="Search or ask AI"
+            aria-label={t("layout.searchAria")}
           />
-          <span className="kbd-shortcut">Ctrl K</span>
+          <span className="kbd-shortcut">{t("layout.shortcut")}</span>
         </div>
       </div>
 
@@ -100,12 +104,12 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
         <div className="header-actions">
           <button type="button" className="action-btn" onClick={onToggleAI}>
             <i className="fa-solid fa-robot" />
-            <span>AI Agents</span>
-            <span className="badge-new">New</span>
+            <span>{t("layout.aiAgents")}</span>
+            <span className="badge-new">{t("New")}</span>
           </button>
         </div>
 
-        <button className="relative p-1.5" aria-label="Notifications" type="button">
+        <button className="relative p-1.5" aria-label={t("layout.notifications")} type="button">
           <i className="fa-regular fa-bell bell-icon text-[17px] text-slate-400" />
           <span className="notification-dot" />
         </button>
@@ -115,34 +119,34 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
             type="button"
             onClick={() => setShowUserMenu((current) => !current)}
             className="avatar"
-            aria-label="User menu"
+            aria-label={t("layout.userMenu")}
           >
             {userInitials}
           </button>
 
           {showUserMenu ? (
-            <div className="absolute right-0 z-30 mt-2 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+            <div className={`absolute ${isRTL ? "left-0" : "right-0"} z-30 mt-2 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg`}>
               <NavLink
                 to="/spaces"
                 className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 onClick={() => setShowUserMenu(false)}
               >
-                Workspace
+                {t("layout.workspaceMenu")}
               </NavLink>
               <NavLink
                 to="/billing"
                 className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 onClick={() => setShowUserMenu(false)}
               >
-                Billing
+                {t("Billing")}
               </NavLink>
               <hr className="my-1 border-slate-200" />
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-slate-50"
+                className={`w-full px-4 py-2 text-sm text-red-600 hover:bg-slate-50 ${isRTL ? "text-right" : "text-left"}`}
               >
-                Logout
+                {t("logout")}
               </button>
             </div>
           ) : null}

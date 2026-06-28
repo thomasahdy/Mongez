@@ -1,11 +1,19 @@
 import { FaArrowLeft, FaPlus, FaRocket, FaTimes } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import AuthButton from "../../shared/AuthButton";
 import AuthErrorMessage from "../../shared/AuthErrorMessage";
 import AuthInput from "../../shared/AuthInput";
+import { useLocaleDirection } from "../../../../hooks/useLocaleDirection";
+
+const roleValues = ["Member", "Manager", "Admin"];
 
 const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError, onSkip }) => {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
+  const roleLabels = t("registerUi.invite.roles", { returnObjects: true });
+
   const addInvite = () => {
-    onChange([...invites, { email: "", role: "Member" }]);
+    onChange([...invites, { email: "", role: roleValues[0] }]);
   };
 
   const removeInvite = (index) => {
@@ -18,26 +26,24 @@ const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError,
     onChange(updated);
   };
 
-  const roleOptions = ["Member", "Manager", "Admin"];
-
   return (
     <div className="animate-fadeIn">
-      <h1 className="text-[22px] font-extrabold tracking-[-0.5px] text-text-primary mb-1 text-center">
-        Invite your team
+      <h1 className="mb-1 text-center text-[22px] font-extrabold tracking-[-0.5px] text-text-primary">
+        {t("registerUi.invite.title")}
       </h1>
 
-      <p className="text-[13px] text-text-secondary mb-7 text-center">
-        Invite colleagues now or skip and do it later.
+      <p className="mb-7 text-center text-[13px] text-text-secondary">
+        {t("registerUi.invite.description")}
       </p>
 
-      <div className="space-y-2.5 mb-4">
+      <div className="mb-4 space-y-2.5">
         {invites.map((invite, index) => (
-          <div key={index} className="flex items-end gap-2.5 animate-slideIn">
-            <div className="flex-1 min-w-0">
+          <div key={index} className={`flex items-end gap-2.5 animate-slideIn ${isRTL ? "flex-row-reverse" : ""}`}>
+            <div className="min-w-0 flex-1">
               <AuthInput
-                label={index === 0 ? "Email" : ""}
+                label={index === 0 ? t("registerUi.invite.email") : ""}
                 type="email"
-                placeholder="colleague@org.com"
+                placeholder={t("registerUi.invite.emailPlaceholder")}
                 value={invite.email}
                 onChange={(event) => updateInvite(index, "email", event.target.value)}
               />
@@ -45,18 +51,18 @@ const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError,
 
             <div className="w-[120px] flex-shrink-0">
               {index === 0 && (
-                <label className="block text-[13px] font-semibold text-text-primary mb-1.5">
-                  Role
+                <label className="mb-1.5 block text-[13px] font-semibold text-text-primary text-start">
+                  {t("registerUi.invite.role")}
                 </label>
               )}
               <select
                 value={invite.role}
                 onChange={(event) => updateInvite(index, "role", event.target.value)}
-                className="w-full py-[11px] px-3.5 text-[13px] border-[1.5px] border-border rounded-lg bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
+                className="w-full cursor-pointer rounded-lg border-[1.5px] border-border bg-white px-3.5 py-[11px] text-[13px] text-start transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
               >
-                {roleOptions.map((role) => (
+                {roleValues.map((role, index) => (
                   <option key={role} value={role}>
-                    {role}
+                    {roleLabels[index] || role}
                   </option>
                 ))}
               </select>
@@ -65,8 +71,8 @@ const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError,
             <button
               type="button"
               onClick={() => removeInvite(index)}
-              className="w-9 h-9 mb-px flex items-center justify-center border-[1.5px] border-border rounded-lg bg-white text-text-tertiary hover:text-danger hover:border-danger hover:bg-[#fef2f2] transition-all duration-200 hover:scale-105 flex-shrink-0"
-              aria-label="Remove invite"
+              className="mb-px flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border-[1.5px] border-border bg-white text-text-tertiary transition-all duration-200 hover:scale-105 hover:border-danger hover:bg-[#fef2f2] hover:text-danger"
+              aria-label={t("registerUi.invite.removeInvite")}
             >
               <FaTimes className="text-[10px]" />
             </button>
@@ -77,29 +83,55 @@ const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError,
       <button
         type="button"
         onClick={addInvite}
-        className="flex items-center justify-center gap-1.5 text-[13px] font-medium text-primary bg-transparent border-0 cursor-pointer py-2 mt-1 hover:underline w-full"
+        className={`mt-1 flex w-full items-center justify-center gap-1.5 border-0 bg-transparent py-2 text-[13px] font-medium text-primary hover:underline ${isRTL ? "flex-row-reverse" : ""}`}
       >
-        <FaPlus className="text-[10px]" /> Add another
+        <FaPlus className="text-[10px]" />
+        {t("registerUi.invite.addAnother")}
       </button>
 
-      <AuthErrorMessage className="mt-3 mb-4">{submitError}</AuthErrorMessage>
+      <AuthErrorMessage className="mb-4 mt-3">{submitError}</AuthErrorMessage>
 
-      <div className="flex gap-3 mb-3">
-        <AuthButton variant="outline" onClick={onBack}>
-          <FaArrowLeft className="text-[10px]" /> Back
+      <div className={`mb-3 flex gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+        <AuthButton variant="outline" onClick={onBack} className={isRTL ? "flex-row-reverse" : ""}>
+          {isRTL ? (
+            <>
+              {t("registerUi.invite.back")}
+              <FaArrowLeft className="rotate-180 text-[10px]" />
+            </>
+          ) : (
+            <>
+              <FaArrowLeft className="text-[10px]" />
+              {t("registerUi.invite.back")}
+            </>
+          )}
         </AuthButton>
 
-        <AuthButton loading={loading} loadingLabel="Launching workspace..." onClick={() => onSubmit()}>
-          <FaRocket className="text-[10px]" /> Launch Workspace
+        <AuthButton
+          loading={loading}
+          loadingLabel={t("registerUi.invite.launching")}
+          onClick={() => onSubmit()}
+          className={isRTL ? "flex-row-reverse" : ""}
+        >
+          {isRTL ? (
+            <>
+              {t("registerUi.invite.launchWorkspace")}
+              <FaRocket className="text-[10px]" />
+            </>
+          ) : (
+            <>
+              <FaRocket className="text-[10px]" />
+              {t("registerUi.invite.launchWorkspace")}
+            </>
+          )}
         </AuthButton>
       </div>
 
       <button
         type="button"
-        onClick={onSkip}  // ← Use the separate handler
-        className="w-full py-3 rounded-lg text-[13px] text-text-tertiary hover:text-text-secondary hover:bg-bg-body transition-all duration-200 border-0 bg-transparent cursor-pointer"
+        onClick={onSkip}
+        className="w-full cursor-pointer rounded-lg border-0 bg-transparent py-3 text-[13px] text-text-tertiary transition-all duration-200 hover:bg-bg-body hover:text-text-secondary"
       >
-        Skip — I'll invite later
+        {t("registerUi.invite.skip")}
       </button>
     </div>
   );

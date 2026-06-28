@@ -108,6 +108,39 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html[dir="rtl"] body {
+  font-family: var(--font-ar);
+}
+
+html[dir="rtl"] .text-left {
+  text-align: right !important;
+}
+
+html[dir="rtl"] .ml-auto {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+html[dir="rtl"] .mr-auto {
+  margin-right: 0 !important;
+  margin-left: auto !important;
+}
+
+html[dir="rtl"] .border-l {
+  border-left-width: 0 !important;
+  border-right-width: 1px !important;
+}
+
+html[dir="rtl"] .border-r {
+  border-right-width: 0 !important;
+  border-left-width: 1px !important;
+}
+
+html[dir="rtl"] th,
+html[dir="rtl"] td {
+  text-align: right;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -531,6 +564,11 @@ body {
   background: var(--danger);
 }
 
+html[dir="rtl"] .notification-dot {
+  left: 3px;
+  right: auto;
+}
+
 .avatar {
   display: inline-flex;
   width: 30px;
@@ -606,6 +644,11 @@ body {
   cursor: pointer;
 }
 
+html[dir="rtl"] .view-add-btn {
+  margin-left: 0;
+  margin-right: 4px;
+}
+
 .view-add-btn:hover {
   border-color: var(--primary);
   color: var(--primary);
@@ -637,6 +680,11 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+html[dir="rtl"] .dashboard-page-actions {
+  margin-left: 0;
+  margin-right: auto;
 }
 
 .kpi-grid {
@@ -1196,6 +1244,10 @@ body {
 .animate-gradShift  { animation: gradientShift 4s ease infinite; background-size: 200% 200%; }
 .animate-tabLine    { animation: tabUnderline 0.18s ease-out both; transform-origin: left; }
 
+html[dir="rtl"] .animate-tabLine {
+  transform-origin: right;
+}
+
 /* ---------- Gradient text ---------- */
 .ai-gradient-text {
   background: var(--ai-gradient-text);
@@ -1271,6 +1323,12 @@ body {
   background: var(--ai-gradient);
 }
 
+html[dir="rtl"] .ai-session-card::before {
+  left: auto;
+  right: 0;
+  border-radius: 2px 0 0 2px;
+}
+
 /* ---------- Metric card left accent bar ---------- */
 .ai-metric-bar {
   position: relative;
@@ -1289,6 +1347,11 @@ body {
 .ai-metric-bar.sky::before     { background: #0ea5e9; }
 .ai-metric-bar.success::before { background: #10b981; }
 .ai-metric-bar.neutral::before { background: #cbd5e1; }
+
+html[dir="rtl"] .ai-metric-bar::before {
+  left: auto;
+  right: 0;
+}
 
 /* ---------- Shimmer skeleton ---------- */
 .ai-skeleton {

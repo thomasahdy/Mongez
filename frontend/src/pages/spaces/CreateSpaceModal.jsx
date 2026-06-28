@@ -1,22 +1,11 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { createSpaceSchema } from '../../schemas/validationSchemas';
+import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslation } from "react-i18next";
+import { createSpaceSchema } from "../../schemas/validationSchemas";
 
-/**
- * Component: CreateSpaceModal
- * 
- * Renders a dialog modal with a validated form for creating or updating a workspace.
- * Uses react-hook-form + Zod schemas for input validation.
- * 
- * @param {Object} props
- * @param {boolean} [props.isEdit=false] - Whether the modal is in edit/update mode
- * @param {Object} [props.space] - Space details when editing
- * @param {Function} props.onSubmit - Submission callback receiving validated form data
- * @param {Function} props.onClose - Modal close handler
- */
 export default function CreateSpaceModal({ isEdit = false, space, onSubmit, onClose }) {
-  // Set up React Hook Form with Zod validation schema
+  const { t } = useTranslation();
   const {
     register,
     handleSubmit,
@@ -25,157 +14,115 @@ export default function CreateSpaceModal({ isEdit = false, space, onSubmit, onCl
   } = useForm({
     resolver: zodResolver(createSpaceSchema),
     defaultValues: {
-      name: space?.name || '',
-      description: space?.description || '',
-      prefix: space?.prefix || '',
-      icon: space?.icon || 'fa-building',
-      color: space?.color || '#6366f1',
+      name: space?.name || "",
+      description: space?.description || "",
+      prefix: space?.prefix || "",
+      icon: space?.icon || "fa-building",
+      color: space?.color || "#6366f1",
     },
   });
 
-  // Log errors dynamically to assist in debugging validation blocks
-  console.log("CreateSpaceModal Form Errors:", errors);
-
-  const handleInvalidSubmit = (valErrors) => {
-    console.warn("CreateSpaceModal handleSubmit validation FAILED:", valErrors);
+  const handleInvalidSubmit = (validationErrors) => {
+    console.warn("CreateSpaceModal handleSubmit validation FAILED:", validationErrors);
   };
 
   const handleFormSubmit = async (data) => {
-    console.log("CreateSpaceModal handleFormSubmit data:", data);
     try {
       await onSubmit(data);
       reset();
-    } catch (err) {
-      console.error("Form submission failed:", err);
+    } catch (error) {
+      console.error("Form submission failed:", error);
     }
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden animate-fadeIn">
-        {/* Top subtle decorative gradient */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-fadeIn dark:border-slate-800 dark:bg-slate-950">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-400 to-indigo-500" />
 
-        {/* Modal Header */}
-        <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 pb-4 pt-6 dark:border-slate-900">
           <h2 id="modal-title" className="text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100">
-            {isEdit ? 'Workspace Settings' : 'Create a New Space'}
+            {isEdit ? t("spacesPage.workspaceSettings") : t("spacesPage.createSpaceTitle")}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
-            aria-label="Close dialog"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+            aria-label={t("spacesPage.closeDialog")}
           >
             <i className="fa-solid fa-xmark text-[16px]" />
           </button>
         </div>
 
-        {/* Modal Form */}
-        <form onSubmit={handleSubmit(handleFormSubmit, handleInvalidSubmit)} className="p-6 space-y-4">
-          
-          {/* Name input */}
+        <form onSubmit={handleSubmit(handleFormSubmit, handleInvalidSubmit)} className="space-y-4 p-6">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-name">
-              Workspace Name *
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="space-name">
+              {t("spacesPage.workspaceName")}
             </label>
             <input
               id="space-name"
               type="text"
-              placeholder="e.g. Hope Foundation, Engineering Dept"
-              className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
-                ${errors.name ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
-              {...register('name')}
+              placeholder={t("spacesPage.workspaceNamePlaceholder")}
+              className={`w-full rounded-xl border bg-transparent px-3.5 py-2.5 text-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-sky-400 ${
+                errors.name ? "border-red-500 dark:border-red-900/50" : "border-slate-200 dark:border-slate-800"
+              }`}
+              {...register("name")}
             />
-            {errors.name && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
-                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.name.message}
-              </p>
-            )}
           </div>
 
-          {/* Description input */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-desc">
-              Description
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="space-desc">
+              {t("spacesPage.description")}
             </label>
             <textarea
               id="space-desc"
               rows={3}
-              placeholder="Provide a brief summary of what is managed in this space..."
-              className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
-                ${errors.description ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
-              {...register('description')}
+              placeholder={t("spacesPage.workspaceDescriptionPlaceholder")}
+              className={`w-full rounded-xl border bg-transparent px-3.5 py-2.5 text-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-sky-400 ${
+                errors.description ? "border-red-500 dark:border-red-900/50" : "border-slate-200 dark:border-slate-800"
+              }`}
+              {...register("description")}
             />
-            {errors.description && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
-                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.description.message}
-              </p>
-            )}
           </div>
 
-          {/* Prefix input (Only editable during creation) */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="space-prefix">
-              Task Key Prefix {isEdit && '(Cannot change)'}
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="space-prefix">
+              {t("spacesPage.taskKeyPrefix")} {isEdit ? t("spacesPage.cannotChange") : ""}
             </label>
             <input
               id="space-prefix"
               type="text"
               disabled={isEdit}
-              placeholder="e.g. EDU, ENG, MKT (Default: PRJ)"
+              placeholder={t("spacesPage.taskKeyPrefixPlaceholder")}
               maxLength={5}
-              className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm uppercase font-semibold tracking-wide
-                ${isEdit ? 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed' : ''}
-                ${errors.prefix ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
-              {...register('prefix')}
+              className={`w-full rounded-xl border bg-transparent px-3.5 py-2.5 text-sm font-semibold uppercase tracking-wide outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-sky-400 ${
+                isEdit ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900" : ""
+              } ${errors.prefix ? "border-red-500 dark:border-red-900/50" : "border-slate-200 dark:border-slate-800"}`}
+              {...register("prefix")}
             />
-            {errors.prefix && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
-                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.prefix.message}
+            {!isEdit ? (
+              <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                {t("spacesPage.taskKeyPrefixHint")}
               </p>
-            )}
-            {!isEdit && (
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                This tag will prefix all tasks created inside this space (e.g. EDU-1, EDU-2).
-              </p>
-            )}
+            ) : null}
           </div>
 
-          {/* Modal Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-900">
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-900">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+              className="cursor-pointer rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-900"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              onClick={() => console.log("CreateSpaceModal Submit button was clicked directly! isSubmitting:", isSubmitting)}
-              className="px-4 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 hover:shadow-md text-white transition-all duration-200 cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:shadow-md disabled:opacity-50"
             >
-              {isSubmitting ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Saving...
-                </>
-              ) : (
-                isEdit ? 'Save Changes' : 'Create Workspace'
-              )}
+              {isSubmitting ? t("spacesPage.saving") : isEdit ? t("spacesPage.saveChanges") : t("spacesPage.createWorkspace")}
             </button>
           </div>
-
         </form>
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
   useResetPasswordMutation,
   useResetTokenVerificationQuery,
 } from "../../hooks/useAuthQueries";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
@@ -61,6 +62,7 @@ function StrengthHint({ password, labels }) {
 
 export default function ResetPasswordPage() {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const navigate = useNavigate();
   const token = useMemo(() => new URLSearchParams(window.location.search).get("token") || "", []);
   const mode = token ? "reset" : "request";
@@ -161,7 +163,7 @@ export default function ResetPasswordPage() {
   const canSubmitReset = tokenValid && !tokenChecking && password && confirmPassword && passwordIssues.length === 0;
 
   return (
-    <div className="auth-page">
+    <div className="auth-page" dir={isRTL ? "rtl" : "ltr"}>
       <header className="auth-brand-row">
         <NavLink to="/" className="auth-brand" aria-label={t("resetPassword.homeAria")}>
           <img src={mongezMark} alt="" className="auth-brand-mark" />
@@ -191,7 +193,7 @@ export default function ResetPasswordPage() {
             ].map((step, index) => (
               <div
                 key={step.label}
-                className={`rounded-2xl border px-3 py-3 text-left ${
+                className={`rounded-2xl border px-3 py-3 ${isRTL ? "text-right" : "text-left"} ${
                   step.active ? "border-sky-200 bg-sky-50 text-sky-700" : "border-slate-200 bg-slate-50 text-slate-400"
                 }`}
               >

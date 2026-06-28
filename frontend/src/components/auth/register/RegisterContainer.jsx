@@ -8,6 +8,7 @@ import OrganizationStep from "./steps/OrganizationStep";
 import TemplateStep from "./steps/TemplateStep";
 import authService from "../../../services/api/authService";
 import AuthLogo from "../shared/AuthLogo";
+import { useTranslation } from "react-i18next";
 
 const initialValues = {
   account: {
@@ -30,6 +31,7 @@ const initialValues = {
 };
 
 const RegisterContainer = () => {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
 
   const [values, setValues] = useState(initialValues);
@@ -81,7 +83,7 @@ const RegisterContainer = () => {
       });
       window.location.href = "/";
     } catch (error) {
-      const errorMessage = error?.message || error?.toString?.() || "Something went wrong";
+      const errorMessage = error?.message || error?.toString?.() || t("registerUi.registrationFailed");
       setSubmitError(errorMessage);
     } finally {
       setLoading(false);
@@ -131,17 +133,17 @@ const RegisterContainer = () => {
               onChange={setInvites}
               onBack={() => goToStep(3)}
               onSubmit={handleSubmit}
+              onSkip={() => handleSubmit({ skipInvites: true })}
               loading={loading}
               submitError={submitError}
-              
             />
           )}
         </div>
       </RegisterCard>
 
       <AuthFooterLink
-        text="Already have an account?"
-        linkText="Log in"
+        text={t("registerUi.alreadyAccount")}
+        linkText={t("registerUi.logIn")}
         href="/login"
         className="mt-4"
       />

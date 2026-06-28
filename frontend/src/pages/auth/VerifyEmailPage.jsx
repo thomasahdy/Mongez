@@ -7,6 +7,7 @@ import {
   useVerificationStatusQuery,
   useVerifyEmailTokenQuery,
 } from "../../hooks/useAuthQueries";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 function TokenPreview({ token, fallback }) {
   const preview = token ? `${token.slice(0, 3)} ${token.slice(3, 6)} ${token.slice(6, 9)}`.trim() : fallback;
@@ -27,6 +28,7 @@ function TokenPreview({ token, fallback }) {
 
 export default function VerifyEmailPage() {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const navigate = useNavigate();
   const token = useMemo(() => new URLSearchParams(window.location.search).get("token") || "", []);
   const [error, setError] = useState("");
@@ -111,7 +113,7 @@ export default function VerifyEmailPage() {
   };
 
   return (
-    <div className="auth-page">
+    <div className="auth-page" dir={isRTL ? "rtl" : "ltr"}>
       <header className="auth-brand-row">
         <NavLink to="/" className="auth-brand" aria-label={t("verifyEmail.homeAria")}>
           <img src={mongezMark} alt="" className="auth-brand-mark" />
@@ -179,12 +181,12 @@ export default function VerifyEmailPage() {
           ) : null}
 
           {!token && !loading && !verified && !isAuthenticated ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-[13px] leading-6 text-slate-500">
+            <div className={`rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] leading-6 text-slate-500 ${isRTL ? "text-right" : "text-left"}`}>
               {t("verifyEmail.signInFirst")}
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-[13px] leading-6 text-slate-500">
+          <div className={`rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] leading-6 text-slate-500 ${isRTL ? "text-right" : "text-left"}`}>
             <strong className="block text-slate-700">{t("verifyEmail.needHelp")}</strong>
             {t("verifyEmail.helpDescription")}
           </div>

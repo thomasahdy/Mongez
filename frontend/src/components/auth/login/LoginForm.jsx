@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { FaEnvelope, FaSignInAlt } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import AuthButton from "../shared/AuthButton";
 import AuthErrorMessage from "../shared/AuthErrorMessage";
 import AuthInput from "../shared/AuthInput";
 import PasswordInput from "../shared/PasswordInput";
 import authService from "../../../services/api/authService";
 import { NavLink } from "react-router";
+import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
 
 
 const LoginForm = () => {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -22,13 +26,13 @@ const LoginForm = () => {
     const newErrors = {};
 
     if (!nextValues.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("authUi.emailRequired");
     } else if (!/\S+@\S+\.\S+/.test(nextValues.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = t("authUi.emailInvalid");
     }
 
     if (!nextValues.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t("authUi.passwordRequired");
     }
 
     setErrors(newErrors);
@@ -59,7 +63,7 @@ const LoginForm = () => {
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
-        submit: error?.message || "Something went wrong",
+        submit: error?.message || t("authUi.somethingWentWrong"),
       }));
     } finally {
       setLoading(false);
@@ -70,7 +74,7 @@ const LoginForm = () => {
   return (
     <form onSubmit={handleSubmit} className="space-y-5 animate-fadeIn">
       <AuthInput
-        label="Email address"
+        label={t("authUi.emailAddress")}
         type="email"
         id={emailInputId}
         value={email}
@@ -79,7 +83,7 @@ const LoginForm = () => {
         icon={FaEnvelope}
         error={touched.email ? errors.email : ""}
         success={touched.email && !errors.email && Boolean(email)}
-        placeholder="you@organization.com"
+        placeholder={t("authUi.emailPlaceholder")}
       />
 
       <PasswordInput
@@ -89,31 +93,50 @@ const LoginForm = () => {
         onBlur={() => handleBlur("password")}
         error={touched.password ? errors.password : ""}
         success={touched.password && !errors.password && Boolean(password)}
-        placeholder="Enter your password"
+        placeholder={t("authUi.passwordPlaceholder")}
       />
 
-      <div className="flex justify-between items-center text-[13px] gap-3">
-        <label className="flex items-center gap-2 cursor-pointer text-text-primary hover:text-text-secondary transition">
+      <div className={`flex items-center justify-between gap-3 text-[13px] ${isRTL ? "flex-row-reverse" : ""}`}>
+        <label
+          className={`flex cursor-pointer items-center gap-2 text-text-primary transition hover:text-text-secondary ${
+            isRTL ? "flex-row-reverse" : ""
+          }`}
+        >
           <input
             type="checkbox"
             className="w-4 h-4 accent-primary cursor-pointer"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
           />
-          Remember me for 30 days
+          {t("authUi.rememberMe")}
         </label>
         <NavLink
-        to="/forgot-password"
-        className="text-primary font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-lg px-2 py-1 transition">
-          Forgot password?
+          to="/forgot-password"
+          className="rounded-lg px-2 py-1 text-primary font-medium transition hover:underline focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {t("authUi.forgotPassword")}
         </NavLink>
       </div>
 
       <AuthErrorMessage>{errors.submit}</AuthErrorMessage>
 
-      <AuthButton type="submit" loading={loading} loadingLabel="Logging in...">
-        <FaSignInAlt className="text-[10px]" />
-        Log In
+      <AuthButton
+        type="submit"
+        loading={loading}
+        loadingLabel={t("authUi.loggingIn")}
+        className={isRTL ? "flex-row-reverse" : ""}
+      >
+        {isRTL ? (
+          <>
+            {t("authUi.logIn")}
+            <FaSignInAlt className="text-[10px]" />
+          </>
+        ) : (
+          <>
+            <FaSignInAlt className="text-[10px]" />
+            {t("authUi.logIn")}
+          </>
+        )}
       </AuthButton>
     </form>
   );

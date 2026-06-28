@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash, FaLock } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import AuthErrorMessage from "./AuthErrorMessage";
+import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
 
 const PasswordInput = ({
-  label = "Password",
+  label,
   error,
   success = false,
   className = "",
@@ -11,10 +13,14 @@ const PasswordInput = ({
   id,
   ...props
 }) => {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [showPassword, setShowPassword] = useState(false);
 
   const inputClasses = [
-    "w-full pl-[38px] pr-10 py-[11px] text-sm border-[1.5px] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all",
+    `w-full py-[11px] text-sm border-[1.5px] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${
+      isRTL ? "pr-[38px] pl-10 text-start" : "pl-[38px] pr-10 text-start"
+    }`,
     error
       ? "border-danger focus:ring-danger/20"
       : success
@@ -27,14 +33,19 @@ const PasswordInput = ({
 
   return (
     <div className={className}>
-      {label && (
-        <label htmlFor={id} className="block text-[13px] font-semibold text-text-primary mb-1.5">
-          {label}
+      {(label || t("authUi.password")) && (
+        <label htmlFor={id} className="mb-1.5 block text-[13px] font-semibold text-text-primary text-start">
+          {label || t("authUi.password")}
         </label>
       )}
 
       <div className="relative">
-        <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary text-[14px]" aria-hidden="true" />
+        <FaLock
+          className={`absolute top-1/2 -translate-y-1/2 text-[14px] text-text-tertiary ${
+            isRTL ? "right-3" : "left-3"
+          }`}
+          aria-hidden="true"
+        />
         <input
           id={id}
           type={showPassword ? "text" : "password"}
@@ -46,8 +57,10 @@ const PasswordInput = ({
         <button
           type="button"
           onClick={() => setShowPassword((current) => !current)}
-          aria-label={showPassword ? "Hide password" : "Show password"}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary rounded-lg p-1 transition-colors"
+          aria-label={showPassword ? t("authUi.hidePassword") : t("authUi.showPassword")}
+          className={`absolute top-1/2 -translate-y-1/2 rounded-lg p-1 text-text-tertiary transition-colors hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary ${
+            isRTL ? "left-3" : "right-3"
+          }`}
         >
           {showPassword ? <FaEyeSlash className="text-[14px]" /> : <FaEye className="text-[14px]" />}
         </button>

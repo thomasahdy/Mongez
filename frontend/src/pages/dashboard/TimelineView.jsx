@@ -5,6 +5,7 @@ import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
 import { useAppContext } from '../AppContext';
 import { useTimelineQuery } from '../../hooks/useDashboardQueries';
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const CELL_WIDTH = {
   days: 40,
@@ -102,7 +103,7 @@ function getTaskDate(task, key) {
   return task.endDate || task.dueDate || task.updatedAt || task.startDate || task.createdAt;
 }
 
-function getTaskBarStyle(task, dates, scale) {
+function getTaskBarStyle(task, dates, scale, isRTL) {
   const rawStart = getTaskDate(task, 'startDate') || task.dueDate;
   const rawEnd = getTaskDate(task, 'endDate') || task.dueDate || rawStart;
 
@@ -156,7 +157,7 @@ function getTaskBarStyle(task, dates, scale) {
 
     const cellWidth = CELL_WIDTH[scale];
     return {
-      left: `${startIndex * cellWidth}px`,
+      [isRTL ? "right" : "left"]: `${startIndex * cellWidth}px`,
       width: `${Math.max(cellWidth, (endIndex - startIndex + 1) * cellWidth)}px`,
     };
   } catch {
@@ -180,6 +181,7 @@ export default function TimelineView() {
   const { activeSpace, spaces } = useAppContext();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [error, setError] = useState(null);
   const [scale, setScale] = useState('days');
   const boardIdValue = boardId || activeBoard?.id;
@@ -280,7 +282,7 @@ export default function TimelineView() {
   const chartWidth = dates.length * CELL_WIDTH[scale];
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-slate-50">
+    <div className="flex h-full flex-col overflow-hidden bg-slate-50" dir={isRTL ? "rtl" : "ltr"}>
       <ViewTabs />
       <Toolbar />
 
@@ -291,14 +293,14 @@ export default function TimelineView() {
       )}
 
       <div className="flex h-full flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+        <div className={`flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 ${isRTL ? "flex-row-reverse" : ""}`}>
           <div>
             <h2 className="text-sm font-bold text-slate-900">{t('timeline.title')}</h2>
             <p className="text-xs text-slate-500">
               {t('timeline.subtitle', { board: activeBoard?.name || t('timeline.title') })}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className={`flex flex-wrap items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">
               {rangeLabel}
             </span>
@@ -337,8 +339,8 @@ export default function TimelineView() {
           </div>
         ) : null}
 
-        <div className="flex flex-1 overflow-hidden">
-          <div className="w-64 overflow-y-auto border-r border-slate-200 bg-white">
+        <div className={`flex flex-1 overflow-hidden ${isRTL ? "flex-row-reverse" : ""}`}>
+          <div className={`w-64 overflow-y-auto bg-white ${isRTL ? "border-l border-slate-200" : "border-r border-slate-200"}`}>
             <div className="sticky top-0 border-b border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900">
               {t('timeline.tasks')} <span className="text-xs font-normal text-slate-400">({tasks.length})</span>
             </div>
@@ -346,14 +348,14 @@ export default function TimelineView() {
               {Object.entries(groupedTasks).map(([status, statusTasks]) =>
                 statusTasks.length > 0 ? (
                   <div key={status}>
-                    <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <div className={`flex items-center gap-2 bg-slate-50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 ${isRTL ? "flex-row-reverse" : ""}`}>
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getStatusColor(status) }} />
                       {formatStatusLabel(status)}
                     </div>
                     {statusTasks.map((task) => (
                       <div
                         key={task.id}
-                        className="flex cursor-pointer items-center gap-2 border-b border-slate-100 px-4 py-3 transition-colors hover:bg-sky-50"
+                        className={`flex cursor-pointer items-center gap-2 border-b border-slate-100 px-4 py-3 transition-colors hover:bg-sky-50 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
                         onClick={() => navigate(`/tasks/${task.id}`)}
                       >
                         <div className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: getStatusColor(status) }} />
@@ -382,14 +384,16 @@ export default function TimelineView() {
             <div className="sticky top-0 z-10 overflow-x-auto border-b border-slate-200 bg-slate-50">
               <div className="flex" style={{ width: `${chartWidth}px` }}>
                 {dates.map((date, index) => {
-                  const todayClass = scale === 'days' && isToday(date) ? 'bg-sky-100 border-r-2 border-sky-500' : '';
+                  const todayClass = scale === 'days' && isToday(date)
+                    ? `bg-sky-100 ${isRTL ? "border-l-2" : "border-r-2"} border-sky-500`
+                    : '';
                   const weekendClass = scale === 'days' && isWeekend(date) ? 'bg-slate-100' : '';
                   const eventCount = eventCountsByPeriod[String(getPeriodValue(date, scale))] || 0;
 
                   return (
                     <div
                       key={index}
-                      className={`flex-shrink-0 border-r border-slate-200 py-2 text-center text-xs ${todayClass} ${weekendClass}`}
+                      className={`flex-shrink-0 py-2 text-center text-xs ${todayClass} ${weekendClass} ${isRTL ? "border-l border-slate-200" : "border-r border-slate-200"}`}
                       style={{ width: `${CELL_WIDTH[scale]}px` }}
                     >
                       <div className="font-bold text-slate-700">{formatHeaderPrimary(date, scale, locale)}</div>
@@ -417,7 +421,7 @@ export default function TimelineView() {
                         return (
                           <div
                             key={index}
-                            className={`flex-shrink-0 border-r border-slate-200 ${weekendClass}`}
+                            className={`flex-shrink-0 ${weekendClass} ${isRTL ? "border-l border-slate-200" : "border-r border-slate-200"}`}
                             style={{ width: `${CELL_WIDTH[scale]}px` }}
                           />
                         );
@@ -425,7 +429,7 @@ export default function TimelineView() {
 
                       <div
                         className="absolute top-2 z-20 flex h-6 items-center rounded bg-gradient-to-r from-sky-500 to-sky-600 px-2 text-xs font-semibold text-white shadow-sm transition-all hover:opacity-90 cursor-pointer"
-                        style={getTaskBarStyle(task, dates, scale)}
+                        style={getTaskBarStyle(task, dates, scale, isRTL)}
                         title={task.title || task.name || 'Task'}
                         onClick={() => navigate(`/tasks/${task.id}`)}
                       >

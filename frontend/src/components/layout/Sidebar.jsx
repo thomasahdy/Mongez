@@ -10,6 +10,7 @@ import { logout } from "../../services/api/authService";
 import { useAppContext } from "../../pages/AppContext";
 import mongezWordmark from "../../assets/Mongez.svg";
 import mongezMark from "../../assets/MongezMLogo.svg";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const OVERVIEW_LINKS = [
   { href: "/my-work", icon: "fa-circle-check", label: "My Work", badge: { label: "5", variant: "danger" } },
@@ -30,6 +31,7 @@ const VIEW_LINKS = [
 
 const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const { activeSpace, activeBoard, boardsByDepartment } = useAppContext();
   const closeMobile = () => onCloseMobile?.();
   const activeBoardTableRoute = activeBoard?.id ? `/board/${activeBoard.id}/table` : "";
@@ -41,8 +43,8 @@ const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
 
   return (
     <aside
-      className="workspace-sidebar flex h-screen w-[260px] flex-col overflow-y-auto border-r border-slate-200 bg-white px-3 py-4 dark:border-slate-700 dark:bg-slate-800 [scrollbar-width:none]"
-      aria-label="Sidebar navigation"
+      className={`workspace-sidebar flex h-screen w-[260px] flex-col overflow-y-auto bg-white px-3 py-4 dark:bg-slate-800 [scrollbar-width:none] ${isRTL ? "border-l border-slate-200 dark:border-slate-700" : "border-r border-slate-200 dark:border-slate-700"}`}
+      aria-label={t("layout.sidebarAria")}
     >
       <div className="flex justify-around p-3">
         <a href="/dashboard" className="flex items-center gap-0 text-slate-900"  aria-label={t("landing.nav.homeAria")}>
@@ -81,29 +83,29 @@ const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
           </span>
           <span className="min-w-0 flex-1 truncate">{activeSpace?.name || t("manage spaces")}</span>
           {activeSpace?.role ? (
-            <Badge variant="neutral" className="ml-auto">
+            <Badge variant="neutral" className={isRTL ? "mr-auto" : "ml-auto"}>
               {activeSpace.role}
             </Badge>
           ) : null}
         </NavLink>
 
-        <div className="ml-2.5 border-l border-slate-200 pl-3 dark:border-slate-700">
+        <div className={`${isRTL ? "mr-2.5 border-r pr-3" : "ml-2.5 border-l pl-3"} border-slate-200 dark:border-slate-700`}>
           {boardsByDepartment.length ? (
             boardsByDepartment.map((department) => (
               <div key={department.id || department.name}>
                 <TreeLink
-                  label={department.name || "Department"}
+                  label={department.name || t("Department")}
                   to="/spaces"
                   active={department.id === activeBoard?.departmentId}
                   badge={department.boards.length ? String(department.boards.length) : ""}
                   onClick={closeMobile}
                 />
                 {department.boards.length > 0 ? (
-                  <div className="ml-2 border-l border-slate-200 pl-3 dark:border-slate-700">
+                  <div className={`${isRTL ? "mr-2 border-r pr-3" : "ml-2 border-l pl-3"} border-slate-200 dark:border-slate-700`}>
                     {department.boards.slice(0, 4).map((board) => (
                       <TreeLink
                         key={board.id}
-                        label={board.name || "Board"}
+                        label={board.name || t("Board")}
                         to={`/board/${board.id}/table`}
                         active={board.id === activeBoard?.id}
                         dotColor={board.color || "#00a8e8"}
@@ -115,12 +117,12 @@ const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
               </div>
             ))
           ) : (
-            <TreeLink label="Create or select a space" to="/spaces" onClick={closeMobile} />
+            <TreeLink label={t("layout.createOrSelectSpace")} to="/spaces" onClick={closeMobile} />
           )}
         </div>
 
         {activeBoardTableRoute ? (
-          <NavItem href={activeBoardTableRoute} icon="fa-table-cells" label="Active Board Table" onClick={closeMobile} />
+          <NavItem href={activeBoardTableRoute} icon="fa-table-cells" label={t("layout.activeBoardTable")} onClick={closeMobile} />
         ) : null}
 
         <NavLink
@@ -139,7 +141,7 @@ const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
         <NavItem href="/settings" icon="fa-gear" label={t("settings")} />
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-[13px] font-medium text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all duration-150 text-left cursor-pointer"
+          className={`w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-[13px] font-medium text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all duration-150 cursor-pointer ${isRTL ? "text-right" : "text-left"}`}
         >
           <span className="w-5 flex justify-center">
             <i className="fa-solid fa-arrow-right-from-bracket" />

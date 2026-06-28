@@ -1,6 +1,7 @@
-import React, { useRef } from 'react'
-import SearchBar from './SearchBar';
-import SuggestionChips from './SuggestionChips';
+import React, { useRef } from "react";
+import { useTranslation } from "react-i18next";
+import SearchBar from "./SearchBar";
+import SuggestionChips from "./SuggestionChips";
 
 const SUGGESTION_CHIPS = [
   "Why is Funding blocked?",
@@ -10,17 +11,17 @@ const SUGGESTION_CHIPS = [
   "Tasks due tomorrow",
 ];
 
-
 const SearchHero = ({ query, onQueryChange, onSearch }) => {
+  const { t } = useTranslation();
   const inputRef = useRef(null);
 
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-6">
-      <h2 className="text-[22px] font-bold text-slate-800 dark:text-slate-100 mb-2">
-        Search anything
+    <div className="flex flex-col items-center justify-center px-6 py-20">
+      <h2 className="mb-2 text-[22px] font-bold text-slate-800 dark:text-slate-100">
+        {t("searchPage.heroTitle")}
       </h2>
-      <p className="text-[13px] text-slate-400 dark:text-slate-500 mb-5 text-center max-w-sm">
-        Search tasks, files, people, and comments — or ask AI a question in plain language.
+      <p className="mb-5 max-w-sm text-center text-[13px] text-slate-400 dark:text-slate-500">
+        {t("searchPage.heroDescription")}
       </p>
 
       <div className="w-full max-w-[600px]">
@@ -29,14 +30,18 @@ const SearchHero = ({ query, onQueryChange, onSearch }) => {
           onChange={onQueryChange}
           onSubmit={onSearch}
           inputRef={inputRef}
+          placeholder={t("searchPage.inputPlaceholder")}
         />
         <SuggestionChips
           chips={SUGGESTION_CHIPS}
-          onSelect={(chip) => { onQueryChange(chip); onSearch(chip); }}
+          onSelect={(chip) => {
+            onQueryChange(chip);
+            onSearch(chip);
+          }}
         />
       </div>
     </div>
   );
-}
+};
 
-export default SearchHero
+export default SearchHero;

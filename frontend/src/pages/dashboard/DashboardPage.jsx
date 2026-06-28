@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
 import { useDashboardAnalyticsQuery } from "../../hooks/useDashboardQueries";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const CHART_COLORS = ["var(--primary)", "var(--success)", "var(--warning)", "var(--danger)"];
 
@@ -95,10 +96,10 @@ function Sparkline({ color = "var(--primary)", direction = "up" }) {
   );
 }
 
-function KpiCard({ icon, iconClass, label, value, suffix = "", trend, trendDirection = "up", loading, liveLabel = "Live" }) {
+function KpiCard({ icon, iconClass, label, value, suffix = "", trend, trendDirection = "up", loading, liveLabel = "Live", isRTL = false }) {
   return (
     <div className="kpi-card">
-      <div className="kpi-header">
+      <div className={`kpi-header ${isRTL ? "flex-row-reverse" : ""}`}>
         <div className={`kpi-icon ${iconClass}`}>
           <i className={`fa-solid ${icon}`} />
         </div>
@@ -126,16 +127,16 @@ function KpiCard({ icon, iconClass, label, value, suffix = "", trend, trendDirec
   );
 }
 
-function InsightCard({ type, icon, color, text, action }) {
+function InsightCard({ type, icon, color, text, action, isRTL = false }) {
   return (
     <div className="insight-card">
-      <div className="insight-type" style={{ color }}>
+      <div className={`insight-type ${isRTL ? "flex-row-reverse" : ""}`} style={{ color }}>
         <i className={`fa-solid ${icon}`} />
         {type}
       </div>
       <div className="insight-text">{text}</div>
-      <div className="insight-action">
-        <i className="fa-solid fa-arrow-right" />
+      <div className={`insight-action ${isRTL ? "flex-row-reverse" : ""}`}>
+        <i className={`fa-solid ${isRTL ? "fa-arrow-left" : "fa-arrow-right"}`} />
         {action}
       </div>
     </div>
@@ -208,6 +209,7 @@ function DashboardPage() {
   const { setPath } = useOutletContext() || {};
   const { activeSpace, spaces } = useAppContext();
   const { t, i18n } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const spaceId = activeSpace?.id || spaces[0]?.id;
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
@@ -392,7 +394,7 @@ function DashboardPage() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-slate-50">
+    <div className="flex h-full min-h-0 flex-col bg-slate-50" dir={isRTL ? "rtl" : "ltr"}>
       <div className="dashboard-content">
         <div className="page-title">
           <i className="fa-solid fa-chart-pie" />
@@ -437,6 +439,7 @@ function DashboardPage() {
             trend={dashboardMetrics.completedTasks ? t("dashboard.kpis.done", { value: formatNumber(dashboardMetrics.completedTasks, locale) }) : ""}
             loading={loading}
             liveLabel={t("dashboard.liveBadge")}
+            isRTL={isRTL}
           />
           <KpiCard
             icon="fa-bullseye"
@@ -446,6 +449,7 @@ function DashboardPage() {
             trend={dashboardMetrics.slaCompliance ? t("dashboard.kpis.sla", { value: formatPercent(dashboardMetrics.slaCompliance, locale) }) : ""}
             loading={loading}
             liveLabel={t("dashboard.liveBadge")}
+            isRTL={isRTL}
           />
           <KpiCard
             icon="fa-coins"
@@ -455,6 +459,7 @@ function DashboardPage() {
             trendDirection="down"
             loading={loading}
             liveLabel={t("dashboard.liveBadge")}
+            isRTL={isRTL}
           />
           <KpiCard
             icon="fa-users"
@@ -464,6 +469,7 @@ function DashboardPage() {
             trend={teamLoad.length ? t("dashboard.kpis.active", { value: formatNumber(teamLoad.length, locale) }) : ""}
             loading={loading}
             liveLabel={t("dashboard.liveBadge")}
+            isRTL={isRTL}
           />
         </div>
 
@@ -471,11 +477,11 @@ function DashboardPage() {
           <h3>
             <i className="fa-solid fa-robot" />
             {t("dashboard.aiInsights")}
-            <span className="ml-1 text-[11px] font-medium text-[var(--text-tertiary)]">{t("dashboard.liveMetrics")}</span>
+            <span className={`${isRTL ? "mr-1" : "ml-1"} text-[11px] font-medium text-[var(--text-tertiary)]`}>{t("dashboard.liveMetrics")}</span>
           </h3>
           <div className="insight-cards">
             {insights.map((insight) => (
-              <InsightCard key={insight.type} {...insight} />
+              <InsightCard key={insight.type} {...insight} isRTL={isRTL} />
             ))}
           </div>
         </section>

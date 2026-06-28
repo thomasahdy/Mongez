@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
 import { PanelSkeleton, Skeleton } from "../../components/loading/Skeleton";
 import { useBillingQuery } from "../../hooks/useDashboardQueries";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 function humanizeKey(key) {
   return String(key || "")
@@ -17,6 +18,7 @@ export default function BillingPage() {
   const { setPath } = useOutletContext() || {};
   const { activeSpace, spaces, user } = useAppContext();
   const { t, i18n } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [error, setError] = useState("");
   const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
 
@@ -94,10 +96,10 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50 p-5">
+    <div className="h-full overflow-y-auto bg-slate-50 p-5" dir={isRTL ? "rtl" : "ltr"}>
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className={`flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between ${isRTL ? "lg:flex-row-reverse" : ""}`}>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{t("billing.subscription")}</p>
               <h1 className="mt-2 text-3xl font-black tracking-[-0.05em] text-slate-950">{t("billing.title")}</h1>

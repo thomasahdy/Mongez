@@ -1,165 +1,132 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { createBoardSchema } from '../../schemas/validationSchemas';
+import React, { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslation } from "react-i18next";
+import { createBoardSchema } from "../../schemas/validationSchemas";
 
 const CreateBoardModal = ({ dept, onSubmit, onClose }) => {
+  const { t } = useTranslation();
   const {
     register,
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting },
-    reset,
   } = useForm({
     resolver: zodResolver(createBoardSchema),
     defaultValues: {
-      name: '', // Empty defaults so placeholders show up correctly
-      description: '',
-      departmentId: dept?.id || '',
-      type: 'KANBAN'
+      name: "",
+      description: "",
+      departmentId: dept?.id || "",
+      type: "KANBAN",
     },
   });
 
   useEffect(() => {
     if (dept?.id) {
-      setValue('departmentId', dept.id);
+      setValue("departmentId", dept.id);
     }
-    
-  }, [dept?.id,  setValue]);
+  }, [dept?.id, setValue]);
 
   const handleFormSubmit = async (data) => {
-    console.log("CreateBoardModal handleFormSubmit with:", data);
     try {
       await onSubmit(data);
-      // Don't reset - let the parent handle modal close
-    } catch (err) {
-      console.error("Form submission failed:", err);
+    } catch (error) {
+      console.error("Form submission failed:", error);
     }
   };
 
-  const handleInvalidSubmit = (valErrors) => {
-    console.warn("CreateBoardModal validation FAILED:", valErrors);
+  const handleInvalidSubmit = (validationErrors) => {
+    console.warn("CreateBoardModal validation FAILED:", validationErrors);
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden animate-fadeIn">
-        {/* Top subtle decorative gradient */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-fadeIn dark:border-slate-800 dark:bg-slate-950">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-400 to-indigo-500" />
 
-        {/* Modal Header */}
-        <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 pb-4 pt-6 dark:border-slate-900">
           <h2 id="modal-title" className="text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100">
-            Create new board in {dept?.name}
+            {t("spacesPage.createBoardIn", { department: dept?.name })}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
-            aria-label="Close dialog"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+            aria-label={t("spacesPage.closeDialog")}
           >
             <i className="fa-solid fa-xmark text-[16px]" />
           </button>
         </div>
 
-        {/* Modal Form — FIXED: Used onSubmit instead of action */}
-        <form onSubmit={handleSubmit(handleFormSubmit, handleInvalidSubmit)} className="p-6 space-y-4">
-          
-          {/* Name input */}
+        <form onSubmit={handleSubmit(handleFormSubmit, handleInvalidSubmit)} className="space-y-4 p-6">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="board-name">
-              Board Name
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="board-name">
+              {t("spacesPage.boardName")}
             </label>
             <input
               id="board-name"
               type="text"
-              placeholder="e.g., Q3 Product Roadmap"
-              className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
-                ${errors.name ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
-              {...register('name')}
+              placeholder={t("spacesPage.boardNamePlaceholder")}
+              className={`w-full rounded-xl border bg-transparent px-3.5 py-2.5 text-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-sky-400 ${
+                errors.name ? "border-red-500 dark:border-red-900/50" : "border-slate-200 dark:border-slate-800"
+              }`}
+              {...register("name")}
             />
-            {errors.name && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
-                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.name.message}
-              </p>
-            )}
           </div>
 
-          {/* Description Input */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5" htmlFor="board-description">
-              Description
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="board-description">
+              {t("spacesPage.description")}
             </label>
             <input
               id="board-description"
               type="text"
-              placeholder="e.g., Tracking deliverables for engineering squads"
-              className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
-                ${errors.description ? 'border-red-500 dark:border-red-900/50' : 'border-slate-200 dark:border-slate-800'}`}
-              {...register('description')}
-            />
-            {/* FIXED: Swapped out errors.name for errors.description */}
-            {errors.description && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 font-medium flex items-center gap-1.5">
-                <i className="fa-solid fa-circle-exclamation text-[10px]" /> {errors.description.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <input type="hidden" {...register('departmentId')} />
-          </div>
-          <select
-            id="type"
-            {...register("type")}
-            className={`w-full px-3.5 py-2.5 rounded-xl border bg-transparent focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all text-sm
-              ${
-                errors.type
-                  ? "border-red-500 dark:border-red-900/50"
-                  : "border-slate-200 dark:border-slate-800"
+              placeholder={t("spacesPage.boardDescriptionPlaceholder")}
+              className={`w-full rounded-xl border bg-transparent px-3.5 py-2.5 text-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-sky-400 ${
+                errors.description ? "border-red-500 dark:border-red-900/50" : "border-slate-200 dark:border-slate-800"
               }`}
-          >
-            <option value="KANBAN">Kanban</option>
-            <option value="LIST">List</option>
-            <option value="TABLE">Table</option>
-            <option value="TIMELINE">Timeline</option>
-            <option value="CALENDAR">Calendar</option>
-            <option value="WHITEBOARD">Whiteboard</option>
-            
-          </select>
+              {...register("description")}
+            />
+          </div>
 
-          {/* Modal Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-900">
+          <input type="hidden" {...register("departmentId")} />
+
+          <div>
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="board-type">
+              {t("spacesPage.boardType")}
+            </label>
+            <select
+              id="board-type"
+              {...register("type")}
+              className={`w-full rounded-xl border bg-transparent px-3.5 py-2.5 text-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-sky-400 ${
+                errors.type ? "border-red-500 dark:border-red-900/50" : "border-slate-200 dark:border-slate-800"
+              }`}
+            >
+              <option value="KANBAN">{t("spacesPage.boardTypes.kanban")}</option>
+              <option value="LIST">{t("spacesPage.boardTypes.list")}</option>
+              <option value="TABLE">{t("spacesPage.boardTypes.table")}</option>
+              <option value="TIMELINE">{t("spacesPage.boardTypes.timeline")}</option>
+              <option value="CALENDAR">{t("spacesPage.boardTypes.calendar")}</option>
+              <option value="WHITEBOARD">{t("spacesPage.boardTypes.whiteboard")}</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-900">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+              className="cursor-pointer rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-900"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 hover:shadow-md text-white transition-all duration-200 cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:shadow-md disabled:opacity-50"
             >
-              {isSubmitting ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Creating...
-                </>
-              ) : (
-                "Create Board"
-              )}
+              {isSubmitting ? t("spacesPage.creating") : t("spacesPage.createBoardButton")}
             </button>
           </div>
-
         </form>
       </div>
     </div>

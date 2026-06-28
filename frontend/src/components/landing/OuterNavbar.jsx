@@ -3,10 +3,13 @@ import { NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import mongezWordmark from "../../assets/Mongez.svg";
 import mongezMark from "../../assets/MongezMLogo.svg";
+import ToggleLanguage from "../layout/ToggleLanguage";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const navLinks = t("landing.nav.links", { returnObjects: true });
 
   return (
@@ -21,17 +24,14 @@ function Navbar() {
 
         <nav className="hidden items-center gap-8 text-[14px] font-medium text-slate-500 lg:flex">
           {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="transition-colors hover:text-slate-900"
-            >
+            <a key={link.label} href={link.href} className="transition-colors hover:text-slate-900">
               {link.label}
             </a>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-4 lg:flex">
+        <div className={`hidden items-center gap-4 lg:flex ${isRTL ? "flex-row-reverse" : ""}`}>
+          <ToggleLanguage />
           <NavLink to="/login">
             <span className="text-sm font-semibold text-slate-600 transition hover:text-slate-900">
               {t("landing.nav.login")}
@@ -44,42 +44,51 @@ function Navbar() {
           </NavLink>
         </div>
 
-        {/* Mobile hamburger button */}
-        <button
-          type="button"
-          onClick={() => setMenuOpen((current) => !current)}
-          className="lg:hidden p-2 -mr-2 text-slate-600"
-          aria-label={t("landing.nav.toggleMenu")}
-        >
-          <i className={`fa-solid ${menuOpen ? 'fa-xmark' : 'fa-bars'} text-xl`} />
-        </button>
+        <div className={`flex items-center gap-2 lg:hidden ${isRTL ? "flex-row-reverse" : ""}`}>
+          <ToggleLanguage />
+          <button
+            type="button"
+            onClick={() => setMenuOpen((current) => !current)}
+            className={`p-2 text-slate-600 ${isRTL ? "-ml-2" : "-mr-2"}`}
+            aria-label={t("landing.nav.toggleMenu")}
+          >
+            <i className={`fa-solid ${menuOpen ? "fa-xmark" : "fa-bars"} text-xl`} />
+          </button>
+        </div>
       </div>
 
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="lg:hidden border-t border-slate-200 bg-white">
-          <nav className="flex flex-col px-6 py-4 gap-4">
+      {menuOpen ? (
+        <div className="border-t border-slate-200 bg-white lg:hidden">
+          <nav className="flex flex-col gap-4 px-6 py-4">
             {navLinks.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
-                className="text-[14px] font-medium text-slate-600 hover:text-slate-900"
+                className={`text-[14px] font-medium text-slate-600 hover:text-slate-900 ${isRTL ? "text-right" : "text-left"}`}
                 onClick={() => setMenuOpen(false)}
               >
                 {link.label}
               </a>
             ))}
-            <div className="flex flex-col gap-3 pt-2 border-t border-slate-100">
-              <NavLink to="/login" className="text-sm font-semibold text-slate-600" onClick={() => setMenuOpen(false)}>
+            <div className="flex flex-col gap-3 border-t border-slate-100 pt-2">
+              <NavLink
+                to="/login"
+                className={`text-sm font-semibold text-slate-600 ${isRTL ? "text-right" : "text-left"}`}
+                onClick={() => setMenuOpen(false)}
+              >
                 {t("landing.nav.login")}
               </NavLink>
-              <NavLink to="/register" className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white" onClick={() => setMenuOpen(false)}>
+              <NavLink
+                to="/register"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white"
+                onClick={() => setMenuOpen(false)}
+              >
                 {t("landing.nav.getStarted")}
               </NavLink>
             </div>
           </nav>
         </div>
-      )}
+      ) : null}
     </header>
   );
 }

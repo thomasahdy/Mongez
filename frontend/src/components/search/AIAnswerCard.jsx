@@ -1,40 +1,40 @@
-import React from 'react'
-import SourcePill from './SourcePill';
+import React from "react";
+import { useTranslation } from "react-i18next";
+import SourcePill from "./SourcePill";
 
 const AIAnswerCard = ({ answer }) => {
+  const { t } = useTranslation();
+
   return (
     <div
-      className="bg-gradient-to-br from-indigo-50/80 to-purple-50/50 dark:from-indigo-900/25 dark:to-purple-900/15 border border-indigo-200/60 dark:border-indigo-700/40 rounded-xl p-5 mb-5"
+      className="mb-5 rounded-xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-purple-50/50 p-5 dark:border-indigo-700/40 dark:from-indigo-900/25 dark:to-purple-900/15"
       role="region"
-      aria-label="AI Answer"
+      aria-label={t("searchPage.aiAnswerAria")}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-300 uppercase tracking-widest mb-3">
+      <div className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
         <i className="fa-solid fa-robot" aria-hidden="true" />
-        AI Answer
+        {t("searchPage.aiAnswerAria")}
       </div>
 
-      {/* Answer text */}
-      <p className="text-[13px] text-slate-700 dark:text-slate-200 leading-relaxed mb-4">
-        {answer.text.map((segment, i) =>
+      <p className="mb-4 text-[13px] leading-relaxed text-slate-700 dark:text-slate-200">
+        {answer.text.map((segment, index) =>
           segment.bold ? (
-            <strong key={i} className="text-indigo-600 dark:text-indigo-300 font-semibold">
+            <strong key={index} className="font-semibold text-indigo-600 dark:text-indigo-300">
               {segment.value}
             </strong>
           ) : (
-            <span key={i}>{segment.value}</span>
-          )
+            <span key={index}>{segment.value}</span>
+          ),
         )}
       </p>
 
-      {/* Sources */}
-      <div className="flex flex-wrap gap-2" aria-label="Sources">
-        {answer.sources.map((s, i) => (
-          <SourcePill key={i} icon={s.icon} label={s.label} />
+      <div className="flex flex-wrap gap-2" aria-label={t("searchPage.sourcesAria")}>
+        {answer.sources.map((source, index) => (
+          <SourcePill key={index} icon={source.icon} label={source.label} />
         ))}
       </div>
     </div>
   );
-}
+};
 
-export default AIAnswerCard
+export default AIAnswerCard;

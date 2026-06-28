@@ -1,11 +1,15 @@
 import { Fragment } from "react";
 import { FaCheck } from "react-icons/fa";
-
-const steps = ["Account", "Organization", "Space", "Invite"];
+import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
 
 const RegisterStepper = ({ step }) => {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
+  const steps = t("registerUi.steps", { returnObjects: true });
+
   return (
-    <div className="flex items-center justify-center mb-6">
+    <div className={`mb-6 flex items-center justify-center ${isRTL ? "flex-row-reverse" : ""}`}>
       {steps.map((label, index) => {
         const number = index + 1;
         const active = step === number;

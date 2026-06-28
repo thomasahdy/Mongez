@@ -2,9 +2,11 @@ import { Icon } from '../../../components/ui/Icons'
 import SectionBadge from './SectionBadge'
 import { NavLink } from 'react-router'
 import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
 
 function HeroSection() {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const columns = t("landing.hero.columns", { returnObjects: true });
   const assistantAlerts = t("landing.hero.assistantAlerts", { returnObjects: true });
 
@@ -25,14 +27,18 @@ function HeroSection() {
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <NavLink
             to="/register"
-            className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-7 py-4 text-base font-semibold text-white shadow-[0_20px_45px_rgba(14,165,233,0.35)] transition hover:-translate-y-0.5"
+            className={`inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-7 py-4 text-base font-semibold text-white shadow-[0_20px_45px_rgba(14,165,233,0.35)] transition hover:-translate-y-0.5 ${
+              isRTL ? "flex-row-reverse" : ""
+            }`}
           >
             <Icon name="rocket" />
             {t("landing.hero.primaryCta")}
           </NavLink>
           <a
             href="#ai-assistant"
-            className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-7 py-4 text-base font-semibold text-slate-700 shadow-[0_16px_35px_rgba(15,23,42,0.08)] transition hover:border-sky-200 hover:text-sky-600"
+            className={`inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-7 py-4 text-base font-semibold text-slate-700 shadow-[0_16px_35px_rgba(15,23,42,0.08)] transition hover:border-sky-200 hover:text-sky-600 ${
+              isRTL ? "flex-row-reverse" : ""
+            }`}
           >
             <Icon name="play" />
             {t("landing.hero.secondaryCta")}
@@ -40,7 +46,7 @@ function HeroSection() {
         </div>
 
         <div className="relative mx-auto mt-14 max-w-5xl rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-[0_35px_90px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:p-6" aria-label={t("landing.hero.previewAria")}>
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 pb-4">
+          <div className={`flex items-center justify-between border-b border-slate-100 px-4 pb-4 ${isRTL ? "flex-row-reverse" : ""}`}>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-rose-300" />
               <span className="h-3 w-3 rounded-full bg-amber-300" />
@@ -61,7 +67,7 @@ function HeroSection() {
 
             <div className="grid gap-3 md:grid-cols-4">
               {columns.map((column, index) => (
-                <div key={column} className="rounded-3xl bg-slate-50 p-3 text-left">
+                <div key={column} className={`rounded-3xl bg-slate-50 p-3 ${isRTL ? "text-right" : "text-left"}`}>
                   <div className="mb-4 flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700">{column}</span>
                     <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-400">{index + 3}</span>
@@ -83,8 +89,8 @@ function HeroSection() {
               ))}
             </div>
 
-            <div className="rounded-3xl bg-slate-50 p-4 text-left">
-              <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-blue-600">
+            <div className={`rounded-3xl bg-slate-50 p-4 ${isRTL ? "text-right" : "text-left"}`}>
+              <div className={`mb-4 flex items-center gap-2 text-sm font-semibold text-blue-600 ${isRTL ? "flex-row-reverse" : ""}`}>
                 <Icon name="robot" />
                 {t("landing.hero.assistantName")}
               </div>

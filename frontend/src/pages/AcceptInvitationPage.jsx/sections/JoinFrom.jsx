@@ -1,37 +1,40 @@
-import React, { useState } from 'react'
-import FormField from '../../../components/AcceptInvitation/FormField';
-import PasswordField from '../../../components/AcceptInvitation/PasswordField';
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
+import FormField from "../../../components/AcceptInvitation/FormField";
+import PasswordField from "../../../components/AcceptInvitation/PasswordField";
 
 export default function JoinForm({ onAccept, onDecline, loading }) {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [firstName, setFirstName] = useState("");
-  const [lastName,  setLastName]  = useState("");
-  const [password,  setPassword]  = useState("");
-  const [error,     setError]     = useState(null);
- 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const [lastName, setLastName] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError(null);
- 
+
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("acceptInvitation.passwordShort"));
       return;
     }
- 
+
     try {
       await onAccept({ firstName, lastName, password });
     } catch (err) {
-      setError(err.message ?? "Something went wrong. Please try again.");
+      setError(err.message ?? t("acceptInvitation.submitFailed"));
     }
   };
- 
+
   return (
-    <form onSubmit={handleSubmit} noValidate aria-label="Accept invitation form">
-      {/* Name row */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+    <form onSubmit={handleSubmit} noValidate aria-label={t("acceptInvitation.formAria")}>
+      <div className="mb-4 grid grid-cols-2 gap-3">
         <FormField
           id="firstName"
-          label="First name"
-          placeholder="Your name"
+          label={t("acceptInvitation.firstName")}
+          placeholder={t("acceptInvitation.firstNamePlaceholder")}
           value={firstName}
           onChange={setFirstName}
           required
@@ -39,68 +42,67 @@ export default function JoinForm({ onAccept, onDecline, loading }) {
         />
         <FormField
           id="lastName"
-          label="Last name"
-          placeholder="Last name"
+          label={t("acceptInvitation.lastName")}
+          placeholder={t("acceptInvitation.lastNamePlaceholder")}
           value={lastName}
           onChange={setLastName}
           required
           autoComplete="family-name"
         />
       </div>
- 
-      {/* Password */}
+
       <div className="mb-5">
         <PasswordField
           id="password"
-          label="Create password"
-          placeholder="Choose a strong password"
+          label={t("acceptInvitation.createPassword")}
+          placeholder={t("acceptInvitation.passwordPlaceholder")}
           value={password}
           onChange={setPassword}
           required
         />
       </div>
- 
-      {/* Error message */}
+
       {error && (
         <div
           role="alert"
-          className="flex items-center gap-2 text-[12px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2 mb-4"
+          className={`mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 ${
+            isRTL ? "flex-row-reverse text-right" : ""
+          }`}
         >
           <i className="fa-solid fa-circle-exclamation shrink-0" aria-hidden="true" />
           {error}
         </div>
       )}
- 
-      {/* Accept */}
+
       <button
         type="submit"
         disabled={loading || !firstName || !lastName || !password}
-        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-sky-500 hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold transition-all duration-150 hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
+        className={`w-full rounded-lg bg-sky-500 px-4 py-3 text-[14px] font-semibold text-white transition-all duration-150 hover:-translate-y-px hover:bg-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+          isRTL ? "flex flex-row-reverse items-center justify-center gap-2" : "flex items-center justify-center gap-2"
+        }`}
         aria-busy={loading}
       >
         {loading ? (
           <>
             <i className="fa-solid fa-circle-notch animate-spin text-[13px]" aria-hidden="true" />
-            Joining…
+            {t("acceptInvitation.joining")}
           </>
         ) : (
           <>
             <i className="fa-solid fa-check text-[13px]" aria-hidden="true" />
-            Accept &amp; Join Workspace
+            {t("acceptInvitation.acceptJoin")}
           </>
         )}
       </button>
- 
-      {/* Decline */}
+
       <button
         type="button"
         onClick={onDecline}
         disabled={loading}
-        className="w-full mt-3 py-2 text-[13px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-lg"
+        className="mt-3 w-full rounded-lg py-2 text-[13px] text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 dark:text-slate-500 dark:hover:text-slate-300"
       >
-        Decline invitation
+        {t("acceptInvitation.decline")}
       </button>
     </form>
   );
 }
- 

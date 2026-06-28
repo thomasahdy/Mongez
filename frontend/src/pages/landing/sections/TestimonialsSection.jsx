@@ -1,6 +1,7 @@
 import { Icon } from '../../../components/ui/Icons'
 import SectionBadge from './SectionBadge'
 import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
 
 const TESTIMONIALS = [
   {
@@ -31,6 +32,7 @@ const TESTIMONIALS = [
 
 function TestimonialsSection() {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const itemsCopy = t("landing.testimonials.items", { returnObjects: true });
   const testimonials = TESTIMONIALS.map((item, index) => ({ ...item, ...itemsCopy[index] }));
 
@@ -51,7 +53,7 @@ function TestimonialsSection() {
           {testimonials.map((item) => (
             <article
               key={item.name}
-              className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-[0_20px_45px_rgba(15,23,42,0.06)]"
+              className={`rounded-[2rem] border border-slate-200 bg-white p-7 shadow-[0_20px_45px_rgba(15,23,42,0.06)] ${isRTL ? "text-right" : "text-left"}`}
             >
               <div className="flex gap-1 text-amber-400">
                 {Array.from({ length: 5 }).map((_, index) => (
@@ -59,7 +61,7 @@ function TestimonialsSection() {
                 ))}
               </div>
               <p className="mt-6 text-xl leading-9 text-slate-600">&quot;{item.quote}&quot;</p>
-              <div className="mt-8 flex items-center gap-4">
+              <div className={`mt-8 flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
                 <div className={`grid h-14 w-14 place-items-center rounded-full text-sm font-bold text-white ${item.accent}`}>
                   {item.initials}
                 </div>

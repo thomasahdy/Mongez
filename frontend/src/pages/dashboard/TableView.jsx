@@ -4,15 +4,16 @@ import { useTranslation } from 'react-i18next';
 import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
 import { useBoardTableQuery, useCreateBoardTaskMutation } from '../../hooks/useDashboardQueries';
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
-function renderSortIcon(sortConfig, column) {
+function renderSortIcon(sortConfig, column, isRTL) {
   if (sortConfig.key !== column) {
-    return <i className="fa-solid fa-sort ml-1 text-slate-300" aria-hidden="true" />;
+    return <i className={`fa-solid fa-sort ${isRTL ? "mr-1" : "ml-1"} text-slate-300`} aria-hidden="true" />;
   }
 
   return (
     <i
-      className={`ml-1 text-sky-600 ${
+      className={`${isRTL ? "mr-1" : "ml-1"} text-sky-600 ${
         sortConfig.direction === 'asc' ? 'fa-solid fa-arrow-up-wide-short' : 'fa-solid fa-arrow-down-wide-short'
       }`}
       aria-hidden="true"
@@ -25,6 +26,7 @@ export default function TableView() {
   const { activeBoard, setPath } = useOutletContext() || {};
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -153,19 +155,19 @@ export default function TableView() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-slate-50">
+    <div className="flex h-full flex-col overflow-hidden bg-slate-50" dir={isRTL ? "rtl" : "ltr"}>
       <ViewTabs />
       <Toolbar />
 
       <div className="border-b border-slate-200 bg-white px-4 py-3">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className={`flex flex-col gap-3 md:flex-row md:items-center md:justify-between ${isRTL ? "md:flex-row-reverse" : ""}`}>
           <div>
             <h2 className="text-sm font-bold text-slate-900">{t('tableView.title')}</h2>
             <p className="text-xs text-slate-500">
               {t('tableView.connected', { board: board?.name || activeBoard?.name || t('tableView.title') })}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
             <button
               type="button"
               onClick={() => {
@@ -242,30 +244,30 @@ export default function TableView() {
                 <thead className="sticky top-0 border-b border-slate-200 bg-slate-50">
                   <tr>
                     <th
-                      className="cursor-pointer whitespace-nowrap border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                      className={`cursor-pointer whitespace-nowrap px-4 py-3 text-xs font-semibold text-slate-600 hover:bg-slate-100 ${isRTL ? "border-l border-slate-200 text-right" : "border-r border-slate-200 text-left"}`}
                       onClick={() => handleSort('title')}
                     >
-                      {t('tableView.headers.task')} {renderSortIcon(sortConfig, 'title')}
+                      {t('tableView.headers.task')} {renderSortIcon(sortConfig, 'title', isRTL)}
                     </th>
                     <th
-                      className="cursor-pointer whitespace-nowrap border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                      className={`cursor-pointer whitespace-nowrap px-4 py-3 text-xs font-semibold text-slate-600 hover:bg-slate-100 ${isRTL ? "border-l border-slate-200 text-right" : "border-r border-slate-200 text-left"}`}
                       onClick={() => handleSort('status')}
                     >
-                      {t('tableView.headers.status')} {renderSortIcon(sortConfig, 'status')}
+                      {t('tableView.headers.status')} {renderSortIcon(sortConfig, 'status', isRTL)}
                     </th>
-                    <th className="w-24 border-r border-slate-200 px-4 py-3 text-center text-xs font-semibold text-slate-600">
+                    <th className={`w-24 px-4 py-3 text-center text-xs font-semibold text-slate-600 ${isRTL ? "border-l border-slate-200" : "border-r border-slate-200"}`}>
                       {t('tableView.headers.progress')}
                     </th>
                     <th
-                      className="cursor-pointer whitespace-nowrap border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                      className={`cursor-pointer whitespace-nowrap px-4 py-3 text-xs font-semibold text-slate-600 hover:bg-slate-100 ${isRTL ? "border-l border-slate-200 text-right" : "border-r border-slate-200 text-left"}`}
                       onClick={() => handleSort('dueDate')}
                     >
-                      {t('tableView.headers.dueDate')} {renderSortIcon(sortConfig, 'dueDate')}
+                      {t('tableView.headers.dueDate')} {renderSortIcon(sortConfig, 'dueDate', isRTL)}
                     </th>
-                    <th className="w-12 border-r border-slate-200 px-4 py-3 text-center text-xs font-semibold text-slate-600">
+                    <th className={`w-12 px-4 py-3 text-center text-xs font-semibold text-slate-600 ${isRTL ? "border-l border-slate-200" : "border-r border-slate-200"}`}>
                       {t('tableView.headers.assignee')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                    <th className={`px-4 py-3 text-xs font-semibold text-slate-600 ${isRTL ? "text-right" : "text-left"}`}>
                       {t('tableView.headers.description')}
                     </th>
                   </tr>
@@ -277,14 +279,14 @@ export default function TableView() {
                       className="cursor-pointer transition-colors hover:bg-blue-50"
                       onClick={() => navigate(`/tasks/${task.id}`)}
                     >
-                      <td className="max-w-xs truncate border-r border-slate-200 px-4 py-3 text-sm font-medium text-slate-900">
+                      <td className={`max-w-xs truncate px-4 py-3 text-sm font-medium text-slate-900 ${isRTL ? "border-l border-slate-200 text-right" : "border-r border-slate-200 text-left"}`}>
                         {task.title || task.name || t('tableView.defaults.untitled')}
                       </td>
-                      <td className="border-r border-slate-200 px-4 py-3 text-sm">
+                      <td className={`px-4 py-3 text-sm ${isRTL ? "border-l border-slate-200 text-right" : "border-r border-slate-200 text-left"}`}>
                         {getStatusBadge(task.status || task.statusId)}
                       </td>
-                      <td className="border-r border-slate-200 px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td className={`px-4 py-3 ${isRTL ? "border-l border-slate-200" : "border-r border-slate-200"}`}>
+                        <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
                           <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                             <div
                               className={`h-full rounded-full transition-all ${getProgressColor(task.progress || 0)}`}
@@ -296,7 +298,7 @@ export default function TableView() {
                           </span>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap border-r border-slate-200 px-4 py-3 text-sm text-slate-600">
+                      <td className={`whitespace-nowrap px-4 py-3 text-sm text-slate-600 ${isRTL ? "border-l border-slate-200 text-right" : "border-r border-slate-200 text-left"}`}>
                         {task.dueDate
                           ? new Date(task.dueDate).toLocaleDateString(locale, {
                               year: 'numeric',
@@ -305,7 +307,7 @@ export default function TableView() {
                             })
                           : t('tableView.defaults.notSet')}
                       </td>
-                      <td className="border-r border-slate-200 px-4 py-3">
+                      <td className={`px-4 py-3 ${isRTL ? "border-l border-slate-200" : "border-r border-slate-200"}`}>
                         {task.assignee && (
                           <div
                             className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-blue-500 text-xs font-bold text-white"
@@ -317,7 +319,7 @@ export default function TableView() {
                           </div>
                         )}
                       </td>
-                      <td className="truncate px-4 py-3 text-sm text-slate-600">
+                      <td className={`truncate px-4 py-3 text-sm text-slate-600 ${isRTL ? "text-right" : "text-left"}`}>
                         {task.description || task.comment || t('tableView.defaults.noDescription')}
                       </td>
                     </tr>
@@ -335,7 +337,7 @@ export default function TableView() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3">
+              <div className={`flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 ${isRTL ? "flex-row-reverse" : ""}`}>
                 <div className="text-xs text-slate-600">
                   {t('tableView.pagination.showing', {
                     from: (safeCurrentPage - 1) * itemsPerPage + 1,

@@ -1,11 +1,14 @@
-import React from 'react'
+import React from "react";
+import { useTranslation } from "react-i18next";
 
 const AuthLogo = ({ href = "/" }) => {
+  const { t } = useTranslation();
+
   return (
     <a
       href={href}
-      className="flex items-center justify-center gap-2.5 mb-10 text-slate-900 dark:text-slate-100 no-underline"
-      aria-label="Mongez home"
+      className="mb-10 flex items-center justify-center gap-2.5 text-slate-900 no-underline dark:text-slate-100"
+      aria-label={t("authUi.logoHome")}
     >
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
         <rect width="32" height="32" rx="8" fill="#00a8e8" />
@@ -22,6 +25,6 @@ const AuthLogo = ({ href = "/" }) => {
       <span className="text-[22px] font-extrabold tracking-tight">Mongez</span>
     </a>
   );
-}
+};
 
-export default AuthLogo
+export default AuthLogo;

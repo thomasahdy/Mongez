@@ -1,5 +1,7 @@
 import { FaArrowLeft, FaArrowRight, FaChartBar, FaClipboardList } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import AuthButton from "../../shared/AuthButton";
+import { useLocaleDirection } from "../../../../hooks/useLocaleDirection";
 
 const templates = [
   {
@@ -23,18 +25,26 @@ const templates = [
 ];
 
 const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) => {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
+  const templateCopy = t("registerUi.template.items", { returnObjects: true });
+  const mergedTemplates = templates.map((template, index) => ({
+    ...template,
+    ...templateCopy[index],
+  }));
+
   return (
     <div className="animate-fadeIn">
       <h1 className="mb-1 text-center text-[22px] font-extrabold tracking-[-0.5px] text-text-primary">
-        Choose a starting template
+        {t("registerUi.template.title")}
       </h1>
 
       <p className="mb-7 text-center text-[13px] text-text-secondary">
-        These options match the onboarding templates available in the backend.
+        {t("registerUi.template.description")}
       </p>
 
       <div className="mb-6 grid grid-cols-1 gap-2.5 min-[580px]:grid-cols-2">
-        {templates.map((template) => {
+        {mergedTemplates.map((template) => {
           const Icon = template.icon;
           const selected = selectedTemplate === template.id;
 
@@ -43,7 +53,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
               key={template.id}
               type="button"
               onClick={() => onSelectTemplate(template.id)}
-              className={`relative cursor-pointer rounded-lg border-[1.5px] p-4 text-left transition-all duration-200 hover:scale-[1.02] ${
+              className={`relative cursor-pointer rounded-lg border-[1.5px] p-4 transition-all duration-200 hover:scale-[1.02] ${
                 selected
                   ? "border-primary bg-primary-light shadow-sm ring-1 ring-primary/20"
                   : "border-border hover:border-primary hover:bg-primary-light"
@@ -59,7 +69,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
                 {template.description}
               </div>
               {selected && (
-                <div className="absolute right-3 top-3 text-primary">
+                <div className={`absolute top-3 text-primary ${isRTL ? "left-3" : "right-3"}`}>
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                     <path
                       fillRule="evenodd"
@@ -74,12 +84,32 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
         })}
       </div>
 
-      <div className="flex gap-3">
-        <AuthButton variant="outline" onClick={onBack}>
-          <FaArrowLeft className="text-[10px]" /> Back
+      <div className={`flex gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+        <AuthButton variant="outline" onClick={onBack} className={isRTL ? "flex-row-reverse" : ""}>
+          {isRTL ? (
+            <>
+              {t("registerUi.template.back")}
+              <FaArrowLeft className="rotate-180 text-[10px]" />
+            </>
+          ) : (
+            <>
+              <FaArrowLeft className="text-[10px]" />
+              {t("registerUi.template.back")}
+            </>
+          )}
         </AuthButton>
-        <AuthButton onClick={onNext}>
-          Continue <FaArrowRight className="text-[10px]" />
+        <AuthButton onClick={onNext} className={isRTL ? "flex-row-reverse" : ""}>
+          {isRTL ? (
+            <>
+              {t("registerUi.template.continue")}
+              <FaArrowRight className="rotate-180 text-[10px]" />
+            </>
+          ) : (
+            <>
+              {t("registerUi.template.continue")}
+              <FaArrowRight className="text-[10px]" />
+            </>
+          )}
         </AuthButton>
       </div>
     </div>

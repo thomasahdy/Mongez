@@ -1,13 +1,15 @@
 import SectionBadge from './SectionBadge'
 import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
 
 function ResultsSection() {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const metrics = t("landing.results.metrics", { returnObjects: true });
 
   return (
     <section id="results" className="bg-[#0f172a] px-6 py-24 text-white lg:px-10">
-      <div className="mx-auto max-w-6xl text-center">
+      <div className="mx-auto max-w-6xl text-center" dir={isRTL ? "rtl" : "ltr"}>
         <SectionBadge icon="chart">{t("landing.results.badge")}</SectionBadge>
         <h2 className="mt-6 text-4xl font-black tracking-[-0.05em] sm:text-5xl lg:text-6xl">{t("landing.results.title")}</h2>
         <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-slate-400">

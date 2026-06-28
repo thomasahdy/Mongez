@@ -1,5 +1,6 @@
 import { Icon } from '../../../components/ui/Icons'
 import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
 
 const FEATURE_ROWS = [
   {
@@ -180,6 +181,7 @@ function FeatureMockup({ accent, preview, riskLabels, automationTriggers, depart
 
 function FeaturesSection() {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const rowsCopy = t("landing.features.rows", { returnObjects: true });
   const featureRows = FEATURE_ROWS.map((feature, index) => ({ ...feature, ...rowsCopy[index] }));
   const riskLabels = t("landing.features.riskPreviewLabels", { returnObjects: true });
@@ -206,13 +208,13 @@ function FeaturesSection() {
                 t={t}
               />
             </div>
-            <div className={feature.imageLeft ? 'lg:order-2' : ''}>
+            <div className={`${feature.imageLeft ? 'lg:order-2' : ''} ${isRTL ? 'text-right' : 'text-left'}`}>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-400">{t("landing.features.eyebrow")}</p>
               <h2 className="mt-4 text-4xl font-black tracking-[-0.04em] text-[#0F172A] sm:text-5xl">{feature.title}</h2>
               <p className="mt-5 max-w-xl text-lg leading-8 text-[#475569]">{feature.description}</p>
               <div className="mt-8 space-y-4">
                 {feature.bullets.map((bullet) => (
-                  <div key={bullet} className="flex items-center gap-3 text-slate-[#475569]">
+                  <div key={bullet} className={`flex items-center gap-3 text-slate-[#475569] ${isRTL ? "flex-row-reverse" : ""}`}>
                     <div className="grid h-7 w-7 place-items-center rounded-full bg-emerald-400/20 text-emerald-300">
                       <Icon name="trend" className="h-3.5 w-3.5" />
                     </div>

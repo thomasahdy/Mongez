@@ -40,6 +40,8 @@ const WorkflowBuilder = lazy(() => import("./pages/workflow/WorkflowBuilder"));
 const OAuthCallbackPage = lazy(() => import("./pages/auth/OAuthCallbackPage"));
 
 function FullScreenLoader() {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="flex flex-col items-center gap-3">
@@ -47,7 +49,7 @@ function FullScreenLoader() {
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
-        <span className="text-slate-500 text-sm">Loading workspace...</span>
+        <span className="text-slate-500 text-sm">{t("authUi.loadingWorkspace")}</span>
       </div>
     </div>
   );
@@ -86,6 +88,13 @@ function AppContent() {
   const authSession = useAuthSessionQuery();
   const authReady = !authSession.isLoading;
   const isAuthenticated = Boolean(authSession.data?.isAuthenticated);
+
+  useEffect(() => {
+    const resolvedLanguage = (i18n.resolvedLanguage || i18n.language || "en").slice(0, 2);
+    if (resolvedLanguage !== language) {
+      setLanguage(resolvedLanguage);
+    }
+  }, [i18n.language, i18n.resolvedLanguage, language]);
 
   useEffect(() => {
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
@@ -188,8 +197,10 @@ function AppContent() {
 }
 
 function App() {
+  const { t } = useTranslation();
+
   return (
-    <ErrorBoundary fallbackMessage="The application shell failed to load.">
+    <ErrorBoundary fallbackMessage={t("authUi.shellFailed")}>
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>

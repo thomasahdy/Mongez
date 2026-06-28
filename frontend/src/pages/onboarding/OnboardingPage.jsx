@@ -3,11 +3,13 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import mongezMark from "../../assets/MongezMLogo.svg";
 import { useOnboardingSetupMutation, useOnboardingTemplatesQuery } from "../../hooks/useOnboardingQueries";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const ONBOARDING_STORAGE_KEY = "pendingOnboarding";
 
 export default function OnboardingPage() {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const navigate = useNavigate();
   const onboardingSetupMutation = useOnboardingSetupMutation();
   const templatesQuery = useOnboardingTemplatesQuery();
@@ -188,9 +190,9 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans">
-      <header className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-950">
-        <div className="flex items-center gap-2.5">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans" dir={isRTL ? "rtl" : "ltr"}>
+      <header className={`h-16 px-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-950 ${isRTL ? "flex-row-reverse" : ""}`}>
+        <div className={`flex items-center gap-2.5 ${isRTL ? "flex-row-reverse" : ""}`}>
           <img src={mongezMark} alt="" className="w-8 h-8" />
           <span className="text-lg font-bold tracking-tight">{t("onboarding.brand")}</span>
         </div>
@@ -218,7 +220,7 @@ export default function OnboardingPage() {
               <div className="space-y-5 animate-slideLeft">
                 <div>
                   <h2 className="text-2xl font-extrabold tracking-tight">{t("onboarding.createWorkspace.title")}</h2>
-                  <p className="text-sm text-slate-500 mt-1">{t("onboarding.createWorkspace.description")}</p>
+                  <p className={`mt-1 text-sm text-slate-500 ${isRTL ? "text-right" : "text-left"}`}>{t("onboarding.createWorkspace.description")}</p>
                 </div>
 
                 <div className="space-y-4">
@@ -322,6 +324,8 @@ export default function OnboardingPage() {
                         key={template.id}
                         onClick={() => setSelectedTemplate(template.id)}
                         className={`p-4 rounded-xl border transition-all duration-150 cursor-pointer flex gap-4 items-start ${
+                          isRTL ? "flex-row-reverse text-right" : "text-left"
+                        } ${
                           selectedTemplate === template.id
                             ? "border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20 shadow-md ring-2 ring-indigo-500/20"
                             : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-900/50"
@@ -339,7 +343,7 @@ export default function OnboardingPage() {
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-4">
+                <div className={`flex gap-3 pt-4 ${isRTL ? "flex-row-reverse" : ""}`}>
                   <button
                     type="button"
                     onClick={handlePrevStep}
@@ -365,15 +369,15 @@ export default function OnboardingPage() {
                   <p className="text-sm text-slate-500 mt-1">{t("onboarding.inviteTeam.description")}</p>
                 </div>
 
-                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                <div className={`space-y-3 max-h-[220px] overflow-y-auto ${isRTL ? "pl-1" : "pr-1"}`}>
                   {invites.map((invite, index) => (
-                    <div key={index} className="flex gap-2 items-center animate-fadeIn">
+                    <div key={index} className={`flex gap-2 items-center animate-fadeIn ${isRTL ? "flex-row-reverse" : ""}`}>
                       <input
                         type="email"
                         placeholder={t("onboarding.inviteTeam.emailPlaceholder")}
                         value={invite.email}
                         onChange={(event) => handleInviteChange(index, "email", event.target.value)}
-                        className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent outline-none focus:ring-2 focus:ring-sky-400 text-sm"
+                        className={`flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent outline-none focus:ring-2 focus:ring-sky-400 text-sm ${isRTL ? "text-right" : "text-left"}`}
                       />
                       <select
                         value={invite.role}
@@ -400,16 +404,17 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={handleAddInvite}
-                  className="text-xs font-bold text-sky-500 hover:text-sky-600 flex items-center gap-1.5 focus:outline-none"
+                  className={`text-xs font-bold text-sky-500 hover:text-sky-600 flex items-center gap-1.5 focus:outline-none ${isRTL ? "flex-row-reverse" : ""}`}
                 >
-                  + {t("onboarding.inviteTeam.addInvite")}
+                  <span>+</span>
+                  {t("onboarding.inviteTeam.addInvite")}
                 </button>
 
                 {duplicateInviteEmail ? (
                   <p className="text-xs text-rose-600">{t("onboarding.inviteTeam.duplicateInvite", { email: duplicateInviteEmail })}</p>
                 ) : null}
 
-                <div className="flex gap-3 pt-4">
+                <div className={`flex gap-3 pt-4 ${isRTL ? "flex-row-reverse" : ""}`}>
                   <button
                     type="button"
                     disabled={loading}

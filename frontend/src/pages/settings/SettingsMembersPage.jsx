@@ -11,6 +11,7 @@ import {
   useSpaceMembersQuery,
   useUpdateSpaceMemberRoleMutation,
 } from "../../hooks/useSettingsQueries";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const ROLE_OPTIONS = ["MEMBER", "ADMIN"];
 const MANAGE_ROLES = new Set(["OWNER", "ADMIN"]);
@@ -56,6 +57,7 @@ function SummaryCard({ label, value, hint }) {
 export default function SettingsMembersPage({ setPath }) {
   const { activeSpace, activeSpaceId, error, refreshApp, user } = useAppContext();
   const { t, i18n } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [inviteForm, setInviteForm] = useState({ email: "", role: "MEMBER" });
   const [pageError, setPageError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -279,9 +281,9 @@ export default function SettingsMembersPage({ setPath }) {
     <div className="flex flex-1 overflow-hidden">
       <SettingsSidebar activeId="members" />
 
-      <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950" aria-label={t("members.title")}>
+      <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950" aria-label={t("members.title")} dir={isRTL ? "rtl" : "ltr"}>
         <div className="mx-auto max-w-6xl px-6 py-6">
-          <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className={`mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between ${isRTL ? "lg:flex-row-reverse" : ""}`}>
             <div>
               <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-sky-500">{t("members.eyebrow")}</p>
               <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">{t("members.title")}</h1>
@@ -295,7 +297,7 @@ export default function SettingsMembersPage({ setPath }) {
               ) : null}
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className={`flex flex-wrap gap-3 ${isRTL ? "justify-end" : ""}`}>
               {currentRole !== "OWNER" ? (
                 <button
                   type="button"
@@ -363,13 +365,13 @@ export default function SettingsMembersPage({ setPath }) {
 
                     return (
                       <div key={member.id || member.userId || getMemberEmail(member)} className="flex flex-col gap-4 px-5 py-4">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="flex items-center gap-3">
+                        <div className={`flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between ${isRTL ? "lg:flex-row-reverse" : ""}`}>
+                          <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
                             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-50 text-sm font-black text-sky-600 dark:bg-sky-500/10 dark:text-sky-300">
                               {formatMemberName(member).slice(0, 1).toUpperCase()}
                             </div>
                             <div>
-                              <div className="flex flex-wrap items-center gap-2">
+                              <div className={`flex flex-wrap items-center gap-2 ${isRTL ? "flex-row-reverse justify-end" : ""}`}>
                                 <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{formatMemberName(member)}</p>
                                 {isSelf ? (
                                   <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
@@ -386,7 +388,7 @@ export default function SettingsMembersPage({ setPath }) {
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-3">
+                          <div className={`flex flex-wrap items-center gap-3 ${isRTL ? "justify-end" : ""}`}>
                             {canManageMembers ? (
                               <select
                                 value={role}
@@ -494,7 +496,7 @@ export default function SettingsMembersPage({ setPath }) {
                   <div className="space-y-3">
                     {invitations.map((invite) => (
                       <div key={invite.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                        <div className="flex items-start justify-between gap-3">
+                        <div className={`flex items-start justify-between gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
                           <div>
                             <div className="text-sm font-bold text-slate-900 dark:text-slate-50">{invite.email}</div>
                             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">

@@ -1,81 +1,78 @@
-import React, { useState } from 'react'
-import Button from '../../components/ui/Button';
-import StatItem from '../../components/ui/StatItem';
-import BoardChips from './BoardChips';
-import CreateBoardModal from './CreateBoardModal';
-import { useCreateBoard } from '../../hooks/api/useBoards';
-import { useToast } from '../../context/ToastContext';
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import Button from "../../components/ui/Button";
+import StatItem from "../../components/ui/StatItem";
+import BoardChips from "./BoardChips";
+import CreateBoardModal from "./CreateBoardModal";
+import { useCreateBoard } from "../../hooks/api/useBoards";
+import { useToast } from "../../context/ToastContext";
 
-const DepartmentRow = ({ dept}) => {
+const DepartmentRow = ({ dept }) => {
+  const { t } = useTranslation();
   const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
   const createBoard = useCreateBoard();
   const toast = useToast();
-  const handleCreateBoard = async(data) => {
+
+  const handleCreateBoard = async (data) => {
     try {
       await createBoard.mutateAsync(data);
-      toast.success('Board created successfully.');
+      toast.success(t("spacesPage.boardCreated"));
       setShowCreateBoardModal(false);
-    }
-    catch (err) {
-      toast.error(err.response?.data?.message || err.message || "Failed to create a board.");
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || t("spacesPage.createBoardFailed"));
     }
   };
+
   return (
     <div>
-      {/* Row */}
       <div
-        className="flex items-center gap-4 px-4 py-3.5 border border-slate-200 dark:border-slate-700 rounded-lg mt-2.5 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all duration-200 cursor-pointer group"
+        className="group mt-2.5 flex cursor-pointer items-center gap-4 rounded-lg border border-slate-200 px-4 py-3.5 transition-all duration-200 hover:border-slate-300 hover:shadow-sm dark:border-slate-700 dark:hover:border-slate-600"
         role="button"
         tabIndex={0}
-        aria-label={`Department: ${dept.name}`}
-        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
+        aria-label={t("spacesPage.departmentAria", { name: dept.name })}
+        onKeyDown={(event) => event.key === "Enter" && event.currentTarget.click()}
       >
-        {/* Icon */}
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${dept.iconBg}`}>
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${dept.iconBg}`}>
           <i className={`fa-solid ${dept.icon} text-[15px] ${dept.iconColor}`} aria-hidden="true" />
         </div>
- 
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-semibold text-slate-800 dark:text-slate-100 truncate">{dept.name}</p>
-          <p className="text-[12px] text-slate-400 dark:text-slate-500 truncate">
-            Lead: {dept.lead} · {dept.memberCount} members
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14px] font-semibold text-slate-800 dark:text-slate-100">{dept.name}</p>
+          <p className="truncate text-[12px] text-slate-400 dark:text-slate-500">
+            {t("spacesPage.lead", { lead: dept.lead })} · {t("spacesPage.membersShort", { count: dept.memberCount })}
           </p>
         </div>
- 
-        {/* Stats — hidden on mobile */}
-        <div className="hidden sm:flex items-center gap-4 text-[12px] text-slate-500 dark:text-slate-400 shrink-0">
-          <StatItem icon="fa-table-columns" label={`${dept.stats.boards} Boards`} />
-          <StatItem icon="fa-list-check"    label={`${dept.stats.tasks} Tasks`} />
+
+        <div className="hidden shrink-0 items-center gap-4 text-[12px] text-slate-500 dark:text-slate-400 sm:flex">
+          <StatItem icon="fa-table-columns" label={t("spacesPage.boardCount", { count: dept.stats.boards })} />
+          <StatItem icon="fa-list-check" label={t("spacesPage.taskCount", { count: dept.stats.tasks })} />
         </div>
- 
-        {/* Add board */}
+
         <Button
           variant="outline"
           size="sm"
-          onClick={(e) => { e.stopPropagation(); setShowCreateBoardModal(true) }}
-          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label={`Add board to ${dept.name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            setShowCreateBoardModal(true);
+          }}
+          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+          aria-label={t("spacesPage.addBoardTo", { name: dept.name })}
         >
-          <i className="fa-solid fa-plus" /> Board
+          <i className="fa-solid fa-plus" /> {t("spacesPage.addBoard")}
         </Button>
       </div>
- 
-      {/* Board chips below the row */}
-      {dept.boards.length > 0 && (
-        <BoardChips boards={dept.boards} onAddBoard={() => setShowCreateBoardModal(true)} />
-      )}
 
-      {showCreateBoardModal && (
+      {dept.boards.length > 0 ? <BoardChips boards={dept.boards} onAddBoard={() => setShowCreateBoardModal(true)} /> : null}
+
+      {showCreateBoardModal ? (
         <CreateBoardModal
           onSubmit={handleCreateBoard}
           onClose={() => setShowCreateBoardModal(false)}
           dept={dept}
         />
-      )}
+      ) : null}
     </div>
+  );
+};
 
-  )
-}
-
-export default DepartmentRow
+export default DepartmentRow;
