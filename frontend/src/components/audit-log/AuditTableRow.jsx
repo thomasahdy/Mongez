@@ -247,33 +247,32 @@ const AuditTableRow = ({ log = {} }) => {
     const ipAddress = log?.ipAddress ?? log?.ip ?? "N/A"
 
 return (
-    <tr className="border-t border-gray-200">
-        <td className="px-4 py-3">
-            <div className="log-actor flex items-center gap-2">
+    <tr>
+        <td>
+            <div className="log-actor">
                 <img
                     src={getActorImage(log, actorName)}
                     alt={actorName}
-                    className="h-8 w-8 rounded-full object-cover"
                 />
-                <span className="font-medium text-gray-900">{actorName}</span>
+                <span>{actorName}</span>
             </div>
         </td>
-        <td className="px-4 py-3">
-            <span className={`log-action-badge ${actionMeta.className} inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium`}>
+        <td>
+            <span className={`log-action-badge ${actionMeta.className}`}>
                 <i className={`fa-solid ${actionMeta.icon}`}></i>
                 {actionMeta.label}
             </span>
         </td>
-        <td className="log-target px-4 py-3 font-medium text-gray-900">
+        <td className="log-target">
             {resourceLabel}
         </td>
-        <td className="px-4 py-3 text-gray-600">
+        <td>
             {getDetailContent(log)}
         </td>
-        <td className="log-ip px-4 py-3 text-gray-600">
+        <td className="log-ip">
             {ipAddress}
         </td>
-        <td className="log-timestamp px-4 py-3 text-gray-600">
+        <td className="log-timestamp">
             {timestamp}
         </td>
     </tr>

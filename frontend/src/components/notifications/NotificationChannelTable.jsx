@@ -6,44 +6,38 @@ const NotificationChannelsTable = ({
 }) => {
     return (
         <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <table className="channel-matrix">
+                <thead>
                     <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                            Event
+                        <th>Event</th>
+
+                        <th>
+                            <i className="channel-icon channel-inapp fa-solid fa-bell"></i>
+                            <br />
+                            In-App
                         </th>
 
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                            <div className="flex flex-col items-center gap-1">
-                                <i className="fa-solid fa-bell text-purple-500"></i>
-                                <span>In-App</span>
-                            </div>
+                        <th>
+                            <i className="channel-icon channel-email fa-solid fa-envelope"></i>
+                            <br />
+                            Email
                         </th>
 
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                            <div className="flex flex-col items-center gap-1">
-                                <i className="fa-solid fa-envelope text-blue-500"></i>
-                                <span>Email</span>
-                            </div>
+                        <th>
+                            <i className="channel-icon channel-whatsapp fa-brands fa-whatsapp"></i>
+                            <br />
+                            WhatsApp
                         </th>
 
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                            <div className="flex flex-col items-center gap-1">
-                                <i className="fa-brands fa-whatsapp text-green-500"></i>
-                                <span>WhatsApp</span>
-                            </div>
-                        </th>
-
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                            <div className="flex flex-col items-center gap-1">
-                                <i className="fa-brands fa-telegram text-sky-500"></i>
-                                <span>Telegram</span>
-                            </div>
+                        <th>
+                            <i className="channel-icon channel-telegram fa-brands fa-telegram"></i>
+                            <br />
+                            Telegram
                         </th>
                     </tr>
                 </thead>
 
-                <tbody className="divide-y divide-gray-100 bg-white">
+                <tbody>
                     {settings.map((setting) => (
                         <NotificationChannelsRow
                             key={setting.id}

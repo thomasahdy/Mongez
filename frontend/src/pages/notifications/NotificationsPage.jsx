@@ -18,6 +18,7 @@ const NotificationsPage = () => {
         updateChannel,
         updateQuietHours,
     } = useNotificationMutations();
+    const settingsData = data?.data ?? data;
 
     const handleToggleChannel = (
         id,
@@ -33,21 +34,21 @@ const NotificationsPage = () => {
 
     const handleToggleQuietHours = (enabled) => {
         updateQuietHours({
-            ...data?.quietHours,
+            ...settingsData?.quietHours,
             enabled,
         });
     };
 
     const handleChangeStartTime = (startTime) => {
         updateQuietHours({
-            ...data?.quietHours,
+            ...settingsData?.quietHours,
             startTime,
         });
     };
 
     const handleChangeEndTime = (endTime) => {
         updateQuietHours({
-            ...data?.quietHours,
+            ...settingsData?.quietHours,
             endTime,
         });
     };
@@ -56,17 +57,17 @@ const NotificationsPage = () => {
         weekendNotifications
     ) => {
         updateQuietHours({
-            ...data?.quietHours,
+            ...settingsData?.quietHours,
             weekendNotifications,
         });
     };
 
     return (
-        <div className="flex gap-8">
+        <div className="settings-layout">
             <SettingsSidebar activeId="notifications" />
 
             <div className="settings-content-area">
-                <div className="settings-content-max space-y-6">
+                <div className="settings-content-max">
                     {isLoading ? (
                         <NotificationSkeleton />
                     ) : error ? (
@@ -78,14 +79,14 @@ const NotificationsPage = () => {
                             <NotificationsHeader />
 
                             <NotificationChannelsCard
-                                settings={data?.channels ?? []}
+                                settings={settingsData?.channels ?? []}
                                 onToggle={handleToggleChannel}
                                 loading={false}
                             />
 
                             <QuietHoursCard
                                 settings={
-                                    data?.quietHours ?? {
+                                    settingsData?.quietHours ?? {
                                         enabled: false,
                                         startTime: "11:00 PM",
                                         endTime: "7:00 AM",
