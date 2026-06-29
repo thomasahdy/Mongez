@@ -179,13 +179,17 @@ describe('TasksService', () => {
 
     it('UT-TASK-SVC-007: should queue AI risk scan when status becomes BLOCKED', async () => {
       const blockedDto = { status: 'BLOCKED' } as any;
-      taskRepo.update.mockResolvedValue(mockTask);
+      const mockTaskWithSpace = {
+        ...mockTask,
+        board: { department: { spaceId: 'space-1' } },
+      };
+      taskRepo.update.mockResolvedValue(mockTaskWithSpace);
 
       await service.updateTask('task-1', blockedDto, 'user-1');
 
       expect(aiQueue.add).toHaveBeenCalledWith(
         'ai-risk-scan',
-        { taskId: mockTask.id },
+        { spaceId: 'space-1', taskId: mockTask.id },
         { attempts: 3, backoff: { type: 'exponential', delay: 5000 } }
       );
     });
@@ -253,7 +257,7 @@ describe('TasksService', () => {
       expect(result).toEqual(mockComment);
     });
 
-    it('UT-TASK-SVC-011: should queue notification for each mentioned user', async () => {
+    it('UT-TASK-SVC-011: should delegate comment creation to repository with spaceId', async () => {
       const mockComment = { id: 'comment-1', content: dto.content };
       commentRepo.create.mockResolvedValue({
         comment: mockComment,
@@ -262,24 +266,7 @@ describe('TasksService', () => {
 
       await service.addComment('task-1', dto, 'user-1', 'space-1');
 
-      expect(notif.queueNotification).toHaveBeenCalledTimes(2);
-      expect(notif.queueNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'user-2', type: 'COMMENT_MENTION' }),
-      );
-      expect(notif.queueNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'user-3', type: 'COMMENT_MENTION' }),
-      );
-    });
-
-    it('should NOT queue notification when no users are mentioned', async () => {
-      commentRepo.create.mockResolvedValue({
-        comment: { id: 'comment-1', content: 'no mention' },
-        mentionedUserIds: [],
-      });
-
-      await service.addComment('task-1', dto, 'user-1', 'space-1');
-
-      expect(notif.queueNotification).not.toHaveBeenCalled();
+      expect(commentRepo.create).toHaveBeenCalledWith('task-1', 'user-1', dto.content, 'space-1');
     });
   });
 

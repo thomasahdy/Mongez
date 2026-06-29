@@ -42,7 +42,9 @@ describe('NotificationsService', () => {
       add: jest.fn(),
     } as any;
 
-    service = new NotificationsService(notifRepo, cache, realtime, notificationQueue);
+    const mockPrisma = {} as any;
+
+    service = new NotificationsService(notifRepo, cache, realtime, mockPrisma, notificationQueue);
   });
 
   // ─── UT-NOTIF-SVC: getForUser ───────────────────────────────

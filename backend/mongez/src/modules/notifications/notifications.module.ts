@@ -15,7 +15,7 @@ import { TelegramModule } from '../telegram/telegram.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { PresenceService } from './presence/presence.service';
 import { ApprovalExpiryProcessor } from '../messaging/approvals/approval-expiry.service';
-import { EmailPlaceholderProcessor } from './processors/email-placeholder.processor';
+import { EmailProcessor } from './processors/email.processor';
 
 import { CacheModule } from '../../infrastructure/cache/cache.module';
 import { forwardRef } from '@nestjs/common';
@@ -35,7 +35,7 @@ import { forwardRef } from '@nestjs/common';
     NotificationsService,
     NotificationRepository,
     NotificationProcessor,
-    EmailPlaceholderProcessor,
+    EmailProcessor,
     OutboxRepository,
     OutboxRelayService,
     EmailChannel,

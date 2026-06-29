@@ -156,7 +156,6 @@ describe('NotificationProcessor', () => {
       expect(notificationsService.createAndNotify).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user-1', type: 'TASK_UPDATED' }),
       );
-      expect(webSocketChannel.send).toHaveBeenCalledWith(mockNotif, criticalEvent.payload);
       // Phase 1: fan-out to WhatsApp + Telegram channels (critical bypasses suppression)
       expect(whatsappChannel.send).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user-1', type: 'TASK_UPDATED' }),
@@ -171,11 +170,10 @@ describe('NotificationProcessor', () => {
     it('UT-NOTIF-PROC-003: should queue digest for offline user instead of immediate push', async () => {
       presenceService.isUserOnline.mockResolvedValue(false);
       notificationPreferenceService.getEnabledChannels.mockResolvedValue(['email', 'whatsapp', 'telegram']);
-      // mock redis on cacheService
-      (cacheService as any).redis = {
-        rpush: jest.fn().mockResolvedValue(1),
-        expire: jest.fn().mockResolvedValue(1),
-      };
+      cacheService.rpush = jest.fn().mockResolvedValue(1);
+      cacheService.expire = jest.fn().mockResolvedValue(1);
+      cacheService.lrange = jest.fn().mockResolvedValue([]);
+      cacheService.del = jest.fn().mockResolvedValue(1);
 
       await processor.handleProcessEvent(makeJob(baseEvent));
 

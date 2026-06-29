@@ -9,8 +9,7 @@ const labelOverrides = {
   FILE_UPLOADED: "notificationsPage.events.FILE_UPLOADED",
 };
 
-const NotificationChannelsRow = ({setting, onToggle }) => {
-  const { t } = useTranslation();
+const NotificationChannelsRow = ({ setting, onToggle }) => {
   const {
     id,
     label,
@@ -21,9 +20,9 @@ const NotificationChannelsRow = ({setting, onToggle }) => {
   } = setting;
 
   return (
-    <tr>
-      <td>
-        {labelOverrides[id] ? t(labelOverrides[id]) : label}
+    <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+      <td className="px-4 py-4 text-sm font-medium text-slate-800 dark:text-slate-200">
+        {label}
       </td>
 
       <td>

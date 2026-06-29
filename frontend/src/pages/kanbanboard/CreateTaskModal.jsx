@@ -182,7 +182,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
                 id="task-status"
                 type="text"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-500 text-sm cursor-not-allowed"
-                disabled
+                readOnly
                 {...register('status')}
               />
             </div>

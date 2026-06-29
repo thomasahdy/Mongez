@@ -1,17 +1,30 @@
+import { useEffect } from "react";
 import SettingsSidebar from "../settings/sections/SettingsSidebar";
 import { useTranslation } from "react-i18next";
 import NotificationsHeader from "../../components/notifications/NotificationsHeader";
 import NotificationChannelsCard from "../../components/notifications/NotificationChannelsCard";
 import QuietHoursCard from "../../components/notifications/QuietHoursCard";
 import NotificationSkeleton from "../../components/notifications/NotificationSkeleton";
+import MessagingLinkingCard from "../../components/notifications/MessagingLinkingCard";
 
+import { useAppContext } from "../AppContext";
+import { useIntegrationStatusesQuery } from "../../hooks/useSettingsQueries";
 import { useNotificationSettings } from "../../hooks/api/notifications/useNotificationSettings";
 import { useNotificationMutations } from "../../hooks/api/notifications/useNotificationMutations";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
-const NotificationsPage = () => {
-    const { t } = useTranslation();
-    const { isRTL } = useLocaleDirection();
+const notificationsPath = [
+    { name: "Settings", color: "text-slate-400", ref: "/settings" },
+    { name: "Notifications", color: "text-slate-800", ref: "/settings/notifications" },
+];
+
+const NotificationsPage = ({ setPath }) => {
+    useEffect(() => {
+        setPath?.(notificationsPath);
+    }, [setPath]);
+
+    const { activeSpaceId } = useAppContext();
+    const statusesQuery = useIntegrationStatusesQuery(activeSpaceId);
     const {
         data,
         isLoading,
@@ -67,11 +80,11 @@ const NotificationsPage = () => {
     };
 
     return (
-        <div className="settings-layout" dir={isRTL ? "rtl" : "ltr"}>
+        <div className="flex flex-1 overflow-hidden">
             <SettingsSidebar activeId="notifications" />
 
-            <div className={`settings-content-area ${isRTL ? "text-right" : "text-left"}`}>
-                <div className="settings-content-max">
+            <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900" aria-label="Notification settings">
+                <div className="mx-auto max-w-6xl px-6 py-6 space-y-6">
                     {isLoading ? (
                         <NotificationSkeleton />
                     ) : error ? (
@@ -92,8 +105,8 @@ const NotificationsPage = () => {
                                 settings={
                                     settingsData?.quietHours ?? {
                                         enabled: false,
-                                        startTime: "11:00 PM",
-                                        endTime: "7:00 AM",
+                                        startTime: "22:00",
+                                        endTime: "07:00",
                                         weekendNotifications: false,
                                     }
                                 }
@@ -111,10 +124,22 @@ const NotificationsPage = () => {
                                     handleToggleWeekend
                                 }
                             />
+
+                            <div className="pt-4 border-t border-slate-150 dark:border-slate-800">
+                                <h3 className="text-md font-black tracking-tight text-slate-800 dark:text-slate-100 mb-4 uppercase text-xs tracking-widest text-slate-400">
+                                    Delivery Channels Linking
+                                </h3>
+                                <MessagingLinkingCard
+                                    spaceId={activeSpaceId}
+                                    telegramStatus={statusesQuery.data?.telegram}
+                                    whatsappStatus={statusesQuery.data?.whatsapp}
+                                    onRefetch={() => statusesQuery.refetch()}
+                                />
+                            </div>
                         </>
                     )}
                 </div>
-            </div>
+            </main>
         </div>
     );
 };

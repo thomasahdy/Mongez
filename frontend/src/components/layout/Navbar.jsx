@@ -134,7 +134,7 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
                 {t("layout.workspaceMenu")}
               </NavLink>
               <NavLink
-                to="/billing"
+                to="/settings/billing"
                 className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 onClick={() => setShowUserMenu(false)}
               >

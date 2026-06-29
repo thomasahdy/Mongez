@@ -96,7 +96,28 @@ describe('TelegramProcessor', () => {
     });
   });
 
-  it('should update status to FAILED and throw error if sendMessage fails', async () => {
+  it('should update status to FAILED and throw error if sendMessage fails with temporary error', async () => {
+    const job = makeJob(JOB_NAMES.SEND_TELEGRAM, {
+      spaceId: 'space-1',
+      chatId: '11111',
+      text: 'Hello Thomas',
+    });
+
+    const mockAccount = { botToken: 'bot-token-123' } as any;
+    service.resolveAccount.mockResolvedValue(mockAccount);
+    repo.createMessage.mockResolvedValue({ id: 'msg-id-1', metadata: {} } as any);
+    service.sendMessage.mockResolvedValue({ ok: false, errorCode: '500', raw: 'error-detail' });
+
+    await expect(processor.process(job)).rejects.toThrow('Telegram send failed (code=500)');
+
+    expect(repo.updateMessage).toHaveBeenCalledWith('msg-id-1', {
+      status: 'FAILED',
+      errorCode: '500',
+      metadata: { raw: 'error-detail' },
+    });
+  });
+
+  it('should update status to FAILED and NOT throw error if sendMessage fails with permanent error (e.g. 403)', async () => {
     const job = makeJob(JOB_NAMES.SEND_TELEGRAM, {
       spaceId: 'space-1',
       chatId: '11111',
@@ -108,7 +129,7 @@ describe('TelegramProcessor', () => {
     repo.createMessage.mockResolvedValue({ id: 'msg-id-1', metadata: {} } as any);
     service.sendMessage.mockResolvedValue({ ok: false, errorCode: '403', raw: 'error-detail' });
 
-    await expect(processor.process(job)).rejects.toThrow('Telegram send failed (code=403)');
+    await expect(processor.process(job)).resolves.not.toThrow();
 
     expect(repo.updateMessage).toHaveBeenCalledWith('msg-id-1', {
       status: 'FAILED',

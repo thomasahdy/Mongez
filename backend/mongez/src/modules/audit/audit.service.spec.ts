@@ -23,6 +23,9 @@ describe('AuditService', () => {
       membership: {
         findMany: jest.fn(),
       },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'u-1' }),
+      },
     };
 
     traceContext = {

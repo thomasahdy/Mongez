@@ -186,4 +186,22 @@ export class CacheService {
       throw err;
     }
   }
+
+  async rpush(key: string, ...values: string[]): Promise<number> {
+    try {
+      return await this.redis.rpush(key, ...values);
+    } catch (err: any) {
+      this.logger.error(`Cache RPUSH error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
+
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    try {
+      return await this.redis.lrange(key, start, stop);
+    } catch (err: any) {
+      this.logger.error(`Cache LRANGE error for key "${key}": ${err.message}`);
+      throw err;
+    }
+  }
 }

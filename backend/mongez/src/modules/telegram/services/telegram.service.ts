@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { EncryptionService } from '../../../shared/services/encryption.service';
 import { TelegramRepository } from '../repositories/telegram.repository';
@@ -9,6 +10,7 @@ export interface ResolvedTelegramAccount {
   botToken: string; // decrypted
   botUsername: string;
   source: 'db' | 'env';
+  webhookPathId?: string;
 }
 
 export interface TelegramSendResult {
@@ -38,7 +40,7 @@ export class TelegramService {
   async resolveAccount(
     spaceId: string,
   ): Promise<ResolvedTelegramAccount | null> {
-    const dbAccount = await this.repo.findActiveAccountBySpace(spaceId);
+    let dbAccount = await this.repo.findActiveAccountBySpace(spaceId);
     if (dbAccount && dbAccount.isActive) {
       let botToken: string;
       try {
@@ -46,63 +48,92 @@ export class TelegramService {
       } catch {
         botToken = dbAccount.botToken; // legacy plaintext fallback
       }
+
+      let webhookPathId = dbAccount.webhookPathId;
+      if (!webhookPathId) {
+        webhookPathId = crypto.randomUUID();
+        dbAccount = await this.repo.updateAccountWebhookPathId(dbAccount.id, webhookPathId);
+      }
+
       return {
         spaceId,
         botToken,
         botUsername: dbAccount.botUsername,
         source: 'db',
+        webhookPathId,
       };
     }
 
     const envToken = this.config.get<string>('telegram.botToken') || '';
     if (envToken) {
+      const envTokenHash = crypto
+        .createHash('sha256')
+        .update(envToken)
+        .digest('hex');
       return {
         spaceId,
         botToken: envToken,
         botUsername: this.config.get<string>('telegram.botUsername') || '',
         source: 'env',
+        webhookPathId: envTokenHash,
       };
     }
     return null;
   }
 
   /**
-   * Identify which space account a webhook is for, by matching the raw token
-   * (passed in the webhook URL path) against the decrypted stored tokens.
-   * Iterates active accounts — fine for the expected small number of bots.
+   * Identify which space account a webhook is for, by matching the webhookPathId.
    */
-  async resolveAccountByToken(
-    token: string,
+  async resolveAccountByPathId(
+    pathId: string,
   ): Promise<ResolvedTelegramAccount | null> {
-    const accounts = await this.repo.findAllActiveAccounts();
-    for (const a of accounts) {
+    const dbAccount = await this.repo.findActiveAccountByPathId(pathId);
+    if (dbAccount && dbAccount.isActive) {
       let decrypted: string;
       try {
-        decrypted = this.encryption.decrypt(a.botToken);
+        decrypted = this.encryption.decrypt(dbAccount.botToken);
       } catch {
-        decrypted = a.botToken;
+        decrypted = dbAccount.botToken;
       }
-      if (this.encryption.safeEqual(decrypted, token)) {
+      return {
+        spaceId: dbAccount.spaceId,
+        botToken: decrypted,
+        botUsername: dbAccount.botUsername,
+        source: 'db',
+        webhookPathId: dbAccount.webhookPathId || undefined,
+      };
+    }
+
+    // Env fallback matching SHA-255 hash of envToken
+    const envToken = this.config.get<string>('telegram.botToken') || '';
+    if (envToken) {
+      const envTokenHash = crypto
+        .createHash('sha256')
+        .update(envToken)
+        .digest('hex');
+      if (this.encryption.safeEqual(envTokenHash, pathId)) {
         return {
-          spaceId: a.spaceId,
-          botToken: decrypted,
-          botUsername: a.botUsername,
-          source: 'db',
+          spaceId: '__env__',
+          botToken: envToken,
+          botUsername: this.config.get<string>('telegram.botUsername') || '',
+          source: 'env',
+          webhookPathId: envTokenHash,
         };
       }
     }
-
-    // Env fallback
-    const envToken = this.config.get<string>('telegram.botToken') || '';
-    if (envToken && this.encryption.safeEqual(envToken, token)) {
-      return {
-        spaceId: '__env__',
-        botToken: envToken,
-        botUsername: this.config.get<string>('telegram.botUsername') || '',
-        source: 'env',
-      };
-    }
     return null;
+  }
+
+  /** Strip HTML/XML tags and decode common entities for safe plain-text delivery */
+  private sanitizeText(text: string): string {
+    return text
+      .replace(/<[^>]+>/g, '') // strip all HTML/XML tags
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim();
   }
 
   async sendMessage(
@@ -112,10 +143,12 @@ export class TelegramService {
     options?: { replyMarkup?: any; parseMode?: string },
   ): Promise<TelegramSendResult> {
     try {
+      const safeText = this.sanitizeText(text);
       const body: any = {
         chat_id: chatId,
-        text,
-        parse_mode: options?.parseMode || 'HTML',
+        text: safeText,
+        // No parse_mode — send as plain text to avoid HTML entity errors
+        // from notification bodies that may contain unsupported tags
       };
       if (options?.replyMarkup) body.reply_markup = options.replyMarkup;
       const res: AxiosResponse = await this.http.post(

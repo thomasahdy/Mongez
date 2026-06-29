@@ -15,8 +15,33 @@ export class TelegramRepository {
     return this.prisma.telegramAccount.findUnique({ where: { spaceId } });
   }
 
+  findActiveAccountByPathId(webhookPathId: string) {
+    return this.prisma.telegramAccount.findUnique({
+      where: { webhookPathId },
+    });
+  }
+
+  updateAccountWebhookPathId(id: string, webhookPathId: string) {
+    return this.prisma.telegramAccount.update({
+      where: { id },
+      data: { webhookPathId },
+    });
+  }
+
   findAllActiveAccounts() {
     return this.prisma.telegramAccount.findMany({ where: { isActive: true } });
+  }
+
+  findAllActiveAccountSpaces(): Promise<Array<{ spaceId: string }>> {
+    return this.prisma.telegramAccount.findMany({
+      where: { isActive: true },
+      select: { spaceId: true },
+    });
+  }
+
+  async findAllSpaceIds(): Promise<string[]> {
+    const spaces = await this.prisma.space.findMany({ select: { id: true } });
+    return spaces.map((s) => s.id);
   }
 
   upsertAccount(
@@ -100,6 +125,42 @@ export class TelegramRepository {
       where: { id },
       data: { chatId, username, isVerified },
     });
+  }
+
+  async findUnlinkedInboundChats(spaceId: string): Promise<Array<{ chatId: string; username: string | null; content: string; createdAt: Date }>> {
+    const linkedContacts = await this.prisma.telegramContact.findMany({
+      where: { spaceId, isVerified: true, optedIn: true },
+      select: { chatId: true },
+    });
+    const linkedChatIds = linkedContacts.map(c => c.chatId);
+
+    const recentMessages = await this.prisma.telegramMessage.findMany({
+      where: {
+        spaceId,
+        direction: 'INBOUND',
+        chatId: { notIn: linkedChatIds },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    const uniqueChats: Array<{ chatId: string; username: string | null; content: string; createdAt: Date }> = [];
+    const seenChatIds = new Set<string>();
+
+    for (const msg of recentMessages) {
+      if (!seenChatIds.has(msg.chatId)) {
+        seenChatIds.add(msg.chatId);
+        const meta = (msg.metadata as Record<string, any>) || {};
+        uniqueChats.push({
+          chatId: msg.chatId,
+          username: meta.username || null,
+          content: msg.content,
+          createdAt: msg.createdAt,
+        });
+      }
+    }
+
+    return uniqueChats.slice(0, 10);
   }
 
   // ── Messages ───────────────────────────────────────────────────

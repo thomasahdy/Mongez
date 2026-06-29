@@ -15,7 +15,7 @@ describe('AIExecutorService', () => {
 
   const mockPrisma = {
     $transaction: jest.fn((cb) => cb(mockPrisma)),
-    aiProposedAction: {
+    aIProposedAction: {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
@@ -85,7 +85,7 @@ describe('AIExecutorService', () => {
       },
     };
 
-    mockPrisma.aiProposedAction.findUnique.mockResolvedValue(action);
+    mockPrisma.aIProposedAction.findUnique.mockResolvedValue(action);
     mockPrisma.task.findUnique.mockResolvedValue({ id: 'task-1', status: 'TODO' });
     mockPrisma.task.update.mockResolvedValue({ id: 'task-1', status: 'IN_PROGRESS' });
 
@@ -103,7 +103,7 @@ describe('AIExecutorService', () => {
         userId: 'reviewer-1',
       },
     });
-    expect(mockPrisma.aiProposedAction.update).toHaveBeenCalledWith({
+    expect(mockPrisma.aIProposedAction.update).toHaveBeenCalledWith({
       where: { id: 'action-1' },
       data: expect.objectContaining({
         status: 'APPROVED',
@@ -126,7 +126,7 @@ describe('AIExecutorService', () => {
       },
     };
 
-    mockPrisma.aiProposedAction.findUnique.mockResolvedValue(action);
+    mockPrisma.aIProposedAction.findUnique.mockResolvedValue(action);
     mockPrisma.taskAssignment.deleteMany.mockResolvedValue({ count: 1 });
     mockPrisma.taskAssignment.create.mockResolvedValue({ taskId: 'task-1', userId: 'assignee-2' });
 
@@ -156,7 +156,7 @@ describe('AIExecutorService', () => {
       },
     };
 
-    mockPrisma.aiProposedAction.findUnique.mockResolvedValue(action);
+    mockPrisma.aIProposedAction.findUnique.mockResolvedValue(action);
 
     const result = await service.execute('action-3', 'reviewer-1');
 
@@ -188,7 +188,7 @@ describe('AIExecutorService', () => {
       },
     };
 
-    mockPrisma.aiProposedAction.findUnique.mockResolvedValue(action);
+    mockPrisma.aIProposedAction.findUnique.mockResolvedValue(action);
 
     const result = await service.execute('action-4', 'reviewer-1');
 

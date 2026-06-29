@@ -109,6 +109,9 @@ describe('WorkflowService', () => {
       slaMetric: {
         create: jest.fn().mockResolvedValue({}),
       },
+      outboxEvent: {
+        create: jest.fn().mockResolvedValue({}),
+      },
     } as any;
 
     service = new WorkflowService(
@@ -221,8 +224,13 @@ describe('WorkflowService', () => {
 
       expect(repo.createInstance).toHaveBeenCalled();
       expect(eventBus.publish).toHaveBeenCalled();
-      expect(notifications.queueNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'user-approver', type: 'WORKFLOW_APPROVAL_REQUEST' }),
+      expect(prisma.outboxEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            eventType: 'workflow.approval_request',
+            payload: expect.objectContaining({ userId: 'user-approver' }),
+          }),
+        }),
       );
       expect(realtime.emitToUser).toHaveBeenCalledWith(
         'user-requester',
@@ -290,8 +298,13 @@ describe('WorkflowService', () => {
           data: expect.objectContaining({ status: 'APPROVED' }),
         })
       );
-      expect(notifications.queueNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'user-requester', type: 'WORKFLOW_APPROVED' }),
+      expect(prisma.outboxEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            eventType: 'workflow.approved',
+            payload: expect.objectContaining({ userId: 'user-requester' }),
+          }),
+        }),
       );
       expect(realtime.emitToUser).toHaveBeenCalledWith(
         'user-requester',
@@ -317,8 +330,13 @@ describe('WorkflowService', () => {
           data: expect.objectContaining({ status: 'REJECTED' }),
         })
       );
-      expect(notifications.queueNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'WORKFLOW_REJECTED' }),
+      expect(prisma.outboxEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            eventType: 'workflow.rejected',
+            payload: expect.objectContaining({ userId: 'user-requester' }),
+          }),
+        }),
       );
     });
 
@@ -519,8 +537,13 @@ describe('WorkflowService', () => {
         })
       );
       expect(eventBus.publish).toHaveBeenCalled();
-      expect(notifications.queueNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'user-requester', type: 'WORKFLOW_TIMED_OUT' }),
+      expect(prisma.outboxEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            eventType: 'workflow.timed_out',
+            payload: expect.objectContaining({ userId: 'user-requester' }),
+          }),
+        }),
       );
       expect(realtime.emitToUser).toHaveBeenCalledWith(
         'user-requester',

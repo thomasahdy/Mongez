@@ -102,8 +102,6 @@ export class NotificationProcessor extends WorkerHost {
         metadata: data.metadata,
       });
 
-      await this.webSocketChannel.send(notification, data.metadata || {});
-
       await this.messagingAnalytics.record('SENT', {
         notificationId: notification.id,
         userId,
@@ -165,14 +163,6 @@ export class NotificationProcessor extends WorkerHost {
 
     const { eventId } = event.payload;
 
-    // 1. Idempotency Check
-    const idempotencyKey = `idempotency:notification:${eventId}`;
-    const alreadyProcessed = await this.cacheService.exists(idempotencyKey);
-    if (alreadyProcessed) {
-      this.logger.warn(`Skipping duplicate event ${eventId}`);
-      return; // Acknowledge job successfully
-    }
-
     try {
       const userIds: string[] = event.payload['assigneeIds'] || [];
       if (!userIds.length) {
@@ -181,10 +171,22 @@ export class NotificationProcessor extends WorkerHost {
       }
 
       for (const userId of userIds) {
+        // Track idempotency per user to prevent duplicate sends on partial failure retries
+        const userIdempotencyKey = `idempotency:notification:${eventId}:${userId}`;
+        const alreadyProcessed = await this.cacheService.exists(userIdempotencyKey);
+        if (alreadyProcessed) {
+          this.logger.log(`Skipping duplicate event ${eventId} for user ${userId}`);
+          continue;
+        }
+
         await this.processSingleNotification(userId, event);
+
+        // Mark this user as processed immediately
+        await this.cacheService.set(userIdempotencyKey, true, 86400);
       }
 
-      // 2. Mark Idempotency (TTL 24 hours)
+      // Mark the event as globally processed
+      const idempotencyKey = `idempotency:notification:${eventId}`;
       await this.cacheService.set(idempotencyKey, true, 86400);
 
     } catch (error) {
@@ -204,9 +206,17 @@ export class NotificationProcessor extends WorkerHost {
       return;
     }
 
+    let eventType = event.eventType;
+    // Normalize event type names (e.g. task.assigned -> TASK_ASSIGNED)
+    if (eventType) {
+      eventType = eventType.toUpperCase().replace(/\./g, '_');
+      if (eventType === 'TASK_CREATED') {
+        eventType = 'TASK_ASSIGNED';
+      }
+    }
+
     const spaceId = event.payload.spaceId || '';
     const eventId = event.payload.eventId;
-    const eventType = event.eventType;
     const priority = (event.payload.priority || 'NORMAL') as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 
     // Check presence
@@ -267,8 +277,6 @@ export class NotificationProcessor extends WorkerHost {
         metadata: event.payload,
       });
 
-      await this.webSocketChannel.send(notification, event.payload);
-
       // Record analytics for IN_APP
       await this.messagingAnalytics.record('SENT', {
         notificationId: notification.id,
@@ -325,17 +333,14 @@ export class NotificationProcessor extends WorkerHost {
       });
 
       // Save the event payload to the digest list
-      const redis = (this.cacheService as any).redis;
-      if (redis) {
-        await redis.rpush(aggregationGroup, JSON.stringify({
-          id: `notif-${eventId}`,
-          userId,
-          type: eventType,
-          title,
-          body,
-        }));
-        await redis.expire(aggregationGroup, 86400);
-      }
+      await this.cacheService.rpush(aggregationGroup, JSON.stringify({
+        id: `notif-${eventId}`,
+        userId,
+        type: eventType,
+        title,
+        body,
+      }));
+      await this.cacheService.expire(aggregationGroup, 86400);
     }
   }
 
@@ -400,12 +405,9 @@ export class NotificationProcessor extends WorkerHost {
     const { userId, spaceId, aggregateType, aggregateId, group } = job.data;
     this.logger.log(`Processing digest for group ${group}`);
 
-    const redis = (this.cacheService as any).redis;
-    if (!redis) return;
-
     // Pop all events from the list
-    const rawEvents = await redis.lrange(group, 0, -1);
-    await redis.del(group);
+    const rawEvents = await this.cacheService.lrange(group, 0, -1);
+    await this.cacheService.del(group);
 
     if (!rawEvents || rawEvents.length === 0) return;
 

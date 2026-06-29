@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "../services/api/tokenService";
+import { showToastBridge } from "./ToastContext";
 
 const SocketContext = createContext({
   socket: null,
@@ -48,6 +49,16 @@ export const SocketProvider = ({ children }) => {
       setIsConnected(true);
       console.log("Socket.io connected successfully to /ws");
     });
+
+    // Request permission for HTML5 native browser notifications
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission().then((permission) => {
+          console.log("Browser notification permission state:", permission);
+        });
+      }
+    }
+
 
     socketInstance.on("disconnect", () => {
       setIsConnected(false);
@@ -110,12 +121,69 @@ export const SocketProvider = ({ children }) => {
     socketInstance.on("notification:new", (notif) => {
       console.log("Realtime Notification:", notif);
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "count"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count", notif.spaceId || ""] });
+      showToastBridge(`${notif.title}: ${notif.body}`, "info");
+
+      // Show native OS notification if permission is granted
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        try {
+          const nativeNotif = new Notification(notif.title, {
+            body: notif.body,
+            icon: window.location.origin + "/src/assets/MongezMLogo.svg",
+            badge: window.location.origin + "/src/assets/MongezMLogo.svg",
+            tag: notif.id,
+            requireInteraction: true,
+          });
+
+
+          nativeNotif.onclick = (e) => {
+            e.preventDefault();
+            window.focus();
+            
+            // Navigate directly to the task page if task related
+            const entityType = (notif.entityType || '').toLowerCase();
+            const type = notif.type || '';
+            const entityId = notif.entityId;
+
+            if (
+              entityType === 'task' ||
+              type === 'TASK_ASSIGNED' ||
+              type === 'TASK_DUE' ||
+              type === 'TASK_UPDATED' ||
+              type === 'COMMENT_MENTION' ||
+              type === 'FILE_UPLOADED'
+            ) {
+              if (entityId) {
+                window.location.href = `/tasks/${entityId}`;
+                return;
+              }
+            }
+
+            // Fallback: go to inbox
+            window.location.href = '/inbox';
+          };
+        } catch (err) {
+          console.error("Failed to show native browser notification:", err);
+        }
+      }
     });
+
 
     socketInstance.on("notification:count", (data) => {
       console.log("Realtime Notification Count:", data);
-      queryClient.invalidateQueries({ queryKey: ["notifications", "count"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count", data.spaceId || ""] });
+    });
+
+    socketInstance.on("notification:read", (data) => {
+      console.log("Realtime Notification Read:", data);
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
+    });
+
+    socketInstance.on("notification:deleted", (data) => {
+      console.log("Realtime Notification Deleted:", data);
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
     });
 
     // User presence listeners

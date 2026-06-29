@@ -140,6 +140,12 @@ describe('Tasks Repositories', () => {
           mention: {
             createMany: jest.fn().mockResolvedValue(undefined),
           },
+          task: {
+            findUnique: jest.fn().mockResolvedValue({ id: 'task-1', title: 'Test Task', spaceId: 'space-1' }),
+          },
+          outboxEvent: {
+            create: jest.fn().mockResolvedValue(undefined),
+          },
         };
         return cb(tx);
       });

@@ -84,6 +84,15 @@ export class TelegramProcessor extends WorkerHost {
       errorCode: result.errorCode || 'UNKNOWN',
       metadata: { ...(message.metadata as any), raw: result.raw },
     });
+
+    const permanentErrors = new Set(['400', '401', '403']);
+    if (result.errorCode && permanentErrors.has(result.errorCode)) {
+      this.logger.warn(
+        `Telegram send failed with permanent error code ${result.errorCode}. Skipping retry.`,
+      );
+      return;
+    }
+
     throw new Error(
       `Telegram send failed (code=${result.errorCode || 'UNKNOWN'})`,
     );

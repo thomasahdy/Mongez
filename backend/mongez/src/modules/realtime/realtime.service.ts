@@ -1,23 +1,61 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRedis } from '@nestjs-modules/ioredis';
+import Redis from 'ioredis';
 import { Server } from 'socket.io';
 
 @Injectable()
 export class RealtimeService {
   private server: Server;
 
+  constructor(
+    @InjectRedis() private readonly redis: Redis,
+  ) {}
+
   setServer(server: Server) { 
     this.server = server; 
   }
 
   emitToBoard(boardId: string, event: string, payload: any) {
+    if (this.server) {
+      this.emitToBoardDirect(boardId, event, payload);
+    } else {
+      this.publishToRedis('board', boardId, event, payload);
+    }
+  }
+
+  emitToBoardDirect(boardId: string, event: string, payload: any) {
     this.server?.to(`board:${boardId}`).emit(event, payload);
   }
 
   emitToSpace(spaceId: string, event: string, payload: any) {
+    if (this.server) {
+      this.emitToSpaceDirect(spaceId, event, payload);
+    } else {
+      this.publishToRedis('space', spaceId, event, payload);
+    }
+  }
+
+  emitToSpaceDirect(spaceId: string, event: string, payload: any) {
     this.server?.to(`space:${spaceId}`).emit(event, payload);
   }
 
   emitToUser(userId: string, event: string, payload: any) {
+    if (this.server) {
+      this.emitToUserDirect(userId, event, payload);
+    } else {
+      this.publishToRedis('user', userId, event, payload);
+    }
+  }
+
+  emitToUserDirect(userId: string, event: string, payload: any) {
     this.server?.to(`user:${userId}`).emit(event, payload);
   }
+
+  private publishToRedis(type: 'user' | 'space' | 'board', targetId: string, event: string, payload: any) {
+    const msg = JSON.stringify({ type, targetId, event, payload });
+    this.redis.publish('realtime:events', msg).catch(err => {
+      console.error('Failed to publish realtime event to Redis:', err);
+    });
+  }
 }
+

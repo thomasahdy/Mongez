@@ -33,7 +33,7 @@ const InboxPage = lazy(() => import("./pages/Inbox/InboxPage"));
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
 const NotificationsPage = lazy(() => import("./pages/notifications/NotificationsPage"));
 const SecurityPage = lazy(() => import("./pages/security/SecurityPage"));
-const AuditLogPage = lazy(() => import("./pages/audit-log/AuditLogPage"));
+const SettingsAuditLogPage = lazy(() => import("./pages/settings/SettingsAuditLogPage"));
 const KanbanBoard = lazy(() => import("./pages/kanbanboard/KanbanBoard"));
 const ApprovalsPage = lazy(() => import("./pages/approvals/ApprovalsPage"));
 const WorkflowInstancesList = lazy(() => import("./pages/workflow/WorkflowInstancesList"));
@@ -181,7 +181,6 @@ function AppContent() {
               <Route path="board/:boardId/kanban" element={<KanbanBoard setPath={setPath} />} />
               <Route path="whiteboard" element={<WhiteBoardPage />} />
               <Route path="ai-assistant" element={<AiAssistantPage />} />
-              <Route path="billing" element={<BillingPage />} />
               <Route path="tasks/:taskId" element={<TaskDetailsPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="board/:boardId/table" element={<TableView />} />
@@ -191,17 +190,16 @@ function AppContent() {
               <Route path="workflows" element={<WorkflowInstancesList />} />
               <Route path="workflows/builder" element={<WorkflowBuilder />} />
               <Route path="settings/integrations" element={<IntegrationsPage setPath={setPath} />} />
-              <Route path="settings/billing" element={<SettingsBillingPage />} />
+              <Route path="settings/billing" element={<SettingsBillingPage setPath={setPath} />} />
               <Route path="settings/members" element={<SettingsMembersPage setPath={setPath} />} />
               <Route path="reports" element={<ReportsPage setPath={setPath} />} />
-              <Route path="mywork" element={<MyWorkPage setPath={setPath} />} />
-              <Route path="search" element={<SearchPage />} />
               <Route path="my-work" element={<MyWorkPage setPath={setPath} />} />
+              <Route path="search" element={<SearchPage />} />
               <Route path="inbox" element={<InboxPage setPath={setPath} />} />
               <Route path="settings" element={<SettingsPage setPath={setPath} />} />
               <Route path="settings/notifications" element={<NotificationsPage setPath={setPath} />} />
               <Route path="settings/security" element={<SecurityPage setPath={setPath} />} />
-              <Route path="settings/audit-log" element={<AuditLogPage />} />
+              <Route path="settings/audit-log" element={<SettingsAuditLogPage setPath={setPath} />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/invitation" element={<AcceptInvitationPage />} />
 

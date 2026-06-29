@@ -13,6 +13,7 @@ describe('Decisions Module', () => {
         findMany: jest.fn(),
         delete: jest.fn(),
         create: jest.fn(),
+        upsert: jest.fn(),
       },
       workflowInstance: {
         findUnique: jest.fn(),
@@ -63,7 +64,7 @@ describe('Decisions Module', () => {
       };
 
       prisma.workflowInstance.findUnique.mockResolvedValue(mockInstance as any);
-      prisma.decisionRecord.create.mockResolvedValue({ id: 'dec-1' } as any);
+      prisma.decisionRecord.upsert.mockResolvedValue({ id: 'dec-1' } as any);
 
       const event = new WorkflowResolvedEvent({ id: 'inst-1' } as any, 'APPROVED');
       await listener.handle(event);
@@ -79,8 +80,16 @@ describe('Decisions Module', () => {
         },
       });
 
-      expect(prisma.decisionRecord.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect(prisma.decisionRecord.upsert).toHaveBeenCalledWith({
+        where: { workflowInstanceId: 'inst-1' },
+        update: expect.objectContaining({
+          outcome: 'APPROVED',
+          decidedById: 'user-2',
+          summary: 'Approved',
+          validUntil: expect.any(Date),
+          metadata: { amount: 5000 },
+        }),
+        create: expect.objectContaining({
           spaceId: 'space-1',
           workflowInstanceId: 'inst-1',
           entityType: 'BUDGET',
@@ -96,7 +105,7 @@ describe('Decisions Module', () => {
       });
 
       // Assert that validUntil is roughly 365 days from now
-      const validUntil: Date = (prisma.decisionRecord.create.mock.calls[0][0] as any).data.validUntil;
+      const validUntil: Date = (prisma.decisionRecord.upsert.mock.calls[0][0] as any).create.validUntil;
       const daysDiff = Math.round((validUntil.getTime() - Date.now()) / (24 * 3600 * 1000));
       expect(daysDiff).toBe(365);
     });
@@ -114,12 +123,20 @@ describe('Decisions Module', () => {
       };
 
       prisma.workflowInstance.findUnique.mockResolvedValue(mockInstance as any);
+      prisma.decisionRecord.upsert.mockResolvedValue({ id: 'dec-2' } as any);
 
       const event = new WorkflowResolvedEvent({ id: 'inst-2' } as any, 'REJECTED');
       await listener.handle(event);
 
-      expect(prisma.decisionRecord.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect(prisma.decisionRecord.upsert).toHaveBeenCalledWith({
+        where: { workflowInstanceId: 'inst-2' },
+        update: expect.objectContaining({
+          outcome: 'REJECTED',
+          decidedById: 'user-1',
+          summary: 'Workflow Task Approval resolved as REJECTED.',
+          validUntil: expect.any(Date),
+        }),
+        create: expect.objectContaining({
           entityType: 'TASK',
           decidedById: 'user-1',
           summary: 'Workflow Task Approval resolved as REJECTED.',
@@ -127,7 +144,7 @@ describe('Decisions Module', () => {
         }),
       });
 
-      const validUntil: Date = (prisma.decisionRecord.create.mock.calls[0][0] as any).data.validUntil;
+      const validUntil: Date = (prisma.decisionRecord.upsert.mock.calls[0][0] as any).create.validUntil;
       const daysDiff = Math.round((validUntil.getTime() - Date.now()) / (24 * 3600 * 1000));
       expect(daysDiff).toBe(90);
     });
@@ -145,18 +162,24 @@ describe('Decisions Module', () => {
       };
 
       prisma.workflowInstance.findUnique.mockResolvedValue(mockInstance as any);
+      prisma.decisionRecord.upsert.mockResolvedValue({ id: 'dec-3' } as any);
 
       const event = new WorkflowResolvedEvent({ id: 'inst-3' } as any, 'APPROVED');
       await listener.handle(event);
 
-      expect(prisma.decisionRecord.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect(prisma.decisionRecord.upsert).toHaveBeenCalledWith({
+        where: { workflowInstanceId: 'inst-3' },
+        update: expect.objectContaining({
+          outcome: 'APPROVED',
+          validUntil: expect.any(Date),
+        }),
+        create: expect.objectContaining({
           entityType: 'CUSTOM',
           validUntil: expect.any(Date),
         }),
       });
 
-      const validUntil: Date = (prisma.decisionRecord.create.mock.calls[0][0] as any).data.validUntil;
+      const validUntil: Date = (prisma.decisionRecord.upsert.mock.calls[0][0] as any).create.validUntil;
       const daysDiff = Math.round((validUntil.getTime() - Date.now()) / (24 * 3600 * 1000));
       expect(daysDiff).toBe(180);
     });

@@ -8,38 +8,44 @@ const NotificationChannelsTable = ({
     const { t } = useTranslation();
     return (
         <div className="overflow-x-auto">
-            <table className="channel-matrix">
-                <thead>
+            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+                <thead className="bg-slate-50 dark:bg-slate-950/40">
                     <tr>
-                        <th>{t("notificationsPage.event")}</th>
-
-                        <th>
-                            <i className="channel-icon channel-inapp fa-solid fa-bell"></i>
-                            <br />
-                            {t("notificationsPage.inApp")}
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Event
                         </th>
 
-                        <th>
-                            <i className="channel-icon channel-email fa-solid fa-envelope"></i>
-                            <br />
-                            {t("notificationsPage.email")}
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <div className="flex flex-col items-center gap-1">
+                                <i className="fa-solid fa-bell text-purple-500"></i>
+                                <span>In-App</span>
+                            </div>
                         </th>
 
-                        <th>
-                            <i className="channel-icon channel-whatsapp fa-brands fa-whatsapp"></i>
-                            <br />
-                            {t("notificationsPage.whatsapp")}
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <div className="flex flex-col items-center gap-1">
+                                <i className="fa-solid fa-envelope text-sky-500"></i>
+                                <span>Email</span>
+                            </div>
                         </th>
 
-                        <th>
-                            <i className="channel-icon channel-telegram fa-brands fa-telegram"></i>
-                            <br />
-                            {t("notificationsPage.telegram")}
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <div className="flex flex-col items-center gap-1">
+                                <i className="fa-brands fa-whatsapp text-green-500"></i>
+                                <span>WhatsApp</span>
+                            </div>
+                        </th>
+
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <div className="flex flex-col items-center gap-1">
+                                <i className="fa-brands fa-telegram text-sky-500"></i>
+                                <span>Telegram</span>
+                            </div>
                         </th>
                     </tr>
                 </thead>
 
-                <tbody>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     {settings.map((setting) => (
                         <NotificationChannelsRow
                             key={setting.id}

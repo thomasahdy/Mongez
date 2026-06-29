@@ -4,9 +4,15 @@ import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import NotifIconBadge from './NotifIconBadge';
 import NotifActionButton from './NotifActionButton';
 
+const NAVIGABLE_TYPES = new Set([
+  'TASK_ASSIGNED', 'TASK_DUE', 'TASK_UPDATED', 'COMMENT_MENTION', 'FILE_UPLOADED',
+  'APPROVAL_REQUESTED', 'APPROVAL_RESOLVED', 'WORKFLOW_APPROVAL_REQUEST',
+  'WORKFLOW_APPROVED', 'WORKFLOW_REJECTED', 'WORKFLOW_TIMED_OUT', 'AI_INSIGHT',
+]);
+
 const NotificationItem = ({ notif, selected, onSelect, onAction, onClick }) => {
-  const { t } = useTranslation();
-  const { isRTL } = useLocaleDirection();
+  const isNavigable = !!notif.entityId || NAVIGABLE_TYPES.has(notif.type);
+
   return (
     <article
       className={`group flex gap-3 px-4 py-3.5 rounded-xl border transition-all duration-150 cursor-pointer
@@ -57,12 +63,18 @@ const NotificationItem = ({ notif, selected, onSelect, onAction, onClick }) => {
 
         {/* Meta */}
         <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500">
-          <time>{notif.time}</time>
+          <time dateTime={notif.createdAt}>{notif.time}</time>
           <span
             className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
           >
             {notif.project}
           </span>
+          {isNavigable && (
+            <span className="flex items-center gap-0.5 text-sky-400 dark:text-sky-500 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <i className="fa-solid fa-arrow-up-right-from-square text-[9px]" />
+              <span>Open</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -71,6 +83,7 @@ const NotificationItem = ({ notif, selected, onSelect, onAction, onClick }) => {
         className="flex flex-col gap-1 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
         aria-label={t("inboxPage.actionsAria")}
         role="group"
+        onClick={(e) => e.stopPropagation()}
       >
         {notif.actions.map((action) => (
           <NotifActionButton
