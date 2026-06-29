@@ -9,8 +9,8 @@ const NotificationChannelsRow = ({setting, onToggle }) => {
   } = setting;
 
   return (
-    <tr className="hover:bg-gray-50">
-      <td className="px-4 py-4 text-sm font-medium text-gray-900">
+    <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+      <td className="px-4 py-4 text-sm font-medium text-slate-800 dark:text-slate-200">
         {label}
       </td>
 
@@ -21,7 +21,7 @@ const NotificationChannelsRow = ({setting, onToggle }) => {
           onChange={(e) =>
             onToggle(id, "inApp", e.target.checked)
           }
-          className="h-4 w-4 cursor-pointer"
+          className="h-4 w-4 cursor-pointer accent-indigo-500 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950"
         />
       </td>
 
@@ -32,7 +32,7 @@ const NotificationChannelsRow = ({setting, onToggle }) => {
           onChange={(e) =>
             onToggle(id, "email", e.target.checked)
           }
-          className="h-4 w-4 cursor-pointer"
+          className="h-4 w-4 cursor-pointer accent-indigo-500 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950"
         />
       </td>
 
@@ -43,7 +43,7 @@ const NotificationChannelsRow = ({setting, onToggle }) => {
           onChange={(e) =>
             onToggle(id, "whatsapp", e.target.checked)
           }
-          className="h-4 w-4 cursor-pointer"
+          className="h-4 w-4 cursor-pointer accent-indigo-500 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950"
         />
       </td>
 
@@ -54,7 +54,7 @@ const NotificationChannelsRow = ({setting, onToggle }) => {
           onChange={(e) =>
             onToggle(id, "telegram", e.target.checked)
           }
-          className="h-4 w-4 cursor-pointer"
+          className="h-4 w-4 cursor-pointer accent-indigo-500 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950"
         />
       </td>
     </tr>

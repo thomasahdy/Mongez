@@ -21,7 +21,7 @@ describe('TrashService', () => {
         delete: jest.fn(),
       },
       task: {
-        findMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
         updateMany: jest.fn(),
         delete: jest.fn(),
@@ -33,6 +33,7 @@ describe('TrashService', () => {
         delete: jest.fn(),
       },
       $transaction: jest.fn().mockImplementation(async (cb) => cb(prisma)),
+      $queryRaw: jest.fn().mockResolvedValue([]),
     };
 
     service = new TrashService(prisma as PrismaService);
@@ -136,6 +137,7 @@ describe('TrashService', () => {
       prisma.task.findMany
         .mockResolvedValueOnce([{ id: 'subtask-1' }]) // first level parentId = task-1
         .mockResolvedValueOnce([]); // second level parentId = subtask-1
+      prisma.$queryRaw.mockResolvedValueOnce([{ id: 'subtask-1' }]);
 
       await service.softDeleteTask('task-1', 'user-1');
 

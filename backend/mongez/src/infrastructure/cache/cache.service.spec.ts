@@ -8,6 +8,7 @@ describe('CacheService', () => {
     setex: jest.Mock;
     del: jest.Mock;
     keys: jest.Mock;
+    scan: jest.Mock;
     exists: jest.Mock;
     expire: jest.Mock;
     incr: jest.Mock;
@@ -29,6 +30,7 @@ describe('CacheService', () => {
       setex: jest.fn(),
       del: jest.fn(),
       keys: jest.fn(),
+      scan: jest.fn(),
       exists: jest.fn(),
       expire: jest.fn(),
       incr: jest.fn(),
@@ -112,25 +114,26 @@ describe('CacheService', () => {
 
   describe('delPattern()', () => {
     it('UT-CACHE-005: should delete all matching keys', async () => {
-      redisMock.keys.mockResolvedValue(['task:1', 'task:1:detail', 'task:1:meta']);
+      redisMock.scan.mockResolvedValueOnce(['0', ['task:1', 'task:1:detail', 'task:1:meta']]);
       redisMock.del.mockResolvedValue(3);
 
       await service.delPattern('task:1:*');
 
-      expect(redisMock.keys).toHaveBeenCalledWith('task:1:*');
+      expect(redisMock.scan).toHaveBeenCalledWith('0', 'MATCH', 'task:1:*', 'COUNT', 100);
       expect(redisMock.del).toHaveBeenCalledWith('task:1', 'task:1:detail', 'task:1:meta');
     });
 
     it('should not call del when no keys match', async () => {
-      redisMock.keys.mockResolvedValue([]);
+      redisMock.scan.mockResolvedValueOnce(['0', []]);
 
       await service.delPattern('nomatch:*');
 
+      expect(redisMock.scan).toHaveBeenCalledWith('0', 'MATCH', 'nomatch:*', 'COUNT', 100);
       expect(redisMock.del).not.toHaveBeenCalled();
     });
 
     it('should gracefully handle Redis errors', async () => {
-      redisMock.keys.mockRejectedValue(new Error('Redis error'));
+      redisMock.scan.mockRejectedValue(new Error('Redis error'));
 
       await expect(service.delPattern('pattern:*')).resolves.toBeUndefined();
     });
@@ -173,23 +176,23 @@ describe('CacheService', () => {
   describe('invalidateEntity()', () => {
     it('UT-CACHE-008: should delete entity:id and entity:id:* patterns', async () => {
       redisMock.del.mockResolvedValue(1);
-      redisMock.keys.mockResolvedValue(['task:123:detail']);
+      redisMock.scan.mockResolvedValueOnce(['0', ['task:123:detail']]);
 
       await service.invalidateEntity('task', '123');
 
       expect(redisMock.del).toHaveBeenCalledWith('task:123');
-      expect(redisMock.keys).toHaveBeenCalledWith('task:123:*');
+      expect(redisMock.scan).toHaveBeenCalledWith('0', 'MATCH', 'task:123:*', 'COUNT', 100);
     });
   });
 
   describe('invalidateEntityType()', () => {
     it('UT-CACHE-009: should delete all entity:* keys', async () => {
-      redisMock.keys.mockResolvedValue(['task:1', 'task:2', 'task:3']);
+      redisMock.scan.mockResolvedValueOnce(['0', ['task:1', 'task:2', 'task:3']]);
       redisMock.del.mockResolvedValue(3);
 
       await service.invalidateEntityType('task');
 
-      expect(redisMock.keys).toHaveBeenCalledWith('task:*');
+      expect(redisMock.scan).toHaveBeenCalledWith('0', 'MATCH', 'task:*', 'COUNT', 100);
       expect(redisMock.del).toHaveBeenCalledWith('task:1', 'task:2', 'task:3');
     });
   });

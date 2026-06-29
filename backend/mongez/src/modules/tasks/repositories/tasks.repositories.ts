@@ -450,7 +450,7 @@ export class CommentRepository {
     return { data, total };
   }
 
-  async create(taskId: string, authorId: string, content: string) {
+  async create(taskId: string, authorId: string, content: string, spaceId?: string) {
     return this.prisma.$transaction(async (tx) => {
       const comment = await tx.comment.create({
         data: { taskId, authorId, content },
@@ -469,6 +469,36 @@ export class CommentRepository {
           data: mentions.map((userId) => ({ commentId: comment.id, mentionedId: userId })),
           skipDuplicates: true,
         });
+
+        // Resolve task space and title for notification payload
+        const task = await tx.task.findUnique({
+          where: { id: taskId },
+          select: { title: true, spaceId: true },
+        });
+        const resolvedSpaceId = spaceId || task?.spaceId || '';
+
+        // Write outbox event for each mentioned user
+        const author = comment.author;
+        for (const userId of mentions) {
+          await tx.outboxEvent.create({
+            data: {
+              aggregateType: 'Task',
+              aggregateId: taskId,
+              eventType: 'comment.mention',
+              payload: {
+                eventId: `evt-mention-${comment.id}-${userId}-${Date.now()}`,
+                correlationId: taskId,
+                occurredAt: new Date().toISOString(),
+                spaceId: resolvedSpaceId,
+                userId,
+                actorName: author?.name || 'Someone',
+                entityLabel: task?.title || 'a task',
+                title: 'You were mentioned',
+                body: `${author?.name || 'Someone'} mentioned you in a comment on a task`,
+              },
+            },
+          });
+        }
       }
 
       return { comment, mentionedUserIds: mentions };

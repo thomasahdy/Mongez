@@ -8,7 +8,7 @@ export class NotificationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findForUser(userId: string, spaceId: string, filters: NotificationFilterDto) {
-    const { page, limit, type } = filters;
+    const { page, limit, type, status } = filters;
     const pageNum = Number(page || 1);
     const limitNum = Number(limit || 50);
     const skip = (pageNum - 1) * limitNum;
@@ -17,6 +17,7 @@ export class NotificationRepository {
       userId,
       spaceId,
       ...(type && { type }),
+      ...(status && { status }),
     };
 
     const [data, total] = await Promise.all([
@@ -36,7 +37,7 @@ export class NotificationRepository {
       where: {
         userId,
         spaceId,
-        readAt: null,
+        status: { not: 'READ' },
       },
     });
   }

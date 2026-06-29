@@ -46,11 +46,11 @@ export class TelegramController {
 
   // ── Telegram webhook: inbound updates ──────────────────────────
 
-  @Post('webhook/:token')
+  @Post('webhook/:pathId')
   @ApiExcludeEndpoint()
   @HttpCode(HttpStatus.OK)
   async receiveWebhook(
-    @Param('token') token: string,
+    @Param('pathId') pathId: string,
     @Body() body: any,
     @Req() req: any,
   ) {
@@ -59,7 +59,7 @@ export class TelegramController {
       throw new UnauthorizedException('Invalid Telegram secret token');
     }
 
-    const account = await this.service.resolveAccountByToken(token);
+    const account = await this.service.resolveAccountByPathId(pathId);
     if (!account) {
       throw new UnauthorizedException('Unknown Telegram bot');
     }
@@ -79,7 +79,54 @@ export class TelegramController {
     spaceId: string,
     botToken: string,
   ): Promise<void> {
-    if (spaceId === '__env__') return; // env-fallback dev bot has no space context
+    // When using the env-fallback bot (not per-space), broadcast the inbound
+    // message to ALL active spaces so users can still pair their Telegram
+    // account via the "Scan for My Chat" flow.
+    if (spaceId === '__env__') {
+      if (!update?.message?.text) return;
+
+      const allSpaces = await this.repo.findAllActiveAccountSpaces();
+      const spaceIds = allSpaces.length > 0
+        ? allSpaces.map((a) => a.spaceId)
+        : await this.repo.findAllSpaceIds();
+
+      if (!spaceIds.length) return;
+
+      const chatId = String(update.message.chat?.id);
+      const username = update.message.from?.username
+        ? `@${update.message.from.username}`
+        : null;
+
+      // Store message in every space so any space's admin can scan & pair it.
+      // Only send the bot reply ONCE (to the first space that needs it).
+      let replySent = false;
+      for (const sid of spaceIds) {
+        const existingContact = await this.repo.findContactByChat(chatId, sid);
+        if (existingContact) continue; // already paired in this space — skip
+
+        await this.repo.createMessage({
+          spaceId: sid,
+          direction: 'INBOUND',
+          chatId,
+          content: update.message.text,
+          tgMessageId: update.message.message_id,
+          status: 'READ',
+          metadata: { username },
+        }).catch((err) =>
+          this.logger.warn(`env-broadcast store for space ${sid} failed: ${err?.message}`),
+        );
+
+        if (!replySent) {
+          await this.service.sendMessage(
+            botToken,
+            chatId,
+            '🔒 Please link your Mongez account to use this bot. Open Mongez → Settings → Notifications → Delivery Channels.',
+          );
+          replySent = true;
+        }
+      }
+      return;
+    }
 
     if (update?.callback_query) {
       await this.handleCallback(update.callback_query, spaceId, botToken);
@@ -209,12 +256,14 @@ export class TelegramController {
     summary: 'Telegram integration status for the space + current user',
   })
   async status(@Param('spaceId') spaceId: string, @Req() req: any) {
-    const account = await this.repo.findActiveAccountBySpace(spaceId);
+    // resolveAccount checks DB first, then falls back to env vars
+    const resolved = await this.service.resolveAccount(spaceId);
     const contact = await this.repo.findContact(req.user.userId, spaceId);
     return {
-      configured: !!account,
-      isActive: account?.isActive ?? false,
-      botUsername: account?.botUsername ?? null,
+      configured: !!resolved,
+      isActive: !!resolved,
+      botUsername: resolved?.botUsername ?? null,
+      source: resolved?.source ?? null,
       contact: contact
         ? {
             chatId: contact.chatId,
@@ -224,6 +273,17 @@ export class TelegramController {
           }
         : null,
     };
+  }
+
+  @Get('spaces/:spaceId/unlinked-chats')
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Retrieve recent inbound chats not yet linked to any user contact',
+  })
+  async getUnlinkedChats(@Param('spaceId') spaceId: string) {
+    const chats = await this.repo.findUnlinkedInboundChats(spaceId);
+    return { data: chats };
   }
 
   @Post('spaces/:spaceId/contact')
@@ -240,6 +300,8 @@ export class TelegramController {
     const contact = await this.repo.upsertContact(req.user.userId, spaceId, {
       chatId: dto.chatId,
       username: dto.username,
+      isVerified: true,
+      optedIn: true,
     });
     return { contactId: contact.id, chatId: contact.chatId };
   }
@@ -271,7 +333,7 @@ export class TelegramController {
   @ApiOperation({ summary: "Configure the bot's Telegram webhook" })
   async registerWebhook(@Param('spaceId') spaceId: string) {
     const account = await this.service.resolveAccount(spaceId);
-    if (!account) {
+    if (!account || !account.webhookPathId) {
       throw new BadRequestException(
         'Telegram bot is not configured for this space.',
       );
@@ -280,7 +342,7 @@ export class TelegramController {
     if (!base) {
       throw new BadRequestException('TELEGRAM_WEBHOOK_PUBLIC_URL is not set.');
     }
-    const url = `${base.replace(/\/$/, '')}/api/v1/telegram/webhook/${account.botToken}`;
+    const url = `${base.replace(/\/$/, '')}/api/v1/telegram/webhook/${account.webhookPathId}`;
     const secret =
       this.config.get<string>('telegram.webhookSecretToken') || undefined;
     const result = await this.service.setWebhook(account.botToken, url, secret);

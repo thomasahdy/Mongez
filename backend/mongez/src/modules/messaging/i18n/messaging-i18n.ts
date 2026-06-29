@@ -22,6 +22,9 @@ type TemplateCtx = {
   body?: string | null;
   actorName?: string | null;
   entityLabel?: string | null;
+  taskIdentifier?: string | null;
+  dueDate?: string | null;
+  boardName?: string | null;
 };
 
 type TemplateRenderer = (ctx: TemplateCtx) => { title: string; body: string };
@@ -91,8 +94,48 @@ const NOTIFICATION_TEMPLATES: Record<
     }),
   },
   SYSTEM: {
-    en: (c) => ({ title: c.title || 'Mongez', body: c.body || '' }),
-    ar: (c) => ({ title: c.title || 'منجز', body: c.body || '' }),
+    en: (c) => ({ title: c.title || 'Mongez Alert', body: c.body || '' }),
+    ar: (c) => ({ title: c.title || 'تنبيه منجز', body: c.body || '' }),
+  },
+  TASK_UPDATED: {
+    en: (c) => ({
+      title: '✏️ Task updated',
+      body: `${c.taskIdentifier || c.title || 'A task'} was updated${c.actorName ? ` by ${c.actorName}` : ''}.`,
+    }),
+    ar: (c) => ({
+      title: '✏️ تم تحديث المهمة',
+      body: `تم تحديث ${c.taskIdentifier || c.title || 'مهمة'}${c.actorName ? ` بواسطة ${c.actorName}` : ''}.`,
+    }),
+  },
+  FILE_UPLOADED: {
+    en: (c) => ({
+      title: '📁 File uploaded',
+      body: `${c.actorName || 'Someone'} uploaded a file${c.entityLabel ? ` to ${c.entityLabel}` : ''}.`,
+    }),
+    ar: (c) => ({
+      title: '📁 تم رفع ملف',
+      body: `قام ${c.actorName || 'شخص ما'} برفع ملف${c.entityLabel ? ` إلى ${c.entityLabel}` : ''}.`,
+    }),
+  },
+  AI_INSIGHT: {
+    en: (c) => ({
+      title: '✨ AI Insight',
+      body: c.body || 'New AI analytical insight is available.',
+    }),
+    ar: (c) => ({
+      title: '✨ تحليل الذكاء الاصطناعي',
+      body: c.body || 'يتوفر تحليل ذكاء اصطناعي جديد.',
+    }),
+  },
+  DIGEST: {
+    en: (c) => ({
+      title: c.title || 'Mongez Digest',
+      body: c.body || 'You have new aggregated updates.',
+    }),
+    ar: (c) => ({
+      title: c.title || 'ملخص منجز',
+      body: c.body || 'لديك تحديثات جديدة مجمعة.',
+    }),
   },
 };
 

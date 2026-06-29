@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import Badge from "../ui/Badge";
@@ -8,11 +9,13 @@ import TreeLink from "./TreeLink";
 import SpaceSwitcher from "../spaces/SpaceSwitcher";
 import { logout } from "../../services/api/authService";
 import { useAppContext } from "../../pages/AppContext";
+import { useUnreadNotificationCount } from "../../hooks/api/notifications/useNotifications";
+import { useMyWorkTasks } from "../../hooks/api/useTasks";
 
 const OVERVIEW_LINKS = [
-  { href: "/my-work", icon: "fa-circle-check", label: "My Work", badge: { label: "5", variant: "danger" } },
+  { href: "/my-work", icon: "fa-circle-check", label: "My Work" },
   { href: "/approvals", icon: "fa-stamp", label: "Approvals" },
-  { href: "/inbox", icon: "fa-inbox", label: "Inbox", badge: { label: "3", variant: "danger" } },
+  { href: "/inbox", icon: "fa-inbox", label: "Inbox" },
   { href: "/dashboard", icon: "fa-chart-pie", label: "Dashboard" },
   { href: "/search", icon: "fa-magnifying-glass", label: "Search", kbd: "Ctrl K" },
   { href: "/ai-assistant", icon: "fa-sparkles", label: "AI Assistant", aiBadge: true },
@@ -31,6 +34,20 @@ const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
   const { activeSpace, activeBoard, boardsByDepartment } = useAppContext();
   const closeMobile = () => onCloseMobile?.();
   const activeBoardTableRoute = activeBoard?.id ? `/board/${activeBoard.id}/table` : "";
+
+  const spaceId = activeSpace?.id || "";
+  const { data: countData } = useUnreadNotificationCount(spaceId);
+  const unreadCount = countData?.unread ?? 0;
+
+  const { data: myWorkTasks } = useMyWorkTasks();
+  const myWorkCount = useMemo(() => {
+    if (!myWorkTasks) return 0;
+    const overdueCount = myWorkTasks.overdue?.length || 0;
+    const todayCount = myWorkTasks.today?.length || 0;
+    const upcomingCount = myWorkTasks.upcoming?.length || 0;
+    const noDueDateCount = myWorkTasks.noDueDate?.length || 0;
+    return overdueCount + todayCount + upcomingCount + noDueDateCount;
+  }, [myWorkTasks]);
 
   const handleLogout = async () => {
     await logout();
@@ -62,9 +79,22 @@ const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
       </div>
 
       <NavSection label={t("overview")}>
-        {OVERVIEW_LINKS.map((item) => (
-          <NavItem key={item.label} {...item} onClick={closeMobile} />
-        ))}
+        {OVERVIEW_LINKS.map((item) => {
+          let badge = null;
+          if (item.href === "/inbox" && unreadCount > 0) {
+            badge = { label: String(unreadCount), variant: "danger" };
+          } else if (item.href === "/my-work" && myWorkCount > 0) {
+            badge = { label: String(myWorkCount), variant: "danger" };
+          }
+          return (
+            <NavItem
+              key={item.label}
+              {...item}
+              badge={badge}
+              onClick={closeMobile}
+            />
+          );
+        })}
       </NavSection>
 
       <NavSection label={t("views")}>

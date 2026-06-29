@@ -48,3 +48,29 @@ export async function getIntegrationStatuses(spaceId) {
     telegram: settledValue(telegramResult),
   };
 }
+
+export async function setupTelegram(spaceId, data) {
+  return apiRequest(`/telegram/spaces/${spaceId}/setup`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function registerTelegramWebhook(spaceId) {
+  return apiRequest(`/telegram/spaces/${spaceId}/webhook/register`, {
+    method: "POST",
+  });
+}
+
+export async function setupWhatsApp(spaceId, data) {
+  return apiRequest(`/whatsapp/spaces/${spaceId}/setup`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function registerWhatsAppWebhook(spaceId) {
+  return apiRequest(`/whatsapp/spaces/${spaceId}/webhook/register`, {
+    method: "POST",
+  });
+}

@@ -1,13 +1,28 @@
+import { useEffect } from "react";
 import SettingsSidebar from "../settings/sections/SettingsSidebar";
 import NotificationsHeader from "../../components/notifications/NotificationsHeader";
 import NotificationChannelsCard from "../../components/notifications/NotificationChannelsCard";
 import QuietHoursCard from "../../components/notifications/QuietHoursCard";
 import NotificationSkeleton from "../../components/notifications/NotificationSkeleton";
+import MessagingLinkingCard from "../../components/notifications/MessagingLinkingCard";
 
+import { useAppContext } from "../AppContext";
+import { useIntegrationStatusesQuery } from "../../hooks/useSettingsQueries";
 import { useNotificationSettings } from "../../hooks/api/notifications/useNotificationSettings";
 import { useNotificationMutations } from "../../hooks/api/notifications/useNotificationMutations";
 
-const NotificationsPage = () => {
+const notificationsPath = [
+    { name: "Settings", color: "text-slate-400", ref: "/settings" },
+    { name: "Notifications", color: "text-slate-800", ref: "/settings/notifications" },
+];
+
+const NotificationsPage = ({ setPath }) => {
+    useEffect(() => {
+        setPath?.(notificationsPath);
+    }, [setPath]);
+
+    const { activeSpaceId } = useAppContext();
+    const statusesQuery = useIntegrationStatusesQuery(activeSpaceId);
     const {
         data,
         isLoading,
@@ -62,11 +77,11 @@ const NotificationsPage = () => {
     };
 
     return (
-        <div className="flex gap-8">
+        <div className="flex flex-1 overflow-hidden">
             <SettingsSidebar activeId="notifications" />
 
-            <div className="settings-content-area">
-                <div className="settings-content-max space-y-6">
+            <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900" aria-label="Notification settings">
+                <div className="mx-auto max-w-6xl px-6 py-6 space-y-6">
                     {isLoading ? (
                         <NotificationSkeleton />
                     ) : error ? (
@@ -87,8 +102,8 @@ const NotificationsPage = () => {
                                 settings={
                                     data?.quietHours ?? {
                                         enabled: false,
-                                        startTime: "11:00 PM",
-                                        endTime: "7:00 AM",
+                                        startTime: "22:00",
+                                        endTime: "07:00",
                                         weekendNotifications: false,
                                     }
                                 }
@@ -106,10 +121,22 @@ const NotificationsPage = () => {
                                     handleToggleWeekend
                                 }
                             />
+
+                            <div className="pt-4 border-t border-slate-150 dark:border-slate-800">
+                                <h3 className="text-md font-black tracking-tight text-slate-800 dark:text-slate-100 mb-4 uppercase text-xs tracking-widest text-slate-400">
+                                    Delivery Channels Linking
+                                </h3>
+                                <MessagingLinkingCard
+                                    spaceId={activeSpaceId}
+                                    telegramStatus={statusesQuery.data?.telegram}
+                                    whatsappStatus={statusesQuery.data?.whatsapp}
+                                    onRefetch={() => statusesQuery.refetch()}
+                                />
+                            </div>
                         </>
                     )}
                 </div>
-            </div>
+            </main>
         </div>
     );
 };

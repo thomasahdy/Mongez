@@ -3,6 +3,7 @@ import { TelegramService } from './telegram.service';
 import { TelegramRepository } from '../repositories/telegram.repository';
 import { ConfigService } from '@nestjs/config';
 import { EncryptionService } from '../../../shared/services/encryption.service';
+import * as crypto from 'crypto';
 
 const mockAxiosInstance = {
   post: jest.fn(),
@@ -22,6 +23,8 @@ describe('TelegramService', () => {
     repo = {
       findActiveAccountBySpace: jest.fn(),
       findAllActiveAccounts: jest.fn(),
+      findActiveAccountByPathId: jest.fn(),
+      updateAccountWebhookPathId: jest.fn(),
     } as any;
 
     config = {
@@ -53,10 +56,12 @@ describe('TelegramService', () => {
   describe('resolveAccount', () => {
     it('should decrypt botToken and return DB account details when active in DB', async () => {
       repo.findActiveAccountBySpace.mockResolvedValue({
+        id: 'acc-1',
         spaceId: 'space-1',
         botToken: 'enc-bot-token',
         botUsername: 'MongezBot',
         isActive: true,
+        webhookPathId: 'existing-path-id',
       } as any);
 
       const result = await service.resolveAccount('space-1');
@@ -68,6 +73,7 @@ describe('TelegramService', () => {
         botToken: 'decrypted-enc-bot-token',
         botUsername: 'MongezBot',
         source: 'db',
+        webhookPathId: 'existing-path-id',
       });
     });
 
@@ -86,6 +92,7 @@ describe('TelegramService', () => {
         botToken: 'env-bot-token',
         botUsername: 'EnvMongezBot',
         source: 'env',
+        webhookPathId: crypto.createHash('sha256').update('env-bot-token').digest('hex'),
       });
     });
 
@@ -99,28 +106,30 @@ describe('TelegramService', () => {
     });
   });
 
-  describe('resolveAccountByToken', () => {
-    it('should iterate active DB accounts to match raw decrypted botToken', async () => {
-      repo.findAllActiveAccounts.mockResolvedValue([
-        { spaceId: 'space-1', botToken: 'enc-tok-1', botUsername: 'Bot1' },
-        { spaceId: 'space-2', botToken: 'enc-tok-2', botUsername: 'Bot2' },
-      ] as any);
+  describe('resolveAccountByPathId', () => {
+    it('should query DB active account directly by pathId', async () => {
+      repo.findActiveAccountByPathId.mockResolvedValue({
+        spaceId: 'space-2',
+        botToken: 'enc-tok-2',
+        botUsername: 'Bot2',
+        isActive: true,
+        webhookPathId: 'webhook-path-2',
+      } as any);
 
-      encryption.safeEqual.mockImplementation((a, b) => a === b);
+      const result = await service.resolveAccountByPathId('webhook-path-2');
 
-      const result = await service.resolveAccountByToken('decrypted-enc-tok-2');
-
-      expect(repo.findAllActiveAccounts).toHaveBeenCalled();
+      expect(repo.findActiveAccountByPathId).toHaveBeenCalledWith('webhook-path-2');
       expect(result).toEqual({
         spaceId: 'space-2',
         botToken: 'decrypted-enc-tok-2',
         botUsername: 'Bot2',
         source: 'db',
+        webhookPathId: 'webhook-path-2',
       });
     });
 
     it('should check env config fallback if DB accounts do not match', async () => {
-      repo.findAllActiveAccounts.mockResolvedValue([]);
+      repo.findActiveAccountByPathId.mockResolvedValue(null);
       config.get.mockImplementation((key: string) => {
         if (key === 'telegram.botToken') return 'env-bot-token';
         if (key === 'telegram.botUsername') return 'EnvBot';
@@ -128,19 +137,21 @@ describe('TelegramService', () => {
       });
       encryption.safeEqual.mockImplementation((a, b) => a === b);
 
-      const result = await service.resolveAccountByToken('env-bot-token');
+      const envTokenHash = crypto.createHash('sha256').update('env-bot-token').digest('hex');
+      const result = await service.resolveAccountByPathId(envTokenHash);
 
       expect(result).toEqual({
         spaceId: '__env__',
         botToken: 'env-bot-token',
         botUsername: 'EnvBot',
         source: 'env',
+        webhookPathId: envTokenHash,
       });
     });
   });
 
   describe('sendMessage', () => {
-    it('should send a POST request with default HTML parsing', async () => {
+    it('should send a POST request without parse mode', async () => {
       mockAxiosInstance.post.mockResolvedValue({
         data: {
           result: { message_id: 9999 },
@@ -154,7 +165,6 @@ describe('TelegramService', () => {
         {
           chat_id: 'chat-id-1',
           text: 'Hello world',
-          parse_mode: 'HTML',
         },
       );
       expect(result).toEqual({

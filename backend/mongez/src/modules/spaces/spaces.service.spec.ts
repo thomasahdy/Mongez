@@ -80,7 +80,21 @@ describe('SpacesService', () => {
       del: jest.fn().mockResolvedValue(undefined),
     } as any;
 
-    service = new SpacesService(spaceRepo, deptRepo, memberRepo, invitationRepo, prisma, cache);
+    const workspaceExportQueue = { add: jest.fn() } as any;
+    const emailsQueue = { add: jest.fn() } as any;
+    const traceContext = { correlationId: 'test-id' } as any;
+
+    service = new SpacesService(
+      spaceRepo,
+      deptRepo,
+      memberRepo,
+      invitationRepo,
+      prisma,
+      cache,
+      workspaceExportQueue,
+      emailsQueue,
+      traceContext,
+    );
   });
 
   // ─── getById ─────────────────────────────────────────────────

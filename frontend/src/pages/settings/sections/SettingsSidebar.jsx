@@ -10,7 +10,7 @@ const SETTINGS_NAV = {
   ],
   workspace: [
     { id: "members",       href: "/settings/members",       icon: "fa-solid fa-users",            label: "Members & Roles" },
-    { id: "billing",       href: "/billing",                icon: "fa-solid fa-credit-card",      label: "Billing" },
+    { id: "billing",       href: "/settings/billing",                icon: "fa-solid fa-credit-card",      label: "Billing" },
     { id: "integrations",  href: "/settings/integrations",  icon: "fa-solid fa-plug",             label: "Integrations" },
     { id: "reports",       href: "/reports",                icon: "fa-solid fa-chart-line",       label: "Reports" },
     { id: "audit",         href: "/settings/audit-log",     icon: "fa-solid fa-clock-rotate-left",label: "Audit Log" },

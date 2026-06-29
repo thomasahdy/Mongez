@@ -153,24 +153,7 @@ export class TasksService {
   }
 
   async addComment(taskId: string, dto: CreateCommentDto, authorId: string, spaceId: string) {
-    const { comment, mentionedUserIds } = await this.commentRepo.create(taskId, authorId, dto.content);
-
-    if (mentionedUserIds.length) {
-      await Promise.all(
-        mentionedUserIds.map((userId) =>
-          this.notificationsService.queueNotification({
-            userId,
-            spaceId,
-            type: 'COMMENT_MENTION',
-            channel: 'IN_APP',
-            title: 'You were mentioned',
-            body: `You were mentioned in a comment on a task`,
-            entityType: 'task',
-            entityId: taskId,
-          }),
-        ),
-      );
-    }
+    const { comment } = await this.commentRepo.create(taskId, authorId, dto.content, spaceId);
 
     // Publish Domain Event
     this.eventBus.publish(new CommentAddedEvent(comment, spaceId));

@@ -8,6 +8,12 @@ import {
   useGoogleCalendarSyncMutation,
   useIntegrationStatusesQuery,
 } from "../../hooks/useSettingsQueries";
+import {
+  setupTelegram,
+  registerTelegramWebhook,
+  setupWhatsApp,
+  registerWhatsAppWebhook,
+} from "../../services/api/integrationsService";
 
 const SUPPORTED_PROVIDERS = [
   {
@@ -145,6 +151,8 @@ function ProviderAction({
   onDriveDisconnect,
   onCalendarConnect,
   onCalendarSync,
+  onConfigureTelegram,
+  onConfigureWhatsApp,
 }) {
   const busy = busyAction === provider.id;
 
@@ -192,6 +200,32 @@ function ProviderAction({
     );
   }
 
+  if (provider.backend === "telegram") {
+    return (
+      <button
+        type="button"
+        onClick={onConfigureTelegram}
+        disabled={!activeSpaceId}
+        className="rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 px-3 py-2 text-sm font-semibold text-white transition cursor-pointer"
+      >
+        Configure
+      </button>
+    );
+  }
+
+  if (provider.backend === "whatsapp") {
+    return (
+      <button
+        type="button"
+        onClick={onConfigureWhatsApp}
+        disabled={!activeSpaceId}
+        className="rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 px-3 py-2 text-sm font-semibold text-white transition cursor-pointer"
+      >
+        Configure
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -210,6 +244,8 @@ export default function IntegrationsPage({ setPath }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All Apps");
   const [busyAction, setBusyAction] = useState("");
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const popupWatcherRef = useRef(null);
   const statusesQuery = useIntegrationStatusesQuery(activeSpaceId);
   const disconnectDriveMutation = useDisconnectGoogleDriveMutation(activeSpaceId);
@@ -510,6 +546,8 @@ export default function IntegrationsPage({ setPath }) {
                       onDriveDisconnect={handleDriveDisconnect}
                       onCalendarConnect={handleCalendarConnect}
                       onCalendarSync={handleCalendarSync}
+                      onConfigureTelegram={() => setShowTelegramModal(true)}
+                      onConfigureWhatsApp={() => setShowWhatsAppModal(true)}
                     />
                   </div>
                 </article>
@@ -524,6 +562,301 @@ export default function IntegrationsPage({ setPath }) {
           ) : null}
         </div>
       </main>
+
+      {showTelegramModal && (
+        <TelegramConfigModal
+          spaceId={activeSpaceId}
+          initialConfig={statuses.telegram}
+          onClose={() => setShowTelegramModal(false)}
+          onSaved={() => statusesQuery.refetch()}
+        />
+      )}
+
+      {showWhatsAppModal && (
+        <WhatsAppConfigModal
+          spaceId={activeSpaceId}
+          initialConfig={statuses.whatsapp}
+          onClose={() => setShowWhatsAppModal(false)}
+          onSaved={() => statusesQuery.refetch()}
+        />
+      )}
+    </div>
+  );
+}
+
+function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
+  const [botToken, setBotToken] = useState("");
+  const [botUsername, setBotUsername] = useState(initialConfig?.botUsername || "");
+  const [isActive, setIsActive] = useState(initialConfig?.isActive ?? true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [webhookStatus, setWebhookStatus] = useState("");
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!botUsername.trim()) {
+      setError("Bot username is required");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await setupTelegram(spaceId, {
+        botToken: botToken.trim() || undefined,
+        botUsername: botUsername.trim(),
+        isActive,
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Failed to save bot settings");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRegisterWebhook = async () => {
+    setBusy(true);
+    setError("");
+    setWebhookStatus("Registering webhook...");
+    try {
+      const res = await registerTelegramWebhook(spaceId);
+      if (res.ok) {
+        setWebhookStatus("✅ Webhook registered successfully!");
+      } else {
+        setWebhookStatus("❌ Failed to register webhook.");
+      }
+    } catch (err) {
+      setWebhookStatus("");
+      setError(err.response?.data?.message || err.message || "Failed to register webhook");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" role="dialog">
+      <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden animate-fadeIn">
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-400 to-blue-600" />
+        <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900">
+          <h2 className="text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <i className="fa-brands fa-telegram text-sky-500" /> Configure Telegram Bot
+          </h2>
+          <button type="button" onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg">
+            <i className="fa-solid fa-xmark text-[16px]" />
+          </button>
+        </div>
+        <form onSubmit={handleSave} className="p-6 space-y-4">
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600 dark:bg-red-500/10 dark:text-red-300">
+              {error}
+            </div>
+          )}
+          {webhookStatus && (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 font-semibold">
+              {webhookStatus}
+            </div>
+          )}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bot Username</label>
+            <input
+              type="text"
+              placeholder="@MyWorkspaceBot"
+              value={botUsername}
+              onChange={(e) => setBotUsername(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bot Token</label>
+            <input
+              type="password"
+              placeholder={initialConfig?.configured ? "•••••••••••••••• (Leave blank to keep current)" : "Enter Bot API Token"}
+              value={botToken}
+              onChange={(e) => setBotToken(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="tg-active"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+            />
+            <label htmlFor="tg-active" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Enable Bot Channel</label>
+          </div>
+          <div className="border-t border-slate-100 dark:border-slate-900 pt-4 flex gap-2 justify-end">
+            {initialConfig?.configured && (
+              <button
+                type="button"
+                onClick={handleRegisterWebhook}
+                disabled={busy}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+              >
+                Register Webhook
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="px-4 py-2 text-xs font-semibold text-white bg-sky-500 hover:bg-sky-400 rounded-xl transition cursor-pointer"
+            >
+              {busy ? "Saving..." : "Save Bot"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function WhatsAppConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
+  const [phoneNumberId, setPhoneNumberId] = useState(initialConfig?.phoneNumber || "");
+  const [wabaId, setWabaId] = useState("");
+  const [accessToken, setAccessToken] = useState("");
+  const [displayName, setDisplayName] = useState(initialConfig?.displayName || "");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [isActive, setIsActive] = useState(initialConfig?.isActive ?? true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!phoneNumberId.trim() || !displayName.trim()) {
+      setError("Phone Number ID and Display Name are required");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await setupWhatsApp(spaceId, {
+        phoneNumberId: phoneNumberId.trim(),
+        wabaId: wabaId.trim() || undefined,
+        accessToken: accessToken.trim() || undefined,
+        displayName: displayName.trim(),
+        webhookSecret: webhookSecret.trim() || undefined,
+        isActive,
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Failed to save WhatsApp settings");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const webhookUrl = `${window.location.origin}/api/v1/whatsapp/webhook`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" role="dialog">
+      <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden animate-fadeIn">
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-green-400 to-emerald-600" />
+        <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900">
+          <h2 className="text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <i className="fa-brands fa-whatsapp text-green-500" /> Configure WhatsApp Business
+          </h2>
+          <button type="button" onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg">
+            <i className="fa-solid fa-xmark text-[16px]" />
+          </button>
+        </div>
+        <form onSubmit={handleSave} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto global-scrollbar">
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600 dark:bg-red-500/10 dark:text-red-300">
+              {error}
+            </div>
+          )}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Display Name</label>
+            <input
+              type="text"
+              placeholder="e.g. My Organization"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone Number ID</label>
+            <input
+              type="text"
+              placeholder="Enter Meta Phone Number ID"
+              value={phoneNumberId}
+              onChange={(e) => setPhoneNumberId(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">WhatsApp Business Account ID (WABA ID)</label>
+            <input
+              type="text"
+              placeholder="Enter WABA ID (Optional)"
+              value={wabaId}
+              onChange={(e) => setWabaId(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Permanent Access Token</label>
+            <input
+              type="password"
+              placeholder={initialConfig?.configured ? "•••••••••••••••• (Leave blank to keep current)" : "Enter Access Token"}
+              value={accessToken}
+              onChange={(e) => setAccessToken(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Webhook Secret (App Secret)</label>
+            <input
+              type="password"
+              placeholder={initialConfig?.configured ? "•••••••••••••••• (Leave blank to keep current)" : "Enter Webhook App Secret (Optional)"}
+              value={webhookSecret}
+              onChange={(e) => setWebhookSecret(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="wa-active"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            />
+            <label htmlFor="wa-active" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Enable WhatsApp Channel</label>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-850 text-[11px] space-y-1 text-slate-500">
+            <span className="font-bold text-slate-600 dark:text-slate-400 block">Copy this Webhook Callback URL:</span>
+            <code className="bg-slate-100 dark:bg-slate-850 px-1 py-0.5 rounded break-all select-all font-mono text-[10px] text-sky-600">{webhookUrl}</code>
+          </div>
+          <div className="border-t border-slate-100 dark:border-slate-900 pt-4 flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="px-4 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-500 rounded-xl transition cursor-pointer"
+            >
+              {busy ? "Saving..." : "Save Settings"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

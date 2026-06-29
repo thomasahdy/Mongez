@@ -54,16 +54,46 @@ export const getUnreadCount = async (spaceId) => {
 };
 
 export const markAllAsRead = async (spaceId) => {
-    const response = await apiClient.patch("/notifications/read-all", null, { params: { spaceId } });
+    const response = await apiClient.patch("/notifications/read-all", {}, { params: { spaceId } });
     return response.data;
 };
 
 export const markAsRead = async (id, spaceId) => {
-    const response = await apiClient.patch(`/notifications/${id}/read`, null, { params: { spaceId } });
+    const response = await apiClient.patch(`/notifications/${id}/read`, {}, { params: { spaceId } });
     return response.data;
 };
 
 export const deleteNotification = async (id, spaceId) => {
     const response = await apiClient.delete(`/notifications/${id}`, { params: { spaceId } });
+    return response.data;
+};
+
+export const getTelegramUnlinkedChats = async (spaceId) => {
+    const response = await apiClient.get(`/telegram/spaces/${spaceId}/unlinked-chats`);
+    return response.data;
+};
+
+export const linkTelegramContact = async (spaceId, data) => {
+    const response = await apiClient.post(`/telegram/spaces/${spaceId}/contact`, data);
+    return response.data;
+};
+
+export const unlinkTelegramContact = async (spaceId) => {
+    const response = await apiClient.post(`/telegram/spaces/${spaceId}/contact/opt-out`);
+    return response.data;
+};
+
+export const requestWhatsAppOtp = async (spaceId, data) => {
+    const response = await apiClient.post(`/whatsapp/spaces/${spaceId}/otp/request`, data);
+    return response.data;
+};
+
+export const confirmWhatsAppOtp = async (spaceId, data) => {
+    const response = await apiClient.post(`/whatsapp/spaces/${spaceId}/otp/confirm`, data);
+    return response.data;
+};
+
+export const unlinkWhatsAppContact = async (spaceId) => {
+    const response = await apiClient.post(`/whatsapp/spaces/${spaceId}/contact/opt-out`);
     return response.data;
 };

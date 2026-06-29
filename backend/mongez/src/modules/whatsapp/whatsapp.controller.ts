@@ -238,12 +238,16 @@ export class WhatsAppController {
     summary: 'WhatsApp integration status for the space + current user',
   })
   async status(@Param('spaceId') spaceId: string, @Req() req: any) {
+    // resolveAccount checks DB first, then falls back to env vars
+    const resolved = await this.service.resolveAccount(spaceId);
     const account = await this.repo.findActiveAccountBySpace(spaceId);
     const contact = await this.repo.findContact(req.user.userId, spaceId);
     return {
-      configured: !!account,
-      isActive: account?.isActive ?? false,
-      displayName: account?.displayName ?? null,
+      configured: !!resolved,
+      isActive: resolved ? (account?.isActive ?? true) : false,
+      displayName: resolved?.displayName ?? null,
+      phoneNumber: resolved?.phoneNumberId ?? null,
+      source: resolved?.source ?? null,
       contact: contact
         ? {
             phoneNumber: contact.phoneNumber,

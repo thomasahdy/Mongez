@@ -69,7 +69,7 @@ export class SpacesService {
         const ownedCount = await this.prisma.membership.count({
           where: { userId, role: { name: 'OWNER' } },
         });
-        if (ownedCount >= plan.maxSpaces) {
+        if (plan.maxSpaces !== -1 && ownedCount >= plan.maxSpaces) {
           throw new ForbiddenException(
             `Your plan allows a maximum of ${plan.maxSpaces} spaces. Please upgrade.`,
           );

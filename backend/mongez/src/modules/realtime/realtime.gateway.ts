@@ -3,6 +3,7 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
@@ -13,13 +14,15 @@ import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { RealtimeService } from './realtime.service';
 import { CacheService } from '../../infrastructure/cache/cache.service';
 import { Cron } from '@nestjs/schedule';
-import { Logger } from '@nestjs/common';
+import { Logger, OnModuleDestroy } from '@nestjs/common';
+import Redis from 'ioredis';
+
 
 @WebSocketGateway({
   cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true },
   namespace: '/ws',
 })
-export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleDestroy {
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(RealtimeGateway.name);
 
@@ -92,9 +95,50 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
   }
 
+  private subClient: Redis;
+
   afterInit(server: Server) {
     this.realtimeService.setServer(server);
+
+    // Initialize subscriber client
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    this.subClient = new Redis(redisUrl);
+
+    this.subClient.subscribe('realtime:events', (err) => {
+      if (err) {
+        this.logger.error('Failed to subscribe to realtime:events', err);
+      } else {
+        this.logger.log('Successfully subscribed to Redis channel "realtime:events"');
+      }
+    });
+
+    this.subClient.on('message', (channel, message) => {
+      if (channel === 'realtime:events') {
+        try {
+          const { type, targetId, event, payload } = JSON.parse(message);
+          this.logger.log(`Received Redis event: ${type} -> ${event} on target ${targetId}`);
+          
+          if (type === 'user') {
+            this.realtimeService.emitToUserDirect(targetId, event, payload);
+          } else if (type === 'space') {
+            this.realtimeService.emitToSpaceDirect(targetId, event, payload);
+          } else if (type === 'board') {
+            this.realtimeService.emitToBoardDirect(targetId, event, payload);
+          }
+        } catch (err: any) {
+          this.logger.error(`Failed to process Redis realtime event: ${err.message}`);
+        }
+      }
+    });
   }
+
+  async onModuleDestroy() {
+    if (this.subClient) {
+      await this.subClient.quit();
+      this.logger.log('Closed Redis subscriber client.');
+    }
+  }
+
 
   async handleConnection(client: Socket) {
     try {

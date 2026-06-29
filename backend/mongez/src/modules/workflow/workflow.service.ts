@@ -204,6 +204,22 @@ export class WorkflowService {
           where: { id: instanceId },
           data: { status: 'APPROVED', resolvedAt: new Date() },
         });
+        await tx.outboxEvent.create({
+          data: {
+            aggregateType: 'workflow',
+            aggregateId: instanceId,
+            eventType: 'workflow.approved',
+            payload: {
+              eventId: `evt-workflow-approve-${instanceId}-${Date.now()}`,
+              correlationId: instanceId,
+              occurredAt: new Date().toISOString(),
+              spaceId: instance.spaceId,
+              userId: instance.requesterId,
+              title: `Approved: ${instance.definition.name}`,
+              body: 'Your request has been approved.',
+            },
+          },
+        });
         return { type: 'RESOLVED', data: { outcome: 'APPROVED' } };
       } else {
         const stepActions = refreshedActions.filter((a) => a.stepOrder === currentInstance.currentStep);
@@ -214,6 +230,22 @@ export class WorkflowService {
           await tx.workflowInstance.update({
             where: { id: instanceId },
             data: { status: 'REJECTED', resolvedAt: new Date() },
+          });
+          await tx.outboxEvent.create({
+            data: {
+              aggregateType: 'workflow',
+              aggregateId: instanceId,
+              eventType: 'workflow.rejected',
+              payload: {
+                eventId: `evt-workflow-reject-${instanceId}-${Date.now()}`,
+                correlationId: instanceId,
+                occurredAt: new Date().toISOString(),
+                spaceId: instance.spaceId,
+                userId: instance.requesterId,
+                title: `Rejected: ${instance.definition.name}`,
+                body: 'Your request has been rejected. Review the decision notes for details.',
+              },
+            },
           });
           return { type: 'RESOLVED', data: { outcome: 'REJECTED' } };
         } else {
@@ -233,6 +265,22 @@ export class WorkflowService {
               await tx.workflowInstance.update({
                 where: { id: instanceId },
                 data: { status: 'APPROVED', resolvedAt: new Date() },
+              });
+              await tx.outboxEvent.create({
+                data: {
+                  aggregateType: 'workflow',
+                  aggregateId: instanceId,
+                  eventType: 'workflow.approved',
+                  payload: {
+                    eventId: `evt-workflow-approve-${instanceId}-${Date.now()}`,
+                    correlationId: instanceId,
+                    occurredAt: new Date().toISOString(),
+                    spaceId: instance.spaceId,
+                    userId: instance.requesterId,
+                    title: `Approved: ${instance.definition.name}`,
+                    body: 'Your request has been approved.',
+                  },
+                },
               });
               return { type: 'RESOLVED', data: { outcome: 'APPROVED' } };
             } else {
@@ -265,17 +313,6 @@ export class WorkflowService {
     if (transitionEvent) {
       if (transitionEvent.type === 'RESOLVED') {
         const outcome = transitionEvent.data.outcome;
-        await this.notifications.queueNotification({
-          userId: updatedInstance.requesterId,
-          spaceId: updatedInstance.spaceId,
-          type: outcome === 'APPROVED' ? 'WORKFLOW_APPROVED' : 'WORKFLOW_REJECTED',
-          channel: 'IN_APP',
-          priority: outcome === 'APPROVED' ? 'NORMAL' : 'HIGH',
-          title: outcome === 'APPROVED' ? `Approved: ${updatedInstance.definition.name}` : `Rejected: ${updatedInstance.definition.name}`,
-          body: outcome === 'APPROVED' ? 'Your request has been approved.' : 'Your request has been rejected. Review the decision notes for details.',
-          entityType: 'workflow',
-          entityId: updatedInstance.id,
-        });
 
         this.realtime.emitToUser(updatedInstance.requesterId, 'workflow:resolved', {
           instanceId: updatedInstance.id,
@@ -369,22 +406,29 @@ export class WorkflowService {
         },
       });
 
+      // Write Outbox Event for timeout
+      await tx.outboxEvent.create({
+        data: {
+          aggregateType: 'workflow',
+          aggregateId: instanceId,
+          eventType: 'workflow.timed_out',
+          payload: {
+            eventId: `evt-workflow-timeout-${instanceId}-${stepOrder}-${Date.now()}`,
+            correlationId: instanceId,
+            occurredAt: new Date().toISOString(),
+            spaceId: instance.spaceId,
+            userId: instance.requesterId,
+            title: `Request timed out: ${instance.definition.name}`,
+            body: `The approval step "${step.name}" timed out with no decision.`,
+          },
+        },
+      });
+
       return { instance: instance as any as InstanceWithRelations, step };
     }) as { instance: InstanceWithRelations; step: any } | null;
 
     if (escalationEvent) {
-      const { instance, step } = escalationEvent;
-      await this.notifications.queueNotification({
-        userId: instance.requesterId,
-        spaceId: instance.spaceId,
-        type: 'WORKFLOW_TIMED_OUT',
-        channel: 'IN_APP',
-        priority: 'HIGH',
-        title: `Request timed out: ${instance.definition.name}`,
-        body: `The approval step "${step.name}" timed out with no decision.`,
-        entityType: 'workflow',
-        entityId: instance.id,
-      });
+      const { instance } = escalationEvent;
 
       this.realtime.emitToUser(instance.requesterId, 'workflow:timed_out', { instanceId });
 
@@ -435,18 +479,42 @@ export class WorkflowService {
     const timeoutHours = step.timeoutHours ?? 7 * 24; // Default: 7 days
     const expiresAt = new Date(Date.now() + timeoutHours * 3600_000);
 
-    // Store expiry and activation time in instance context for later checks
-    await this.repo.updateInstance(instance.id, {
-      context: {
-        ...(instance.context as any),
-        _approvalExpiresAt: expiresAt.toISOString(),
-        _stepActivatedAt: new Date().toISOString(),
-      },
-    });
-
     const approverIds = this.resolveApproverIds(step, instance);
     const title = `Approval needed: ${instance.definition.name}`;
     const body = `Step "${step.name}" is awaiting your decision.`;
+
+    // Perform database context update and write outbox events in a single transaction
+    await this.prisma.$transaction(async (tx) => {
+      await tx.workflowInstance.update({
+        where: { id: instance.id },
+        data: {
+          context: {
+            ...(instance.context as any),
+            _approvalExpiresAt: expiresAt.toISOString(),
+            _stepActivatedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      for (const approverId of approverIds) {
+        await tx.outboxEvent.create({
+          data: {
+            aggregateType: 'workflow',
+            aggregateId: instance.id,
+            eventType: 'workflow.approval_request',
+            payload: {
+              eventId: `evt-workflow-req-${instance.id}-${approverId}-${Date.now()}`,
+              correlationId: instance.id,
+              occurredAt: new Date().toISOString(),
+              spaceId: instance.spaceId,
+              userId: approverId,
+              title,
+              body,
+            },
+          },
+        });
+      }
+    });
 
     // Send to all approvers via messaging port (WhatsApp, Telegram)
     await Promise.allSettled(
@@ -462,31 +530,18 @@ export class WorkflowService {
       ),
     );
 
-    // Also send in-app notifications to all approvers in parallel
-    await Promise.all(
-      approverIds.map(async (approverId) => {
-        await this.notifications.queueNotification({
-          userId: approverId,
-          spaceId: instance.spaceId,
-          type: 'WORKFLOW_APPROVAL_REQUEST',
-          channel: 'IN_APP',
-          priority: 'HIGH',
-          title,
-          body,
-          entityType: 'workflow',
-          entityId: instance.id,
-        });
-        this.realtime.emitToUser(approverId, 'workflow:pending_review', {
-          instanceId: instance.id,
-          stepName: step.name,
-        });
-        this.realtime.emitToUser(approverId, 'approval:created', {
-          instanceId: instance.id,
-          stepName: step.name,
-          expiresAt,
-        });
-      }),
-    );
+    // Also send in-app realtime Socket.IO notifications to all active approvers
+    for (const approverId of approverIds) {
+      this.realtime.emitToUser(approverId, 'workflow:pending_review', {
+        instanceId: instance.id,
+        stepName: step.name,
+      });
+      this.realtime.emitToUser(approverId, 'approval:created', {
+        instanceId: instance.id,
+        stepName: step.name,
+        expiresAt,
+      });
+    }
   }
 
   /**

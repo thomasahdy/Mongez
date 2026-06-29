@@ -9,22 +9,22 @@ const QuietHoursCard = ({
     loading,
 }) => {
     return (
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-            <div className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+        <div className="rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
                 <i className="fa-solid fa-moon text-indigo-500"></i>
                 <span>Quiet Hours & Focus</span>
             </div>
 
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 Pause non-urgent notifications during off-hours to stay focused.
             </p>
 
-            <div className="flex items-center justify-between border-b border-gray-100 py-5">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 py-5">
                 <div>
-                    <h4 className="font-medium text-gray-900">
+                    <h4 className="font-semibold text-slate-800 dark:text-slate-200">
                         Enable Quiet Hours
                     </h4>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                         Silence all notifications except urgent task assignments
                         and overdue alerts.
                     </p>
@@ -37,12 +37,12 @@ const QuietHoursCard = ({
                 />
             </div>
 
-            <div className="flex items-center justify-between border-b border-gray-100 py-5">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 py-5">
                 <div>
-                    <h4 className="font-medium text-gray-900">
+                    <h4 className="font-semibold text-slate-800 dark:text-slate-200">
                         Quiet Hours Schedule
                     </h4>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                         Notifications will be held and delivered when quiet
                         hours end.
                     </p>
@@ -55,15 +55,15 @@ const QuietHoursCard = ({
                             onChangeStartTime(e.target.value)
                         }
                         disabled={loading}
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm outline-none"
                     >
-                        <option value="8:00 PM">8:00 PM</option>
-                        <option value="9:00 PM">9:00 PM</option>
-                        <option value="10:00 PM">10:00 PM</option>
-                        <option value="11:00 PM">11:00 PM</option>
+                        <option value="20:00">8:00 PM</option>
+                        <option value="21:00">9:00 PM</option>
+                        <option value="22:00">10:00 PM</option>
+                        <option value="23:00">11:00 PM</option>
                     </select>
 
-                    <span className="text-gray-500">to</span>
+                    <span className="text-slate-400 dark:text-slate-500">to</span>
 
                     <select
                         value={settings.endTime}
@@ -71,21 +71,21 @@ const QuietHoursCard = ({
                             onChangeEndTime(e.target.value)
                         }
                         disabled={loading}
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm outline-none"
                     >
-                        <option value="7:00 AM">7:00 AM</option>
-                        <option value="8:00 AM">8:00 AM</option>
-                        <option value="9:00 AM">9:00 AM</option>
+                        <option value="07:00">7:00 AM</option>
+                        <option value="08:00">8:00 AM</option>
+                        <option value="09:00">9:00 AM</option>
                     </select>
                 </div>
             </div>
 
             <div className="flex items-center justify-between pt-5">
                 <div>
-                    <h4 className="font-medium text-gray-900">
+                    <h4 className="font-semibold text-slate-800 dark:text-slate-200">
                         Weekend Notifications
                     </h4>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                         Receive notifications on Friday & Saturday (Egyptian
                         weekend).
                     </p>

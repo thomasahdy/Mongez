@@ -1,10 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router";
 import Button from "../../components/ui/Button";
 import NotifIconBadge from "../../components/Inbox/NotifIconBadge";
 import NotificationItem from "../../components/Inbox/NotificationItem";
 import BulkActionBar from "./sections/BulkActionBar";
 import EmptyInbox from "./EmptyInbox";
 import InboxFilterTabs from "./sections/InboxFilterTabs";
+import { useAppContext } from "../../pages/AppContext";
 import {
   useNotifications,
   useMarkNotificationAsRead,
@@ -23,6 +25,8 @@ const mapBackendNotification = (n) => {
     FILE_UPLOADED: { icon: "fa-arrow-up-from-bracket", color: "text-indigo-500", bg: "bg-indigo-100 dark:bg-indigo-900/30" },
     AI_INSIGHT: { icon: "fa-robot", color: "text-purple-500", bg: "bg-purple-100 dark:bg-purple-900/30" },
     SYSTEM: { icon: "fa-triangle-exclamation", color: "text-amber-600", bg: "bg-amber-100 dark:bg-amber-900/30" },
+    WORKFLOW_APPROVAL_REQUEST: { icon: "fa-stamp", color: "text-rose-500", bg: "bg-rose-100 dark:bg-rose-900/30" },
+    DIGEST: { icon: "fa-envelope-open-text", color: "text-indigo-500", bg: "bg-indigo-100 dark:bg-indigo-900/30" },
   };
 
   const cfg = typeConfigs[n.type] || { icon: "fa-bell", color: "text-slate-500", bg: "bg-slate-100 dark:bg-slate-700" };
@@ -51,6 +55,7 @@ const mapBackendNotification = (n) => {
 
   return {
     id: n.id,
+    type: n.type,
     unread: n.status !== 'READ',
     iconBg: cfg.bg,
     iconColor: cfg.color,
@@ -58,9 +63,61 @@ const mapBackendNotification = (n) => {
     title: n.title,
     description: n.body,
     time: timeLabel,
+    createdAt: n.createdAt,
     project: n.spaceId ? "Workspace Notification" : "System Notification",
     actions,
+    // Keep entity reference for navigation
+    entityType: n.entityType || null,
+    entityId: n.entityId || null,
+    spaceId: n.spaceId || null,
   };
+};
+
+/**
+ * Resolves the in-app route to navigate to when a notification is clicked.
+ * Supports task, workflow, space, and approval entity types.
+ */
+const resolveNotificationUrl = (notif) => {
+  const { type, entityType, entityId, spaceId } = notif;
+  const et = (entityType || '').toLowerCase();
+
+  // Task-related notifications → task detail page
+  if (
+    et === 'task' ||
+    type === 'TASK_ASSIGNED' ||
+    type === 'TASK_DUE' ||
+    type === 'TASK_UPDATED' ||
+    type === 'COMMENT_MENTION' ||
+    type === 'FILE_UPLOADED'
+  ) {
+    if (entityId) return `/tasks/${entityId}`;
+  }
+
+  // Workflow / approval notifications → approvals page
+  if (
+    et === 'workflow' ||
+    type === 'APPROVAL_REQUESTED' ||
+    type === 'APPROVAL_RESOLVED' ||
+    type === 'WORKFLOW_APPROVAL_REQUEST' ||
+    type === 'WORKFLOW_APPROVED' ||
+    type === 'WORKFLOW_REJECTED' ||
+    type === 'WORKFLOW_TIMED_OUT'
+  ) {
+    return `/approvals`;
+  }
+
+  // Space notifications → spaces page
+  if (et === 'space') {
+    return `/spaces`;
+  }
+
+  // AI insight notifications → AI assistant
+  if (type === 'AI_INSIGHT') {
+    return `/ai-assistant`;
+  }
+
+  // Fallback: stay on inbox
+  return null;
 };
 
 let path = [
@@ -77,9 +134,14 @@ let path = [
 ];
 
 export default function InboxPage({ setPath }) {
-  const { data: notificationsData, isLoading, isError, error } = useNotifications({ limit: 100 });
+  const { activeSpace } = useAppContext();
+  const spaceId = activeSpace?.id || "";
+  const navigate = useNavigate();
+
+  const { data: notificationsData, isLoading, isError, error } = useNotifications({ limit: 100, spaceId });
   const markReadMutation = useMarkNotificationAsRead();
   const deleteNotificationMutation = useDeleteNotification();
+  const markAllReadMutation = useMarkAllNotificationsAsRead();
 
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -94,20 +156,20 @@ export default function InboxPage({ setPath }) {
 
   const filteredNotifications = useMemo(() => {
     if (activeFilter === "all") return mappedNotifications;
-    if (activeFilter === "mentions") return mappedNotifications.filter(n => n.icon === "fa-at");
-    if (activeFilter === "assigned") return mappedNotifications.filter(n => n.icon === "fa-user-plus");
-    if (activeFilter === "comments") return mappedNotifications.filter(n => n.icon.includes("comment") || n.icon === "fa-at");
-    if (activeFilter === "updates") return mappedNotifications.filter(n => n.icon === "fa-clock" || n.icon === "fa-check-circle");
+    if (activeFilter === "mentions") return mappedNotifications.filter(n => n.type === "COMMENT_MENTION");
+    if (activeFilter === "assigned") return mappedNotifications.filter(n => n.type === "TASK_ASSIGNED");
+    if (activeFilter === "comments") return mappedNotifications.filter(n => n.type === "COMMENT_MENTION");
+    if (activeFilter === "updates") return mappedNotifications.filter(n => n.type === "TASK_UPDATED" || n.type === "APPROVAL_RESOLVED");
     return mappedNotifications;
   }, [mappedNotifications, activeFilter]);
 
   const filterTabs = useMemo(() => {
     return [
       { id: "all", label: "All", count: mappedNotifications.length },
-      { id: "mentions", label: "Mentions", count: mappedNotifications.filter(n => n.icon === "fa-at").length },
-      { id: "assigned", label: "Assigned", count: mappedNotifications.filter(n => n.icon === "fa-user-plus").length },
-      { id: "comments", label: "Comments", count: mappedNotifications.filter(n => n.icon.includes("comment") || n.icon === "fa-at").length },
-      { id: "updates", label: "Updates", count: mappedNotifications.filter(n => n.icon === "fa-clock" || n.icon === "fa-check-circle").length },
+      { id: "mentions", label: "Mentions", count: mappedNotifications.filter(n => n.type === "COMMENT_MENTION").length },
+      { id: "assigned", label: "Assigned", count: mappedNotifications.filter(n => n.type === "TASK_ASSIGNED").length },
+      { id: "comments", label: "Comments", count: mappedNotifications.filter(n => n.type === "COMMENT_MENTION").length },
+      { id: "updates", label: "Updates", count: mappedNotifications.filter(n => n.type === "TASK_UPDATED" || n.type === "APPROVAL_RESOLVED").length },
     ];
   }, [mappedNotifications]);
 
@@ -131,29 +193,37 @@ export default function InboxPage({ setPath }) {
   const handleBulkMarkRead = useCallback(async () => {
     try {
       await Promise.all(
-        Array.from(selectedIds).map(id => markReadMutation.mutateAsync({ id }))
+        Array.from(selectedIds).map(id => markReadMutation.mutateAsync({ id, spaceId }))
       );
       setSelectedIds(new Set());
     } catch (err) {
       console.error("Failed to mark notifications read in bulk:", err);
     }
-  }, [selectedIds, markReadMutation]);
+  }, [selectedIds, markReadMutation, spaceId]);
 
   const handleBulkArchive = useCallback(async () => {
     try {
       await Promise.all(
-        Array.from(selectedIds).map(id => deleteNotificationMutation.mutateAsync({ id }))
+        Array.from(selectedIds).map(id => deleteNotificationMutation.mutateAsync({ id, spaceId }))
       );
       setSelectedIds(new Set());
     } catch (err) {
       console.error("Failed to archive notifications in bulk:", err);
     }
-  }, [selectedIds, deleteNotificationMutation]);
+  }, [selectedIds, deleteNotificationMutation, spaceId]);
+
+  const handleMarkAllRead = useCallback(async () => {
+    try {
+      await markAllReadMutation.mutateAsync({ spaceId });
+    } catch (err) {
+      console.error("Failed to mark all notifications read:", err);
+    }
+  }, [spaceId, markAllReadMutation]);
 
   const handleAction = useCallback(async (notifId, actionId) => {
     if (actionId === "archive" || actionId === "dismiss") {
       try {
-        await deleteNotificationMutation.mutateAsync({ id: notifId });
+        await deleteNotificationMutation.mutateAsync({ id: notifId, spaceId });
         setSelectedIds((prev) => {
           const next = new Set(prev);
           next.delete(notifId);
@@ -164,39 +234,46 @@ export default function InboxPage({ setPath }) {
       }
     } else if (actionId === "read") {
       try {
-        await markReadMutation.mutateAsync({ id: notifId });
+        await markReadMutation.mutateAsync({ id: notifId, spaceId });
       } catch (err) {
         console.error("Failed to mark notification as read:", err);
       }
     } else {
       console.info(`Action "${actionId}" on notification "${notifId}"`);
     }
-  }, [markReadMutation, deleteNotificationMutation]);
+  }, [markReadMutation, deleteNotificationMutation, spaceId]);
 
   const handleItemClick = useCallback(async (notifId) => {
     const notif = mappedNotifications.find(n => n.id === notifId);
-    if (notif?.unread) {
-      try {
-        await markReadMutation.mutateAsync({ id: notifId });
-      } catch (err) {
-        console.error("Failed to mark notification read on click:", err);
-      }
-    }
-  }, [mappedNotifications, markReadMutation]);
+    if (!notif) return;
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <div className="flex flex-col items-center gap-2">
-          <svg className="h-8 w-8 animate-spin text-sky-500" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
-          <span className="text-sm text-slate-500">Loading your inbox...</span>
+    // Mark as read (fire-and-forget — don't block navigation)
+    if (notif.unread) {
+      markReadMutation.mutate({ id: notifId, spaceId });
+    }
+
+    // Navigate to the relevant entity
+    const url = resolveNotificationUrl(notif);
+    if (url) {
+      navigate(url);
+    }
+  }, [mappedNotifications, markReadMutation, spaceId, navigate]);
+
+  const renderSkeletons = () => (
+    <div className="flex flex-col gap-2" role="status" aria-label="Loading notifications">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <div key={n} className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-slate-100 bg-white animate-pulse">
+          <div className="w-4 h-4 rounded bg-slate-200" />
+          <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0" />
+          <div className="flex-1 space-y-2 min-w-0">
+            <div className="h-3 w-1/3 rounded bg-slate-200" />
+            <div className="h-3.5 w-3/4 rounded bg-slate-200" />
+            <div className="h-2 w-1/5 rounded bg-slate-200" />
+          </div>
         </div>
-      </div>
-    );
-  }
+      ))}
+    </div>
+  );
 
   if (isError) {
     return (
@@ -213,10 +290,23 @@ export default function InboxPage({ setPath }) {
     <>
       <main className="flex-1 overflow-y-auto px-6 py-6" aria-label="Inbox notifications">
         <div className="max-w-[760px] mx-auto">
-          <h1 className="flex items-center gap-2.5 text-[20px] font-bold text-slate-800 dark:text-slate-100 mb-4">
-            <i className="fa-solid fa-inbox text-sky-500" aria-hidden="true" />
-            Inbox
-          </h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="flex items-center gap-2.5 text-[20px] font-bold text-slate-800 dark:text-slate-100">
+              <i className="fa-solid fa-inbox text-sky-500" aria-hidden="true" />
+              Inbox
+            </h1>
+            {mappedNotifications.some(n => n.unread) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleMarkAllRead}
+                className="text-sky-500 hover:text-sky-600 font-medium text-xs flex items-center gap-1.5"
+              >
+                <i className="fa-solid fa-check-double" />
+                Mark all as read
+              </Button>
+            )}
+          </div>
 
           <InboxFilterTabs
             tabs={filterTabs}
@@ -233,7 +323,9 @@ export default function InboxPage({ setPath }) {
             onArchive={handleBulkArchive}
           />
 
-          {filteredNotifications.length === 0 ? (
+          {isLoading ? (
+            renderSkeletons()
+          ) : filteredNotifications.length === 0 ? (
             <EmptyInbox />
           ) : (
             <div className="flex flex-col gap-2" role="list" aria-label="Notifications">

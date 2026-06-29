@@ -1,9 +1,12 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { NotificationChannel } from '../core/interfaces/notification-channel.interface';
 import { Notification } from '@prisma/client';
 import { BaseEvent } from '../core/contracts/event.contracts';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import { QUEUE_NAMES, JOB_NAMES } from '../../../infrastructure/queue/queue.constants';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
@@ -14,6 +17,7 @@ export class EmailChannel implements NotificationChannel, OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    @InjectQueue(QUEUE_NAMES.EMAILS) private readonly emailQueue: Queue,
   ) {}
 
   async onModuleInit() {
@@ -33,6 +37,10 @@ export class EmailChannel implements NotificationChannel, OnModuleInit {
           auth: { user, pass },
         });
       } else {
+        if (process.env.NODE_ENV === 'production') {
+          this.logger.error('SMTP credentials missing in production! Skipping Email Transporter initialization.');
+          return;
+        }
         this.logger.log('SMTP credentials missing. Initializing Ethereal Test Transporter...');
         const testAccount = await nodemailer.createTestAccount();
         this.transporter = nodemailer.createTransport({
@@ -54,38 +62,65 @@ export class EmailChannel implements NotificationChannel, OnModuleInit {
     }
   }
 
+  // Queue-based asynchronous sending trigger
   async send(notification: Notification, payload: BaseEvent): Promise<boolean> {
+    try {
+      this.logger.log(`Queueing email sending job for notification ${notification.id} to BullMQ`);
+      await this.emailQueue.add(JOB_NAMES.SEND_EMAIL, {
+        notificationId: notification.id,
+        title: notification.title,
+        body: notification.body,
+        userId: notification.userId,
+        eventId: payload.eventId,
+      });
+      return true;
+    } catch (err: any) {
+      this.logger.error(`Failed to queue email sending job: ${err.message}`);
+      return false;
+    }
+  }
+
+  // Direct Nodemailer execution method consumed by the background queue processor
+  async sendMailDirect(
+    userId: string,
+    title: string,
+    body: string,
+    eventId: string,
+  ): Promise<boolean> {
     if (!this.transporter) {
       this.logger.warn('Email transporter not initialized, skipping send.');
       return false;
     }
 
-    // Fetch the real recipient email — never use a hardcoded address
     const user = await this.prisma.user.findUnique({
-      where: { id: notification.userId },
+      where: { id: userId },
       select: { email: true, name: true },
     });
 
     if (!user?.email) {
-      this.logger.warn(`No email found for user ${notification.userId}, skipping email send.`);
+      this.logger.warn(`No email found for user ${userId}, skipping email send.`);
       return false;
     }
 
     try {
-      this.logger.log(`Sending email to ${user.email} for event ${payload.eventId}`);
+      this.logger.log(`Sending email to ${user.email} for event ${eventId}`);
       const from = this.configService.get<string>('SMTP_FROM') || process.env.SMTP_FROM || '"Mongez Platform" <noreply@mongez.com>';
+
+      const safeName = escapeHtml(user.name || '');
+      const safeTitle = escapeHtml(title || '');
+      const safeBody = escapeHtml(body || '').replace(/\n/g, '<br/>');
 
       const info = await this.transporter.sendMail({
         from,
         to: user.email,
-        subject: notification.title,
-        text: notification.body,
+        subject: title,
+        text: body,
         html: `
           <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
             <h2 style="color: #4a90e2;">Mongez Notification</h2>
-            <p>Hi ${user.name},</p>
-            <p><strong>${notification.title}</strong></p>
-            <p>${notification.body}</p>
+            <p>Hi ${safeName},</p>
+            <p><strong>${safeTitle}</strong></p>
+            <p>${safeBody}</p>
             <hr style="border: none; border-top: 1px solid #eee;" />
             <small style="color: #888;">You're receiving this because you're a member of a Mongez workspace.</small>
           </div>
@@ -98,8 +133,17 @@ export class EmailChannel implements NotificationChannel, OnModuleInit {
       }
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send email for notification ${notification.id}`, error);
+      this.logger.error(`Failed to send email direct to user ${userId} for event ${eventId}`, error);
       return false;
     }
   }
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

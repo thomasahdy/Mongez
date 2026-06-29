@@ -20,7 +20,7 @@ describe('TelegramController', () => {
   beforeEach(async () => {
     service = {
       verifySecretToken: jest.fn(),
-      resolveAccountByToken: jest.fn(),
+      resolveAccountByPathId: jest.fn(),
       resolveAccount: jest.fn(),
       sendMessage: jest.fn(),
       answerCallbackQuery: jest.fn(),
@@ -70,11 +70,12 @@ describe('TelegramController', () => {
   describe('receiveWebhook', () => {
     it('should verify secret token and route updates to executor', async () => {
       service.verifySecretToken.mockReturnValue(true);
-      service.resolveAccountByToken.mockResolvedValue({
+      service.resolveAccountByPathId.mockResolvedValue({
         spaceId: 'space-1',
         botToken: 'bot-token-123',
         botUsername: 'MyBot',
         source: 'db',
+        webhookPathId: 'path-123',
       });
 
       const body = {
@@ -95,10 +96,10 @@ describe('TelegramController', () => {
 
       const req = { headers: { 'x-telegram-bot-api-secret-token': 'secret-tok' } } as any;
 
-      const result = await controller.receiveWebhook('my-token', body, req);
+      const result = await controller.receiveWebhook('path-123', body, req);
 
       expect(service.verifySecretToken).toHaveBeenCalledWith('secret-tok');
-      expect(service.resolveAccountByToken).toHaveBeenCalledWith('my-token');
+      expect(service.resolveAccountByPathId).toHaveBeenCalledWith('path-123');
       expect(result).toEqual({ status: 'ok' });
 
       // Wait a moment for background task
@@ -121,11 +122,12 @@ describe('TelegramController', () => {
 
     it('should prompt user to link account if contact is not registered', async () => {
       service.verifySecretToken.mockReturnValue(true);
-      service.resolveAccountByToken.mockResolvedValue({
+      service.resolveAccountByPathId.mockResolvedValue({
         spaceId: 'space-1',
         botToken: 'bot-token-123',
         botUsername: 'MyBot',
         source: 'db',
+        webhookPathId: 'path-123',
       });
 
       const body = {
@@ -139,7 +141,7 @@ describe('TelegramController', () => {
       repo.findContactByChat.mockResolvedValue(null); // Contact not linked
 
       const req = { headers: {} } as any;
-      await controller.receiveWebhook('my-token', body, req);
+      await controller.receiveWebhook('path-123', body, req);
 
       await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -152,11 +154,12 @@ describe('TelegramController', () => {
 
     it('should handle callback_query updates', async () => {
       service.verifySecretToken.mockReturnValue(true);
-      service.resolveAccountByToken.mockResolvedValue({
+      service.resolveAccountByPathId.mockResolvedValue({
         spaceId: 'space-1',
         botToken: 'bot-token-123',
         botUsername: 'MyBot',
         source: 'db',
+        webhookPathId: 'path-123',
       });
 
       const body = {
@@ -178,7 +181,7 @@ describe('TelegramController', () => {
       });
 
       const req = { headers: {} } as any;
-      await controller.receiveWebhook('my-token', body, req);
+      await controller.receiveWebhook('path-123', body, req);
 
       await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -234,10 +237,13 @@ describe('TelegramController', () => {
 
   describe('status', () => {
     it('should return configuration details and linked user contact details', async () => {
-      repo.findActiveAccountBySpace.mockResolvedValue({
-        isActive: true,
+      service.resolveAccount.mockResolvedValue({
+        spaceId: 'space-1',
+        botToken: 'bot-tok-123',
         botUsername: 'MyBot',
-      } as any);
+        source: 'db',
+        webhookPathId: 'path-123',
+      });
       repo.findContact.mockResolvedValue({
         chatId: '11111',
         username: 'tom',
@@ -253,6 +259,7 @@ describe('TelegramController', () => {
         configured: true,
         isActive: true,
         botUsername: 'MyBot',
+        source: 'db',
         contact: {
           chatId: '11111',
           username: 'tom',
@@ -278,6 +285,8 @@ describe('TelegramController', () => {
       expect(repo.upsertContact).toHaveBeenCalledWith('user-1', 'space-1', {
         chatId: '11111',
         username: 'tom',
+        isVerified: true,
+        optedIn: true,
       });
       expect(result).toEqual({
         contactId: 'contact-id',
@@ -320,6 +329,7 @@ describe('TelegramController', () => {
     it('should call service.setWebhook and return results', async () => {
       service.resolveAccount.mockResolvedValue({
         botToken: 'my-bot-token',
+        webhookPathId: 'my-webhook-path-id',
       } as any);
       config.get.mockImplementation((key: string) => {
         if (key === 'telegram.webhookPublicUrl') return 'https://public.mongez.com';
@@ -333,11 +343,11 @@ describe('TelegramController', () => {
       expect(service.resolveAccount).toHaveBeenCalledWith('space-1');
       expect(service.setWebhook).toHaveBeenCalledWith(
         'my-bot-token',
-        'https://public.mongez.com/api/v1/telegram/webhook/my-bot-token',
+        'https://public.mongez.com/api/v1/telegram/webhook/my-webhook-path-id',
         'webhook-secret',
       );
       expect(result).toEqual({
-        webhookUrl: 'https://public.mongez.com/api/v1/telegram/webhook/my-bot-token',
+        webhookUrl: 'https://public.mongez.com/api/v1/telegram/webhook/my-webhook-path-id',
         ok: true,
         raw: 'success-payload',
       });

@@ -35,10 +35,34 @@ export const getIntegrationStatuses = async (spaceId) => {
   };
 };
 
+export const setupTelegram = async (spaceId, data) => {
+  const response = await apiClient.post(`/telegram/spaces/${spaceId}/setup`, data);
+  return response.data;
+};
+
+export const registerTelegramWebhook = async (spaceId) => {
+  const response = await apiClient.post(`/telegram/spaces/${spaceId}/webhook/register`);
+  return response.data;
+};
+
+export const setupWhatsApp = async (spaceId, data) => {
+  const response = await apiClient.post(`/whatsapp/spaces/${spaceId}/setup`, data);
+  return response.data;
+};
+
+export const registerWhatsAppWebhook = async (spaceId) => {
+  const response = await apiClient.post(`/whatsapp/spaces/${spaceId}/webhook/register`);
+  return response.data;
+};
+
 const integrationsService = {
   getGoogleDriveAuthUrl,
   disconnectGoogleDrive,
   getIntegrationStatuses,
+  setupTelegram,
+  registerTelegramWebhook,
+  setupWhatsApp,
+  registerWhatsAppWebhook,
 };
 
 export default integrationsService;

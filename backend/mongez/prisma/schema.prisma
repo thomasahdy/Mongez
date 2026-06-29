@@ -321,6 +321,7 @@ model Space {
   invitations        Invitation[]
   counter            SpaceCounter?
   attachments        Attachment[]
+  notifications      Notification[]
 
   @@index([createdAt])
   @@map("spaces")
@@ -889,8 +890,12 @@ model Notification {
   updatedAt         DateTime  @updatedAt
 
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  space             Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  events            NotificationEvent[]
 
   @@index([userId, spaceId, status])
+  @@index([userId, spaceId, readAt])
+  @@index([userId, spaceId, createdAt])
   @@index([aggregatedGroupId])
   @@map("notifications")
 }
@@ -915,6 +920,8 @@ model NotificationEvent {
   stage          NotificationFunnelStage
   metadata       Json?
   createdAt      DateTime                @default(now())
+
+  notification   Notification            @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
   @@index([notificationId, stage])
   @@index([userId, channel, createdAt])
@@ -1275,6 +1282,7 @@ model TelegramAccount {
   botToken        String   // Encrypted space bot token
   botUsername     String
   isActive        Boolean  @default(true)
+  webhookPathId   String?  @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
