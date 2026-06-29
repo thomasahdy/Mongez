@@ -41,7 +41,7 @@ export default function SpacesPage({ setPath }) {
   useEffect(() => {
     setPath([
       {
-        name: "Al-Noor Foundation",
+        name: t("common.workspace"),
         color: "text-slate-400",
         ref: "",
       },

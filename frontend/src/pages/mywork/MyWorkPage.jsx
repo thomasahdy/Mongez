@@ -9,8 +9,73 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useMyWorkTasks, useUpdateTask } from "../../hooks/api/useTasks";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
-const STREAK_DAYS = [true, true, true, false, true, true, true]; // mock for now
-const CALENDAR_TASK_DAYS = new Set([3, 5, 10, 19]); // mock for now
+function toDayKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function normalizeCompletionHistoryEntries(myWorkData) {
+  const candidates = [
+    myWorkData?.completionHistory,
+    myWorkData?.completedHistory,
+    myWorkData?.activityHistory,
+  ];
+
+  return candidates.find((value) => Array.isArray(value) && value.length > 0) || [];
+}
+
+function buildRecentCompletionDays(historyEntries) {
+  const completionKeys = new Set(
+    historyEntries
+      .map((entry) => entry?.date || entry?.completedAt || entry?.day || entry)
+      .map((value) => {
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? "" : toDayKey(parsed);
+      })
+      .filter(Boolean),
+  );
+
+  const today = new Date();
+  const days = [];
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const currentDay = new Date(today);
+    currentDay.setDate(today.getDate() - offset);
+    days.push(completionKeys.has(toDayKey(currentDay)));
+  }
+
+  return days;
+}
+
+function calculateCurrentStreak(days) {
+  let streak = 0;
+
+  for (let index = days.length - 1; index >= 0; index -= 1) {
+    if (!days[index]) {
+      break;
+    }
+
+    streak += 1;
+  }
+
+  return streak;
+}
+
+function calculateBestStreak(days) {
+  let best = 0;
+  let current = 0;
+
+  days.forEach((done) => {
+    if (done) {
+      current += 1;
+      best = Math.max(best, current);
+      return;
+    }
+
+    current = 0;
+  });
+
+  return best;
+}
 
 export default function MyWorkPage({ userName = "Teammate", setPath }) {
   const { t } = useTranslation();
@@ -100,6 +165,35 @@ export default function MyWorkPage({ userName = "Teammate", setPath }) {
   const todayTasks = useMemo(() => (myWorkData?.today || []).map((task) => mapBackendTask(task, "today")), [mapBackendTask, myWorkData]);
   const upcomingTasks = useMemo(() => (myWorkData?.upcoming || []).map((task) => mapBackendTask(task, "upcoming")), [mapBackendTask, myWorkData]);
   const noDueDateTasks = useMemo(() => (myWorkData?.noDueDate || []).map((task) => mapBackendTask(task, "noDueDate")), [mapBackendTask, myWorkData]);
+  const rawTasks = useMemo(
+    () =>
+      [
+        ...(myWorkData?.overdue || []),
+        ...(myWorkData?.today || []),
+        ...(myWorkData?.upcoming || []),
+        ...(myWorkData?.noDueDate || []),
+      ].filter((task, index, collection) => collection.findIndex((item) => item.id === task.id) === index),
+    [myWorkData],
+  );
+  const taskDayKeys = useMemo(
+    () =>
+      new Set(
+        rawTasks
+          .map((task) => task?.dueDate)
+          .filter(Boolean)
+          .map((value) => {
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? "" : toDayKey(parsed);
+          })
+          .filter(Boolean),
+      ),
+    [rawTasks],
+  );
+  const completionHistory = useMemo(() => normalizeCompletionHistoryEntries(myWorkData), [myWorkData]);
+  const completionDays = useMemo(() => buildRecentCompletionDays(completionHistory), [completionHistory]);
+  const hasCompletionHistory = completionHistory.length > 0;
+  const completionStreak = useMemo(() => calculateCurrentStreak(completionDays), [completionDays]);
+  const bestCompletionStreak = useMemo(() => calculateBestStreak(completionDays), [completionDays]);
 
   const tasksBySection = useMemo(() => ({
     overdue: overdueTasks,
@@ -194,8 +288,14 @@ export default function MyWorkPage({ userName = "Teammate", setPath }) {
               </div>
 
               <aside aria-label={t("myWorkPage.workSidebar")}>
-                <MiniCalendar taskDays={CALENDAR_TASK_DAYS} />
-                <CompletionStreak streak={7} bestStreak={14} days={STREAK_DAYS} />
+                <MiniCalendar taskDays={taskDayKeys} />
+                <CompletionStreak
+                  streak={completionStreak}
+                  bestStreak={bestCompletionStreak}
+                  days={completionDays}
+                  historyAvailable={hasCompletionHistory}
+                  totalCompleted={myWorkData?.stats?.completedCount ?? 0}
+                />
               </aside>
             </div>
           </div>

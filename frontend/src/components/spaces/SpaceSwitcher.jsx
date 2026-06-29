@@ -61,11 +61,11 @@ export default function SpaceSwitcher() {
   }
 
   return (
-    <div className="relative w-full" ref={dropdownRef}>
+    <div className="relative w-full" ref={dropdownRef} dir={isRTL ? "rtl" : "ltr"} data-tour="workspace-switcher">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 outline-none transition-all dark:border-slate-700/80 dark:bg-slate-800/60 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} hover:bg-slate-100 cursor-pointer`}
+        className={`flex w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 outline-none transition-all dark:border-slate-700/80 dark:bg-slate-800/60 dark:hover:bg-slate-800 hover:bg-slate-100 cursor-pointer ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
       >
         {activeSpace?.logo ? (
           <img src={activeSpace.logo} alt="" className="h-6 w-6 rounded-md object-cover" />
@@ -92,7 +92,7 @@ export default function SpaceSwitcher() {
       </button>
 
       {isOpen ? (
-        <div className="absolute left-0 right-0 z-50 mt-2 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl animate-slideDown dark:border-slate-800 dark:bg-slate-950">
+        <div className="absolute inset-x-0 z-50 mt-2 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl animate-slideDown dark:border-slate-800 dark:bg-slate-950">
           {spaces.length === 0 ? (
             <div className="px-4 py-3 text-center text-xs text-slate-400">{t("spaceSwitcher.noSpaces")}</div>
           ) : (
@@ -102,7 +102,7 @@ export default function SpaceSwitcher() {
                 type="button"
                 onClick={() => handleSpaceSelect(space)}
                 className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors cursor-pointer ${
-                  isRTL ? "text-right" : "text-left"
+                  isRTL ? "flex-row-reverse text-right" : "text-left"
                 } ${
                   space.id === activeSpace?.id
                     ? "bg-indigo-50/50 font-semibold text-indigo-600 dark:bg-indigo-950/20 dark:text-indigo-400"

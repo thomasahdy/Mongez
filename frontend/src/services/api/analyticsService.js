@@ -16,7 +16,7 @@ export const getDashboardStats = async (spaceId) => {
 
 export const getDashboardActivity = async (spaceId) => {
   const response = await apiClient.get(`/spaces/${spaceId}/audit-logs`, {
-    params: { limit: 6 },
+    params: { spaceId, limit: 6 },
   });
   return toArrayPayload(response.data, ["data", "items", "logs"]);
 };
@@ -62,15 +62,22 @@ export const getDashboardTeamLoad = async (spaceId) => {
 };
 
 export const getExecutiveMetrics = async (spaceId) => {
-  const response = await apiClient.get("/analytics/overview", {
-    params: { spaceId },
-  });
-  return response.data || {};
+  try {
+    const response = await apiClient.get("/analytics/executive", {
+      params: { spaceId },
+    });
+    return response.data || {};
+  } catch {
+    const fallback = await apiClient.get("/analytics/overview", {
+      params: { spaceId },
+    });
+    return fallback.data || {};
+  }
 };
 
 export const getSlaMetrics = async (spaceId) => {
   try {
-    const response = await apiClient.get('/analytics/overview', { params: { spaceId } });
+    const response = await apiClient.get("/analytics/sla", { params: { spaceId } });
     return response.data || {};
   } catch {
     return {};
@@ -79,8 +86,8 @@ export const getSlaMetrics = async (spaceId) => {
 
 export const getWorkflowAnalytics = async (spaceId) => {
   try {
-    const response = await apiClient.get('/analytics/tasks', {
-      params: { spaceId, period: 'month' },
+    const response = await apiClient.get("/analytics/workflows", {
+      params: { spaceId },
     });
     return response.data || {};
   } catch {
@@ -89,10 +96,14 @@ export const getWorkflowAnalytics = async (spaceId) => {
 };
 
 export const getApproverPerformance = async (spaceId) => {
-  const response = await apiClient.get("/analytics/approvals", {
-    params: { spaceId, period: "month" },
-  });
-  return toArrayPayload(response.data, ["data", "items", "approvals"]);
+  try {
+    const response = await apiClient.get("/analytics/approvers", {
+      params: { spaceId },
+    });
+    return toArrayPayload(response.data, ["data", "items", "approvals"]);
+  } catch {
+    return [];
+  }
 };
 
 const analyticsService = {

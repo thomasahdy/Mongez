@@ -1,7 +1,6 @@
 import { BrandIcon } from '../ui/Icons'
 import { useTranslation } from "react-i18next";
-import mongezMark from '../../assets/MongezMLogo.svg'
-import mongezWordmark from '../../assets/Mongez.svg'
+import BrandLogo from "../branding/BrandLogo";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 function FooterSection() {
@@ -15,12 +14,13 @@ function FooterSection() {
         <div className="grid gap-12 border-b border-white/8 pb-14 lg:grid-cols-[1.5fr_1fr_1fr_1fr]" dir={isRTL ? "rtl" : "ltr"}>
           <div>
             <div className={`flex items-center ${isRTL ? "flex-row-reverse justify-end" : ""}`}>
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br  ">
-                <img src={mongezMark} alt={t("landing.nav.markAlt")} className="h-12 w-9 object-contain" />
-              </div>
-              <div className={`flex flex-col ${isRTL ? "items-end" : ""}`}>
-                <img src={mongezWordmark} alt={t("landing.nav.wordmarkAlt")} className="h-12 w-auto object-contain" />
-              </div>
+              <BrandLogo
+                to="/"
+                className={isRTL ? "flex-row-reverse" : ""}
+                markWrapperClassName="flex h-13 w-13 items-center justify-center rounded-2xl"
+                markClassName="h-13 w-13 object-contain"
+                wordmarkClassName="h-11 w-auto object-contain"
+              />
             </div>
             <p className={`mt-6 max-w-md text-lg leading-8 text-slate-400 ${isRTL ? "text-right" : "text-left"}`}>
               {t("landing.footer.description")}

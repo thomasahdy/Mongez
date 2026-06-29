@@ -1,9 +1,11 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../../components/ui/Button";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const QuotaBanner = ({ used, total, onUpgrade }) => {
   const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const pct = Math.round((used / total) * 100);
   const remaining = total - used;
 
@@ -30,7 +32,7 @@ const QuotaBanner = ({ used, total, onUpgrade }) => {
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className="mt-1 text-[10px] text-slate-400 text-right">{t("spacesPage.quotaRemaining", { count: remaining })}</p>
+        <p className={`mt-1 text-[10px] text-slate-400 ${isRTL ? "text-left" : "text-right"}`}>{t("spacesPage.quotaRemaining", { count: remaining })}</p>
       </div>
 
       <Button variant="outline" size="md" onClick={onUpgrade}>

@@ -1,38 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import mongezMark from "../../assets/MongezMLogo.svg";
+import BrandLogo from "../../components/branding/BrandLogo";
 import { useOnboardingSetupMutation, useOnboardingTemplatesQuery } from "../../hooks/useOnboardingQueries";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
-
-const ONBOARDING_STORAGE_KEY = "pendingOnboarding";
-
-function readPendingOnboardingDraft() {
-  try {
-    const rawPending = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
-    if (!rawPending) {
-      return null;
-    }
-
-    const pending = JSON.parse(rawPending);
-    return {
-      orgName: pending?.organization?.name || "",
-      industry: pending?.organization?.industry || "NGO",
-      size: pending?.organization?.size || "MEDIUM",
-      country: pending?.organization?.country ? String(pending.organization.country).toUpperCase() : "EG",
-      selectedTemplate: pending?.template || "project-board",
-      invites:
-        Array.isArray(pending?.invites) && pending.invites.length > 0
-          ? pending.invites.map((invite) => ({
-              email: invite.email || "",
-              role: String(invite.role || "MEMBER").toUpperCase(),
-            }))
-          : [{ email: "", role: "MEMBER" }],
-    };
-  } catch {
-    return null;
-  }
-}
+import {
+  clearOnboardingSession,
+  clearPendingOnboardingDraft,
+  markPostOnboardingWalkthroughPending,
+  persistPendingOnboardingDraft,
+  readPendingOnboardingDraft,
+} from "../../lib/onboardingStorage";
 
 export default function OnboardingPage() {
   const { t } = useTranslation();
@@ -61,23 +39,16 @@ export default function OnboardingPage() {
   const templates = templatesQuery.data?.length > 0 ? templatesQuery.data : fallbackTemplates;
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        ONBOARDING_STORAGE_KEY,
-        JSON.stringify({
-          organization: {
-            name: orgName,
-            industry,
-            size,
-            country,
-          },
-          template: selectedTemplate,
-          invites,
-        }),
-      );
-    } catch {
-      // Ignore persistence issues and keep onboarding usable.
-    }
+    persistPendingOnboardingDraft({
+      organization: {
+        name: orgName,
+        industry,
+        size,
+        country,
+      },
+      template: selectedTemplate,
+      invites,
+    });
   }, [country, industry, invites, orgName, selectedTemplate, size]);
 
   useEffect(() => {
@@ -184,7 +155,9 @@ export default function OnboardingPage() {
         invites: normalizedInvites,
       });
 
-      window.localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+      clearPendingOnboardingDraft();
+      clearOnboardingSession();
+      markPostOnboardingWalkthroughPending();
       navigate("/dashboard", { replace: true });
     } catch (requestError) {
       setError(requestError.message || t("onboarding.errors.failed"));
@@ -194,10 +167,13 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans" dir={isRTL ? "rtl" : "ltr"}>
       <header className={`h-16 px-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-950 ${isRTL ? "flex-row-reverse" : ""}`}>
-        <div className={`flex items-center gap-2.5 ${isRTL ? "flex-row-reverse" : ""}`}>
-          <img src={mongezMark} alt="" className="w-8 h-8" />
-          <span className="text-lg font-bold tracking-tight">{t("onboarding.brand")}</span>
-        </div>
+        <BrandLogo
+          to="/dashboard"
+          className={isRTL ? "flex-row-reverse" : ""}
+          markWrapperClassName="flex h-8 w-8 items-center justify-center rounded-lg"
+          markClassName="h-8 w-8 object-contain"
+          wordmarkClassName="h-8 w-auto object-contain"
+        />
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
           {t("onboarding.stepCounter", { step, total: 3 })}
         </div>

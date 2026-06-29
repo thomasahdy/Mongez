@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import Button from "../../components/ui/Button";
 import NotifIconBadge from "../../components/Inbox/NotifIconBadge";
 import NotificationItem from "../../components/Inbox/NotificationItem";
@@ -7,6 +8,7 @@ import BulkActionBar from "./sections/BulkActionBar";
 import EmptyInbox from "./EmptyInbox";
 import InboxFilterTabs from "./sections/InboxFilterTabs";
 import { useAppContext } from "../../pages/AppContext";
+import useLocaleDirection from "../../hooks/useLocaleDirection";
 import {
   useNotifications,
   useMarkNotificationAsRead,
@@ -14,7 +16,7 @@ import {
   useDeleteNotification,
 } from "../../hooks/api/notifications/useNotifications";
 
-const mapBackendNotification = (n) => {
+const mapBackendNotification = (n, t) => {
   const typeConfigs = {
     TASK_ASSIGNED: { icon: "fa-user-plus", color: "text-sky-500", bg: "bg-sky-100 dark:bg-sky-900/30" },
     TASK_DUE: { icon: "fa-clock", color: "text-red-500", bg: "bg-red-100 dark:bg-red-900/30" },
@@ -120,20 +122,9 @@ const resolveNotificationUrl = (notif) => {
   return null;
 };
 
-let path = [
-  {
-    name: "Al-Noor Foundation",
-    color: "text-slate-400",
-    ref: ""
-  },
-  {
-    name: "Inbox",
-    color: "text-slate-800",
-    ref: ""
-  },
-];
-
 export default function InboxPage({ setPath }) {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const { activeSpace } = useAppContext();
   const spaceId = activeSpace?.id || "";
   const navigate = useNavigate();
@@ -147,12 +138,25 @@ export default function InboxPage({ setPath }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   useEffect(() => {
-    setPath?.(path);
-  }, [setPath]);
+    setPath?.([
+      {
+        name: activeSpace?.name || t("common.workspace"),
+        color: "text-slate-400",
+        ref: "",
+      },
+      {
+        name: t("inboxPage.breadcrumb"),
+        color: "text-slate-800",
+        ref: "",
+      },
+    ]);
+  }, [activeSpace?.name, setPath, t]);
 
   const mappedNotifications = useMemo(() => {
-    return (notificationsData?.items || notificationsData?.data || []).map(mapBackendNotification);
-  }, [notificationsData, mapBackendNotification]);
+    return (notificationsData?.items || notificationsData?.data || []).map((notification) =>
+      mapBackendNotification(notification, t),
+    );
+  }, [notificationsData, t]);
 
   const filteredNotifications = useMemo(() => {
     if (activeFilter === "all") return mappedNotifications;

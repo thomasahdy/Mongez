@@ -187,7 +187,7 @@ const appPagesEn = {
           quote:
             "Mongez transformed how we manage our education programs. The AI risk detection alone saved us from three critical funding delays last quarter.",
           name: "Ahmed Hassan",
-          role: "Director of Programs, Al-Noor Foundation",
+          role: "Director of Programs, Regional Education Network",
         },
         {
           quote:
@@ -1340,6 +1340,7 @@ const appPagesEn = {
   layout: {
     sidebarAria: "Sidebar navigation",
     openSidebar: "Open sidebar",
+    closeSidebar: "Close sidebar",
     searchPlaceholder: 'Search or ask AI... "Show KPI summary" | "budget status"',
     searchAria: "Search or ask AI",
     shortcut: "Ctrl K",
@@ -1350,6 +1351,36 @@ const appPagesEn = {
     closeAiPanel: "Close AI panel",
     activeBoardTable: "Active Board Table",
     createOrSelectSpace: "Create or select a space",
+    walkthrough: {
+      badge: "Quick Tour",
+      back: "Back",
+      skip: "Skip",
+      next: "Next",
+      finish: "Finish",
+      stepCounter: "Step {{current}} of {{total}}",
+      steps: {
+        workspaceSwitcher: {
+          title: "Switch between workspaces",
+          description: "Use this switcher to move between spaces so you always stay in the right workspace, team, and board context.",
+        },
+        navigation: {
+          title: "Navigate the main app",
+          description: "This sidebar is your main map. Jump between My Work, Inbox, Dashboard, Calendar, Reports, and the rest of your workspace tools from here.",
+        },
+        search: {
+          title: "Search across everything",
+          description: "Search tasks, people, files, and comments from one place. You can also ask AI directly here using natural language.",
+        },
+        ai: {
+          title: "Use AI when you need help fast",
+          description: "Open the AI panel for summaries, suggestions, follow-ups, and smarter next actions without leaving your workflow.",
+        },
+        quickActions: {
+          title: "Create work quickly",
+          description: "Use Quick Actions to create tasks and common templates faster, especially when you want to capture work without opening many screens.",
+        },
+      },
+    },
   },
   searchPage: {
     emptyAria: "Search",
@@ -1578,7 +1609,7 @@ const appPagesEn = {
       quote:
         '"Mongez helped us cut project delays by 40%. The AI nudges are incredibly useful for keeping things moving."',
       quoteAuthor: "Ahmed Hassan",
-      quoteRole: "Director, Al-Noor Foundation",
+      quoteRole: "Director, Regional Education Network",
     },
   },
   registerUi: {
@@ -1614,7 +1645,7 @@ const appPagesEn = {
       title: "Set up your organization",
       description: "Tell us about your organization so we can customize your experience.",
       organizationName: "Organization name",
-      organizationNamePlaceholder: "e.g. Al-Noor Foundation",
+      organizationNamePlaceholder: "e.g. Regional Education Network",
       industry: "Industry",
       selectIndustry: "Select industry...",
       organizationSize: "Organization size",
@@ -1822,6 +1853,8 @@ const appPagesEn = {
     weeklyStreakAria: "Weekly completion streak",
     dayCompleted: "Completed",
     dayMissed: "Missed",
+    completedSoFar: "{{count}} completed so far",
+    completionHistoryPending: "Completion history will appear here once the backend exposes day-by-day progress.",
     previousMonth: "Previous month",
     nextMonth: "Next month",
     hasTasks: "has tasks",
@@ -2140,5 +2173,269 @@ const appPagesEn = {
     },
   },
 };
+
+appPagesEn.errorUi = {
+  title: "Something went wrong",
+  genericDescription:
+    "An unexpected error occurred in this section. Please try reloading the page or reset the app state.",
+  frontendDescription: "An unexpected frontend error occurred. Try again or refresh the page.",
+  tryAgain: "Try Again",
+  refreshPage: "Refresh Page",
+  reloadPage: "Reload Page",
+  stackTrace: "Stack Trace Details",
+};
+
+appPagesEn.aiPreview = {
+  title: "Mongez AI",
+  panelAria: "AI Assistant panel",
+  closePanel: "Close AI panel",
+  askAria: "Ask AI",
+  sendMessage: "Send message",
+  openAssistant: "Open full assistant",
+  inputPlaceholder: "Or type your own request...",
+  context: "Context",
+  message:
+    "I can help you understand blockers, draft follow-ups, and review risks across your current workspace.",
+  contextItems: {
+    workspace: "Uses your current workspace and board context",
+    board: "Can summarize open work, blockers, and pending decisions",
+    followUps: "Opens the full assistant for deeper analysis and follow-ups",
+  },
+  suggestedActions: "Suggested Actions",
+  actions: {
+    summarizeBlockers: "Summarize blockers",
+    draftFollowUp: "Draft follow-up",
+    reviewRisks: "Review board risks",
+  },
+  prompts: {
+    summarizeBlockers: "Summarize the main blockers in my current workspace and what needs attention first.",
+    draftFollowUp: "Draft a concise follow-up message for the highest-priority delayed work item in my current workspace.",
+    reviewRisks: "Review the current board and highlight the most important risks, delays, and approvals that need action.",
+  },
+  nudge: {
+    greeting: "Need a quick AI assist?",
+    body:
+      "I can summarize blockers, draft follow-ups, or scan your board for risks without changing any of your workflow logic.",
+    dismiss: "Dismiss AI nudge",
+    yes: "Open AI",
+    tomorrow: "Remind me tomorrow",
+    notNow: "Not now",
+    launchPrompt: "Give me a quick summary of the most important blockers, delays, and follow-ups in my current workspace.",
+  },
+};
+
+appPagesEn.fab = {
+  buttonAria: "Create new item",
+  create: "Create",
+  space: "Space",
+  missingBoard: "Please create a board and columns in this space to use Quick Create.",
+  sections: {
+    quickCreate: "Quick Create",
+    ngoTemplates: "Egyptian NGO Templates",
+    recent: "Recent",
+  },
+  items: {
+    task: "Task",
+    meeting: "Meeting",
+    donorReportQ4: "Donor Report (Q4)",
+    ministrySubmission: "Ministry Submission",
+    fundingRequest: "Funding Request",
+    procurement: "Procurement (3 quotes)",
+    staffEvaluation: "Staff Evaluation",
+    donorReportOct15: "Donor Report (Oct 15)",
+  },
+  templates: {
+    meeting: {
+      title: "Project Alignment Meeting",
+      type: "Task",
+      description: "Scheduled team alignment meeting to sync on tasks and milestones.",
+    },
+    donorReportQ4: {
+      title: "Prepare Q4 Donor Report",
+      priority: "HIGH",
+      description: "Review and compile all NGO project reports for Q4 donor presentation.",
+    },
+    ministrySubmission: {
+      title: "Ministry Submission Documentation",
+      priority: "HIGH",
+      description: "Submit updated NGO compliance paperwork to Ministry of Social Solidarity.",
+    },
+    fundingRequest: {
+      title: "Funding Request Proposal",
+      priority: "MEDIUM",
+      description: "Draft grant funding request for upcoming community development projects.",
+    },
+    procurement: {
+      title: "Procurement (Collect 3 Quotes)",
+      priority: "MEDIUM",
+      description: "Acquire three competing quotations for office and training supply purchases.",
+    },
+    staffEvaluation: {
+      title: "Annual Staff Evaluation & Performance Reviews",
+      priority: "LOW",
+      description: "Conduct staff review interviews and document performance goals.",
+    },
+  },
+};
+
+appPagesEn.legacySettingsPage = {
+  breadcrumb: "Settings",
+  loading: "Loading settings...",
+  eyebrow: "Profile Settings",
+  title: "Your account",
+  description: "Manage your profile details loaded from the backend.",
+  name: "Name",
+  email: "Email",
+  language: "Language",
+  success: "Profile updated successfully.",
+  saving: "Saving...",
+  saveChanges: "Save changes",
+};
+
+appPagesEn.legacyListView = {
+  groupBy: "Group by:",
+  status: "Status",
+  assignee: "Assignee",
+  priority: "Priority",
+  none: "None",
+  loading: "Loading tasks...",
+  untitled: "Untitled",
+  task_one: "task",
+  task_other: "tasks",
+  noTasks: "No tasks found",
+  unassigned: "Unassigned",
+  normal: "Normal",
+  allTasks: "All Tasks",
+};
+
+appPagesEn.legacyRedesignView = {
+  workspace: "Workspace",
+  board: "Board",
+  selectBoard: "Select a board to open the board view.",
+  loading: "Loading board...",
+  untitledTask: "Untitled task",
+  noTasksInColumn: "No tasks in {{column}}.",
+  statuses: {
+    TODO: "To Do",
+    IN_PROGRESS: "In Progress",
+    WAITING: "Waiting",
+    DONE: "Done",
+  },
+};
+
+appPagesEn.billing.settings = "Settings";
+appPagesEn.billing.titleExtended = "Billing & Subscription";
+appPagesEn.billing.periodDays = "Calculated over a {{count}}-day period";
+appPagesEn.billing.limitSuffix = "{{label}} limit";
+
+appPagesEn.calendar.calendarSystems = {
+  label: "Calendar system",
+  gregory: "Gregorian",
+  islamic: "Hijri",
+};
+appPagesEn.calendar.labels.hijri = "Hijri";
+appPagesEn.calendar.labels.gregorian = "Gregorian";
+
+appPagesEn.integrations.buttons.configure = "Configure";
+appPagesEn.integrations.modals = {
+  telegram: {
+    title: "Configure Telegram Bot",
+    username: "Bot Username",
+    usernamePlaceholder: "@MyWorkspaceBot",
+    token: "Bot Token",
+    keepCurrentToken: "•••••••••••••••• (Leave blank to keep current)",
+    enterToken: "Enter Bot API Token",
+    enableChannel: "Enable Bot Channel",
+    registerWebhook: "Register Webhook",
+    registeringWebhook: "Registering webhook...",
+    webhookSuccess: "Webhook registered successfully!",
+    webhookFailed: "Failed to register webhook.",
+    cancel: "Cancel",
+    saving: "Saving...",
+    save: "Save Bot",
+    usernameRequired: "Bot username is required",
+    saveFailed: "Failed to save bot settings",
+    registerFailed: "Failed to register webhook",
+  },
+  whatsapp: {
+    title: "Configure WhatsApp Business",
+    displayName: "Display Name",
+    displayNamePlaceholder: "e.g. My Organization",
+    phoneNumberId: "Phone Number ID",
+    phoneNumberIdPlaceholder: "Enter Meta Phone Number ID",
+    wabaId: "WhatsApp Business Account ID (WABA ID)",
+    wabaIdPlaceholder: "Enter WABA ID (Optional)",
+    accessToken: "Permanent Access Token",
+    keepCurrentAccessToken: "•••••••••••••••• (Leave blank to keep current)",
+    enterAccessToken: "Enter Access Token",
+    webhookSecret: "Webhook Secret (App Secret)",
+    keepCurrentWebhookSecret: "•••••••••••••••• (Leave blank to keep current)",
+    enterWebhookSecret: "Enter Webhook App Secret (Optional)",
+    enableChannel: "Enable WhatsApp Channel",
+    callbackLabel: "Copy this Webhook Callback URL:",
+    cancel: "Cancel",
+    saving: "Saving...",
+    save: "Save Settings",
+    validation: "Phone Number ID and Display Name are required",
+    saveFailed: "Failed to save WhatsApp settings",
+  },
+};
+
+appPagesEn.notificationsPage.messagingLinking = {
+  telegramTitle: "Telegram Channel",
+  whatsappTitle: "WhatsApp Channel",
+  connected: "Connected",
+  telegramNotConfigured:
+    "Telegram is not configured for this workspace. Ask your admin to set up the Bot Token under App Integrations.",
+  whatsappNotConfigured:
+    "WhatsApp messaging is not configured for this workspace. Ask your admin to set up the Phone Number ID under App Integrations.",
+  linkedUsername: "Linked account username: {{value}}",
+  chatId: "Chat ID: {{value}}",
+  telegramIntro: "Link your Telegram to receive task updates and approvals directly on your device.",
+  step1: "Step 1: Open the bot",
+  step1Description: "Click here to start a chat with our bot:",
+  step1Action: "and click Start.",
+  step2: "Step 2: Connect Chat",
+  scanLoading: "Scanning recent messages...",
+  scanIdle: "Scan for My Chat",
+  recentChats: "Recent active chats:",
+  anonymous: "Anonymous",
+  pairAccount: "Pair Account",
+  pairManual: "Or pair manually",
+  chatIdPlaceholder: "Telegram Chat ID",
+  usernamePlaceholder: "Username (optional)",
+  link: "Link",
+  disconnectTelegram: "Disconnect Bot",
+  noNewChats: "No new active chats found. Make sure you sent /start to the bot first.",
+  telegramLinked: "Telegram account successfully paired!",
+  telegramLinkedManual: "Telegram account paired manually!",
+  telegramDisconnected: "Telegram bot disconnected.",
+  telegramScanFailed: "Failed to scan chats",
+  telegramPairFailed: "Failed to pair Telegram",
+  telegramDisconnectFailed: "Failed to disconnect Telegram",
+  linkedPhone: "Linked phone number: {{value}}",
+  verifiedActive: "Status: Verified and active.",
+  whatsappIntro: "Verify your phone number to receive critical notifications on WhatsApp.",
+  phoneNumber: "Phone Number",
+  phoneNumberPlaceholder: "e.g. +201002345678",
+  sendCode: "Send Verification Code",
+  sendingCode: "Sending Code...",
+  enteringCodeFor: "Entering code for {{value}}.",
+  codeLabel: "6-Digit Code",
+  codePlaceholder: "Enter 6-digit code",
+  changeNumber: "Change Number",
+  verifyCode: "Verify Code",
+  confirming: "Confirming...",
+  whatsappCodeSent: "OTP code sent to your WhatsApp number.",
+  whatsappLinked: "WhatsApp successfully linked!",
+  whatsappDisconnected: "WhatsApp notifications disabled.",
+  disconnectWhatsApp: "Disconnect WhatsApp",
+  whatsappSendFailed: "Failed to send code",
+  whatsappVerifyFailed: "Failed to verify code",
+  whatsappDisconnectFailed: "Failed to disconnect WhatsApp",
+};
+
+appPagesEn.inboxPage.open = "Open";
+appPagesEn.taskDetails.notices.renderFailed = "Something went wrong rendering task details";
 
 export default appPagesEn;

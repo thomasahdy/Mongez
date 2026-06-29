@@ -54,7 +54,7 @@ export default SettingsSidebar
 
 function SettingsSidebarItem({ item, active }) {
   const { t } = useTranslation();
-  const label = item.labelKey ? t(item.labelKey) : t(`settingsSidebar.${item.key}`);
+  const label = item.labelKey ? t(item.labelKey) : t(`settingsSidebar.items.${item.id}`);
 
   return (
     <NavLink

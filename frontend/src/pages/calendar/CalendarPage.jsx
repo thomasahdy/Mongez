@@ -3,6 +3,7 @@ import { Link, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { readStorageJson, readStorageValue, writeStorageJson, writeStorageValue } from "../../utils/browserStorage";
 import {
   useCalendarEventsQuery,
   useCalendarPreferencesQuery,
@@ -11,25 +12,40 @@ import {
 import calendarService from "../../services/api/calendarService";
 
 const STORAGE_KEY = "mongez.calendar.filters";
+const CALENDAR_SYSTEM_STORAGE_KEY = "mongez.calendar.system";
 const CALENDAR_VIEWS = ["month", "week", "day"];
+const CALENDAR_SYSTEMS = ["gregory", "islamic"];
 const NON_WORKING_WEEKEND = "weekend";
+const LOCALIZED_DIGIT_MAP = {
+  "٠": "0",
+  "١": "1",
+  "٢": "2",
+  "٣": "3",
+  "٤": "4",
+  "٥": "5",
+  "٦": "6",
+  "٧": "7",
+  "٨": "8",
+  "٩": "9",
+  "۰": "0",
+  "۱": "1",
+  "۲": "2",
+  "۳": "3",
+  "۴": "4",
+  "۵": "5",
+  "۶": "6",
+  "۷": "7",
+  "۸": "8",
+  "۹": "9",
+};
 
 function readFilters(activeSpaceId, activeBoardId) {
-  try {
-    const rawValue = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = rawValue ? JSON.parse(rawValue) : {};
-    return {
-      spaceId: parsed.spaceId || activeSpaceId || "",
-      boardId: parsed.boardId || activeBoardId || "",
-      holidayCountry: parsed.holidayCountry || "",
-    };
-  } catch {
-    return {
-      spaceId: activeSpaceId || "",
-      boardId: activeBoardId || "",
-      holidayCountry: "",
-    };
-  }
+  const parsed = readStorageJson(STORAGE_KEY, {});
+  return {
+    spaceId: parsed.spaceId || activeSpaceId || "",
+    boardId: parsed.boardId || activeBoardId || "",
+    holidayCountry: parsed.holidayCountry || "",
+  };
 }
 
 function startOfDay(date) {
@@ -73,19 +89,150 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
-function formatMonthLabel(date, locale) {
-  return new Intl.DateTimeFormat(locale, {
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
-
 function formatLongDayLabel(date, locale) {
   return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
+  }).format(date);
+}
+
+function normalizeDigits(value) {
+  return Array.from(String(value || ""))
+    .map((character) => LOCALIZED_DIGIT_MAP[character] || character)
+    .join("");
+}
+
+function parseCalendarPartValue(value) {
+  const normalizedValue = normalizeDigits(value).replace(/[^\d]/g, "");
+  return Number.parseInt(normalizedValue, 10) || 0;
+}
+
+function readCalendarSystem(language) {
+  const storedValue = readStorageValue(CALENDAR_SYSTEM_STORAGE_KEY, "");
+  if (storedValue && CALENDAR_SYSTEMS.includes(storedValue)) {
+    return storedValue;
+  }
+
+  return String(language || "").startsWith("ar") ? "islamic" : "gregory";
+}
+
+function getCalendarLocale(locale, calendarSystem) {
+  if (calendarSystem === "islamic") {
+    return locale.startsWith("ar") ? "ar-SA-u-ca-islamic" : "en-u-ca-islamic";
+  }
+
+  return locale;
+}
+
+function getCalendarParts(date, locale, calendarSystem) {
+  const parts = new Intl.DateTimeFormat(getCalendarLocale(locale, calendarSystem), {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(date);
+
+  return parts.reduce((accumulator, part) => {
+    if (part.type === "year" || part.type === "month" || part.type === "day") {
+      accumulator[part.type] = parseCalendarPartValue(part.value);
+    }
+    return accumulator;
+  }, {});
+}
+
+function getCalendarMonthId(date, locale, calendarSystem) {
+  if (calendarSystem === "gregory") {
+    return `${date.getFullYear()}-${date.getMonth() + 1}`;
+  }
+
+  const parts = getCalendarParts(date, locale, calendarSystem);
+  return `${parts.year}-${parts.month}`;
+}
+
+function startOfIslamicMonth(date, locale) {
+  let cursor = startOfDay(date);
+  const monthId = getCalendarMonthId(cursor, locale, "islamic");
+  let guard = 0;
+
+  while (guard < 370 && getCalendarMonthId(addDays(cursor, -1), locale, "islamic") === monthId) {
+    cursor = addDays(cursor, -1);
+    guard += 1;
+  }
+
+  return cursor;
+}
+
+function endOfIslamicMonth(date, locale) {
+  let cursor = startOfDay(date);
+  const monthId = getCalendarMonthId(cursor, locale, "islamic");
+  let guard = 0;
+
+  while (guard < 370 && getCalendarMonthId(addDays(cursor, 1), locale, "islamic") === monthId) {
+    cursor = addDays(cursor, 1);
+    guard += 1;
+  }
+
+  return cursor;
+}
+
+function getMonthRange(date, locale, calendarSystem) {
+  if (calendarSystem === "islamic") {
+    return {
+      start: startOfIslamicMonth(date, locale),
+      end: endOfIslamicMonth(date, locale),
+    };
+  }
+
+  return {
+    start: startOfMonth(date),
+    end: endOfMonth(date),
+  };
+}
+
+function addCalendarMonths(date, amount, locale, calendarSystem) {
+  if (calendarSystem === "islamic") {
+    let cursor = startOfIslamicMonth(date, locale);
+    const step = amount >= 0 ? 1 : -1;
+
+    for (let index = 0; index < Math.abs(amount); index += 1) {
+      cursor =
+        step > 0
+          ? addDays(endOfIslamicMonth(cursor, locale), 1)
+          : startOfIslamicMonth(addDays(cursor, -1), locale);
+    }
+
+    return startOfIslamicMonth(cursor, locale);
+  }
+
+  return addMonths(date, amount);
+}
+
+function formatCalendarMonthLabel(date, locale, calendarSystem) {
+  return new Intl.DateTimeFormat(getCalendarLocale(locale, calendarSystem), {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatCalendarLongDayLabel(date, locale, calendarSystem) {
+  return new Intl.DateTimeFormat(getCalendarLocale(locale, calendarSystem), {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatCalendarWeekdayLabel(date, locale, calendarSystem) {
+  return new Intl.DateTimeFormat(getCalendarLocale(locale, calendarSystem), {
+    weekday: "short",
+  }).format(date);
+}
+
+function formatCalendarDayNumber(date, locale, calendarSystem) {
+  return new Intl.DateTimeFormat(getCalendarLocale(locale, calendarSystem), {
+    day: "numeric",
   }).format(date);
 }
 
@@ -242,10 +389,14 @@ export default function CalendarPage() {
   const { isRTL } = useLocaleDirection();
   const resolvedBoard = outletBoard || activeBoard;
   const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
+  const [calendarSystem, setCalendarSystem] = useState(() => readCalendarSystem(i18n.language));
   const viewTabs = buildViewTabs(resolvedBoard?.id || activeBoardId, t);
   const weekdayLabels = useMemo(
-    () => Array.from({ length: 7 }, (_, index) => new Date(2026, 0, 4 + index).toLocaleDateString(locale, { weekday: "short" })),
-    [locale],
+    () =>
+      Array.from({ length: 7 }, (_, index) =>
+        formatCalendarWeekdayLabel(new Date(2026, 0, 4 + index), locale, calendarSystem),
+      ),
+    [calendarSystem, locale],
   );
   const legendItems = useMemo(
     () => [
@@ -299,7 +450,17 @@ export default function CalendarPage() {
     }
   };
 
-  const visibleRange = useMemo(() => getVisibleRange(anchorDate, calendarView), [anchorDate, calendarView]);
+  const visibleRange = useMemo(() => {
+    if (calendarView !== "month") {
+      return getVisibleRange(anchorDate, calendarView);
+    }
+
+    const monthRange = getMonthRange(anchorDate, locale, calendarSystem);
+    return {
+      start: startOfWeek(monthRange.start),
+      end: endOfWeek(monthRange.end),
+    };
+  }, [anchorDate, calendarSystem, calendarView, locale]);
   const preferences = preferencesQuery.data || null;
   const resolvedAppliedFilters = useMemo(
     () => ({
@@ -369,16 +530,22 @@ export default function CalendarPage() {
       : "";
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(appliedFilters));
-    } catch {
-      // Ignore persistence issues.
-    }
+    writeStorageJson(STORAGE_KEY, appliedFilters);
   }, [appliedFilters]);
 
+  useEffect(() => {
+    writeStorageValue(CALENDAR_SYSTEM_STORAGE_KEY, calendarSystem);
+  }, [calendarSystem]);
+
   const handleNavigate = (direction) => {
-    const nextAnchorDate = getNavTargetDate(anchorDate, calendarView, direction);
-    const nextSelectedDate = calendarView === "month" ? startOfMonth(nextAnchorDate) : startOfDay(nextAnchorDate);
+    const nextAnchorDate =
+      calendarView === "month"
+        ? addCalendarMonths(anchorDate, direction, locale, calendarSystem)
+        : getNavTargetDate(anchorDate, calendarView, direction);
+    const nextSelectedDate =
+      calendarView === "month"
+        ? getMonthRange(nextAnchorDate, locale, calendarSystem).start
+        : startOfDay(nextAnchorDate);
     setAnchorDate(nextAnchorDate);
     setSelectedDate(nextSelectedDate);
   };
@@ -391,7 +558,8 @@ export default function CalendarPage() {
 
   const handleChangeView = (nextView) => {
     const normalizedView = CALENDAR_VIEWS.includes(nextView) ? nextView : "month";
-    const nextSelectedDate = normalizedView === "month" ? startOfMonth(anchorDate) : startOfDay(anchorDate);
+    const nextSelectedDate =
+      normalizedView === "month" ? getMonthRange(anchorDate, locale, calendarSystem).start : startOfDay(anchorDate);
     setCalendarView(normalizedView);
     setSelectedDate(nextSelectedDate);
   };
@@ -448,6 +616,9 @@ export default function CalendarPage() {
           const dateKey = formatDateKey(date);
           const dateEvents = eventsByDate.get(dateKey) || [];
           const isNonWorkingDay = nonWorkingDaySet.has(dateKey);
+          const primaryDayNumber = formatCalendarDayNumber(date, locale, calendarSystem);
+          const secondaryDayNumber =
+            calendarSystem === "islamic" ? formatCalendarDayNumber(date, locale, "gregory") : null;
 
           return (
             <button
@@ -466,8 +637,9 @@ export default function CalendarPage() {
                     isToday ? "bg-sky-500 text-white" : "text-slate-700"
                   }`}
                 >
-                  {date.getDate()}
+                  {primaryDayNumber}
                 </span>
+                {secondaryDayNumber ? <span className="text-[10px] font-semibold text-slate-400">{secondaryDayNumber}</span> : null}
                 {isNonWorkingDay ? (
                   <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">
                     {t("calendar.labels.off")}
@@ -513,8 +685,12 @@ export default function CalendarPage() {
           >
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{date.toLocaleDateString(locale, { weekday: "short" })}</div>
-                <div className="mt-1 text-[22px] font-black tracking-[-0.05em] text-slate-900">{date.getDate()}</div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                  {formatCalendarWeekdayLabel(date, locale, calendarSystem)}
+                </div>
+                <div className="mt-1 text-[22px] font-black tracking-[-0.05em] text-slate-900">
+                  {formatCalendarDayNumber(date, locale, calendarSystem)}
+                </div>
               </div>
               {isNonWorkingDay ? (
                 <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">
@@ -547,7 +723,14 @@ export default function CalendarPage() {
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.labels.dayView")}</div>
-            <h2 className="mt-1 text-[26px] font-black tracking-[-0.05em] text-slate-900">{formatLongDayLabel(selectedDate, locale)}</h2>
+            <h2 className="mt-1 text-[26px] font-black tracking-[-0.05em] text-slate-900">
+              {formatCalendarLongDayLabel(selectedDate, locale, calendarSystem)}
+            </h2>
+            {calendarSystem === "islamic" ? (
+              <div className="mt-1 text-xs font-semibold text-slate-400">
+                {t("calendar.labels.gregorian")}: {formatLongDayLabel(selectedDate, locale)}
+              </div>
+            ) : null}
           </div>
           {isNonWorkingDay ? <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700">{t("calendar.labels.nonWorking")}</span> : null}
         </div>
@@ -618,7 +801,9 @@ export default function CalendarPage() {
                 >
                   <i className={`fa-solid ${isRTL ? "fa-chevron-right" : "fa-chevron-left"}`} />
                 </button>
-                <div className="min-w-[180px] text-[26px] font-black tracking-[-0.05em] text-slate-900">{formatMonthLabel(anchorDate, locale)}</div>
+                <div className="min-w-[180px] text-[26px] font-black tracking-[-0.05em] text-slate-900">
+                  {formatCalendarMonthLabel(anchorDate, locale, calendarSystem)}
+                </div>
                 <button
                   type="button"
                   onClick={() => handleNavigate(1)}
@@ -644,6 +829,25 @@ export default function CalendarPage() {
               </div>
 
               <div className={`flex flex-wrap items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+                <div className={`flex flex-wrap items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                    {t("calendar.calendarSystems.label")}
+                  </span>
+                  {CALENDAR_SYSTEMS.map((system) => (
+                    <button
+                      key={system}
+                      type="button"
+                      onClick={() => setCalendarSystem(system)}
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
+                        calendarSystem === system
+                          ? "bg-sky-500 text-white"
+                          : "border border-slate-200 bg-white text-slate-500 hover:border-sky-300 hover:text-sky-700"
+                      }`}
+                    >
+                      {t(`calendar.calendarSystems.${system}`)}
+                    </button>
+                  ))}
+                </div>
                 {CALENDAR_VIEWS.map((view) => (
                   <button
                     key={view}
@@ -752,7 +956,14 @@ export default function CalendarPage() {
             <aside className="space-y-5">
               <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
                 <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{t("calendar.labels.selectedDay")}</div>
-                <h2 className="text-[22px] font-black tracking-[-0.04em] text-slate-900">{formatLongDayLabel(selectedDate, locale)}</h2>
+                <h2 className="text-[22px] font-black tracking-[-0.04em] text-slate-900">
+                  {formatCalendarLongDayLabel(selectedDate, locale, calendarSystem)}
+                </h2>
+                {calendarSystem === "islamic" ? (
+                  <div className="mt-1 text-xs font-semibold text-slate-400">
+                    {t("calendar.labels.gregorian")}: {formatLongDayLabel(selectedDate, locale)}
+                  </div>
+                ) : null}
                 <div className="mt-4 space-y-2">
                   {selectedDayEvents.length === 0 ? (
                     <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-3 text-[12px] leading-5 text-slate-500">{t("calendar.labels.noEventsSelectedDay")}</div>
@@ -801,7 +1012,9 @@ export default function CalendarPage() {
 
                   {nonWorkingEntries.map((entry) => (
                     <div key={`${entry.dateKey}-${entry.label}`} className="rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <div className={`text-[12px] font-semibold text-slate-700 ${isRTL ? "text-right" : "text-left"}`}>{entry.dateKey}</div>
+                      <div className={`text-[12px] font-semibold text-slate-700 ${isRTL ? "text-right" : "text-left"}`}>
+                        {formatCalendarLongDayLabel(new Date(entry.dateKey), locale, calendarSystem)}
+                      </div>
                       <div className="mt-1 text-[11px] text-slate-500">
                         {t("calendar.labels.holidaySource", {
                           label: entry.label === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.label,

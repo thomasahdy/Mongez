@@ -6,7 +6,7 @@ import { logout } from "../../services/api/authService";
 import { useAppContext } from "../../pages/AppContext";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
-const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
+const Navbar = ({ onToggleAI, onToggleSidebar, isSidebarOpen = true, path }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { isRTL } = useLocaleDirection();
@@ -65,17 +65,17 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="action-btn px-2 lg:hidden"
-            aria-label={t("layout.openSidebar")}
+            className="action-btn px-2"
+            aria-label={t(isSidebarOpen ? "layout.closeSidebar" : "layout.openSidebar")}
           >
-            <i className="fa-solid fa-bars" />
+            <i className={`fa-solid ${isSidebarOpen ? "fa-xmark" : "fa-bars"}`} />
           </button>
         ) : null}
         <NavBreadcrumb path={path} />
       </div>
 
       <div className="unified-search-bar" id="unifiedSearch">
-        <div className="unified-search-wrapper" data-focused={focused ? "true" : "false"}>
+        <div className="unified-search-wrapper" data-tour="global-search" data-focused={focused ? "true" : "false"}>
           <i className="fa-solid fa-magnifying-glass unified-search-icon" aria-hidden="true" />
           <i className="fa-solid fa-wand-magic-sparkles unified-ai-icon" aria-hidden="true" />
           <input
@@ -102,7 +102,7 @@ const Navbar = ({ onToggleAI, onToggleSidebar, path }) => {
 
       <div className="flex items-center gap-2">
         <div className="header-actions">
-          <button type="button" className="action-btn" onClick={onToggleAI}>
+          <button type="button" className="action-btn" data-tour="ai-agents" onClick={onToggleAI}>
             <i className="fa-solid fa-robot" />
             <span>{t("layout.aiAgents")}</span>
             <span className="badge-new">{t("New")}</span>

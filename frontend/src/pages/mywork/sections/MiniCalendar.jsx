@@ -18,6 +18,10 @@ function buildCalendarGrid(year, month) {
   return grid;
 }
 
+function toDayKey(year, month, day) {
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 const MiniCalendar = ({ taskDays = new Set() }) => {
   const { t, i18n } = useTranslation();
   const { dir, isRtl } = useLocaleDirection();
@@ -96,7 +100,7 @@ const MiniCalendar = ({ taskDays = new Set() }) => {
           }
 
           const isToday = isCurrentMonth && day === today;
-          const hasTask = taskDays.has(day);
+          const hasTask = taskDays.has(toDayKey(viewYear, viewMonth, day));
           const cellLabel = new Intl.DateTimeFormat(locale, {
             day: "numeric",
             month: "long",

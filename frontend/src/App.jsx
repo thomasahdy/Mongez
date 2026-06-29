@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "rea
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedLayout from "./components/layout/ProtectedLayout";
 import { useAuthSessionQuery } from "./hooks/useAuthQueries";
+import { shouldContinueInitialOnboarding } from "./lib/onboardingStorage";
 import { AppProvider } from "./pages/AppContext";
 import Home from "./pages/home/Home";
 import { useTranslation } from "react-i18next";
@@ -40,14 +41,6 @@ const WorkflowInstancesList = lazy(() => import("./pages/workflow/WorkflowInstan
 const WorkflowBuilder = lazy(() => import("./pages/workflow/WorkflowBuilder"));
 const OAuthCallbackPage = lazy(() => import("./pages/auth/OAuthCallbackPage"));
 
-function hasPendingOnboarding() {
-  try {
-    return Boolean(window.localStorage.getItem("pendingOnboarding"));
-  } catch {
-    return false;
-  }
-}
-
 function FullScreenLoader() {
   const { t } = useTranslation();
 
@@ -70,7 +63,7 @@ function PublicOnlyRoute({ isAuthenticated, authReady, children }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={hasPendingOnboarding() ? "/onboarding" : "/dashboard"} replace />;
+    return <Navigate to={shouldContinueInitialOnboarding() ? "/onboarding" : "/dashboard"} replace />;
   }
 
   return children;
@@ -87,7 +80,7 @@ function ProtectedShell({ isAuthenticated, authReady }) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (hasPendingOnboarding() && location.pathname !== "/onboarding") {
+  if (shouldContinueInitialOnboarding() && location.pathname !== "/onboarding") {
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -132,7 +125,7 @@ function AppContent() {
             !authReady ? (
               <FullScreenLoader />
             ) : isAuthenticated ? (
-              <Navigate to={hasPendingOnboarding() ? "/onboarding" : "/dashboard"} replace />
+              <Navigate to={shouldContinueInitialOnboarding() ? "/onboarding" : "/dashboard"} replace />
             ) : (
               <LandingPage />
             )
@@ -200,14 +193,25 @@ function AppContent() {
               <Route path="settings/notifications" element={<NotificationsPage setPath={setPath} />} />
               <Route path="settings/security" element={<SecurityPage setPath={setPath} />} />
               <Route path="settings/audit-log" element={<SettingsAuditLogPage setPath={setPath} />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/invitation" element={<AcceptInvitationPage />} />
-
             </Route>
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to={isAuthenticated ? (hasPendingOnboarding() ? "/onboarding" : "/dashboard") : "/"} replace />} />
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to={
+                isAuthenticated
+                  ? shouldContinueInitialOnboarding()
+                    ? "/onboarding"
+                    : "/dashboard"
+                  : "/"
+              }
+              replace
+            />
+          }
+        />
       </Routes>
     </Suspense>
   );

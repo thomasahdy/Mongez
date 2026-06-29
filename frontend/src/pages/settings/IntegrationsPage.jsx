@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import SettingsSidebar from "./sections/SettingsSidebar";
 import { useAppContext } from "../AppContext";
 import {
@@ -13,8 +14,8 @@ import {
   setupTelegram,
   registerTelegramWebhook,
   setupWhatsApp,
-  registerWhatsAppWebhook,
 } from "../../services/api/integrationsService";
+import { buildSettingsPath } from "./settingsPath";
 
 const SUPPORTED_PROVIDERS = [
   {
@@ -45,11 +46,6 @@ const SUPPORTED_PROVIDERS = [
     color: "from-sky-400 to-blue-600",
     backend: "telegram",
   },
-];
-
-const integrationPath = [
-  { name: "Settings", color: "text-slate-400", ref: "/settings" },
-  { name: "Integrations", color: "text-slate-800", ref: "/settings/integrations" },
 ];
 
 function consumeIntegrationQueryState() {
@@ -225,7 +221,7 @@ function ProviderAction({
         disabled={!activeSpaceId}
         className="rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 px-3 py-2 text-sm font-semibold text-white transition cursor-pointer"
       >
-        Configure
+        {t("integrations.buttons.configure")}
       </button>
     );
   }
@@ -238,7 +234,7 @@ function ProviderAction({
         disabled={!activeSpaceId}
         className="rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 px-3 py-2 text-sm font-semibold text-white transition cursor-pointer"
       >
-        Configure
+        {t("integrations.buttons.configure")}
       </button>
     );
   }
@@ -321,8 +317,8 @@ export default function IntegrationsPage({ setPath }) {
   );
 
   useEffect(() => {
-    setPath?.(integrationPath);
-  }, [setPath]);
+    setPath?.(buildSettingsPath(t, t("integrations.title"), "/settings/integrations"));
+  }, [setPath, t]);
 
   useEffect(() => {
     return () => {
@@ -636,6 +632,8 @@ export default function IntegrationsPage({ setPath }) {
 }
 
 function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [botToken, setBotToken] = useState("");
   const [botUsername, setBotUsername] = useState(initialConfig?.botUsername || "");
   const [isActive, setIsActive] = useState(initialConfig?.isActive ?? true);
@@ -646,7 +644,7 @@ function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!botUsername.trim()) {
-      setError("Bot username is required");
+      setError(t("integrations.modals.telegram.usernameRequired"));
       return;
     }
     setBusy(true);
@@ -660,7 +658,7 @@ function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
       onSaved();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Failed to save bot settings");
+      setError(err.response?.data?.message || err.message || t("integrations.modals.telegram.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -669,29 +667,29 @@ function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
   const handleRegisterWebhook = async () => {
     setBusy(true);
     setError("");
-    setWebhookStatus("Registering webhook...");
+    setWebhookStatus(t("integrations.modals.telegram.registeringWebhook"));
     try {
       const res = await registerTelegramWebhook(spaceId);
       if (res.ok) {
-        setWebhookStatus("✅ Webhook registered successfully!");
+        setWebhookStatus(t("integrations.modals.telegram.webhookSuccess"));
       } else {
-        setWebhookStatus("❌ Failed to register webhook.");
+        setWebhookStatus(t("integrations.modals.telegram.webhookFailed"));
       }
     } catch (err) {
       setWebhookStatus("");
-      setError(err.response?.data?.message || err.message || "Failed to register webhook");
+      setError(err.response?.data?.message || err.message || t("integrations.modals.telegram.registerFailed"));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" role="dialog">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" role="dialog" dir={isRTL ? "rtl" : "ltr"}>
       <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden animate-fadeIn">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-400 to-blue-600" />
-        <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900">
-          <h2 className="text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <i className="fa-brands fa-telegram text-sky-500" /> Configure Telegram Bot
+        <div className={`px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900 ${isRTL ? "flex-row-reverse" : ""}`}>
+          <h2 className={`text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+            <i className="fa-brands fa-telegram text-sky-500" /> {t("integrations.modals.telegram.title")}
           </h2>
           <button type="button" onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg">
             <i className="fa-solid fa-xmark text-[16px]" />
@@ -709,26 +707,26 @@ function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
             </div>
           )}
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bot Username</label>
+            <label className={`block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${isRTL ? "text-right" : "text-left"}`}>{t("integrations.modals.telegram.username")}</label>
             <input
               type="text"
-              placeholder="@MyWorkspaceBot"
+              placeholder={t("integrations.modals.telegram.usernamePlaceholder")}
               value={botUsername}
               onChange={(e) => setBotUsername(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+              className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 ${isRTL ? "text-right" : "text-left"}`}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bot Token</label>
+            <label className={`block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${isRTL ? "text-right" : "text-left"}`}>{t("integrations.modals.telegram.token")}</label>
             <input
               type="password"
-              placeholder={initialConfig?.configured ? "•••••••••••••••• (Leave blank to keep current)" : "Enter Bot API Token"}
+              placeholder={initialConfig?.configured ? t("integrations.modals.telegram.keepCurrentToken") : t("integrations.modals.telegram.enterToken")}
               value={botToken}
               onChange={(e) => setBotToken(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+              className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 ${isRTL ? "text-right" : "text-left"}`}
             />
           </div>
-          <div className="flex items-center gap-2 pt-2">
+          <div className={`flex items-center gap-2 pt-2 ${isRTL ? "flex-row-reverse" : ""}`}>
             <input
               type="checkbox"
               id="tg-active"
@@ -736,9 +734,9 @@ function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
               onChange={(e) => setIsActive(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
             />
-            <label htmlFor="tg-active" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Enable Bot Channel</label>
+            <label htmlFor="tg-active" className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("integrations.modals.telegram.enableChannel")}</label>
           </div>
-          <div className="border-t border-slate-100 dark:border-slate-900 pt-4 flex gap-2 justify-end">
+          <div className={`border-t border-slate-100 dark:border-slate-900 pt-4 flex gap-2 ${isRTL ? "justify-start flex-row-reverse" : "justify-end"}`}>
             {initialConfig?.configured && (
               <button
                 type="button"
@@ -746,7 +744,7 @@ function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
                 disabled={busy}
                 className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl transition cursor-pointer"
               >
-                Register Webhook
+                {t("integrations.modals.telegram.registerWebhook")}
               </button>
             )}
             <button
@@ -754,14 +752,14 @@ function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl transition cursor-pointer"
             >
-              Cancel
+              {t("integrations.modals.telegram.cancel")}
             </button>
             <button
               type="submit"
               disabled={busy}
               className="px-4 py-2 text-xs font-semibold text-white bg-sky-500 hover:bg-sky-400 rounded-xl transition cursor-pointer"
             >
-              {busy ? "Saving..." : "Save Bot"}
+              {busy ? t("integrations.modals.telegram.saving") : t("integrations.modals.telegram.save")}
             </button>
           </div>
         </form>
@@ -771,6 +769,8 @@ function TelegramConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
 }
 
 function WhatsAppConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const [phoneNumberId, setPhoneNumberId] = useState(initialConfig?.phoneNumber || "");
   const [wabaId, setWabaId] = useState("");
   const [accessToken, setAccessToken] = useState("");
@@ -783,7 +783,7 @@ function WhatsAppConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!phoneNumberId.trim() || !displayName.trim()) {
-      setError("Phone Number ID and Display Name are required");
+      setError(t("integrations.modals.whatsapp.validation"));
       return;
     }
     setBusy(true);
@@ -800,7 +800,7 @@ function WhatsAppConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
       onSaved();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Failed to save WhatsApp settings");
+      setError(err.response?.data?.message || err.message || t("integrations.modals.whatsapp.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -809,12 +809,12 @@ function WhatsAppConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
   const webhookUrl = `${window.location.origin}/api/v1/whatsapp/webhook`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" role="dialog">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" role="dialog" dir={isRTL ? "rtl" : "ltr"}>
       <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden animate-fadeIn">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-green-400 to-emerald-600" />
-        <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900">
-          <h2 className="text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <i className="fa-brands fa-whatsapp text-green-500" /> Configure WhatsApp Business
+        <div className={`px-6 pt-6 pb-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-900 ${isRTL ? "flex-row-reverse" : ""}`}>
+          <h2 className={`text-[18px] font-bold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+            <i className="fa-brands fa-whatsapp text-green-500" /> {t("integrations.modals.whatsapp.title")}
           </h2>
           <button type="button" onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg">
             <i className="fa-solid fa-xmark text-[16px]" />
@@ -827,56 +827,56 @@ function WhatsAppConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
             </div>
           )}
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Display Name</label>
+            <label className={`block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${isRTL ? "text-right" : "text-left"}`}>{t("integrations.modals.whatsapp.displayName")}</label>
             <input
               type="text"
-              placeholder="e.g. My Organization"
+              placeholder={t("integrations.modals.whatsapp.displayNamePlaceholder")}
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+              className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 ${isRTL ? "text-right" : "text-left"}`}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone Number ID</label>
+            <label className={`block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${isRTL ? "text-right" : "text-left"}`}>{t("integrations.modals.whatsapp.phoneNumberId")}</label>
             <input
               type="text"
-              placeholder="Enter Meta Phone Number ID"
+              placeholder={t("integrations.modals.whatsapp.phoneNumberIdPlaceholder")}
               value={phoneNumberId}
               onChange={(e) => setPhoneNumberId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+              className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 ${isRTL ? "text-right" : "text-left"}`}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">WhatsApp Business Account ID (WABA ID)</label>
+            <label className={`block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${isRTL ? "text-right" : "text-left"}`}>{t("integrations.modals.whatsapp.wabaId")}</label>
             <input
               type="text"
-              placeholder="Enter WABA ID (Optional)"
+              placeholder={t("integrations.modals.whatsapp.wabaIdPlaceholder")}
               value={wabaId}
               onChange={(e) => setWabaId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+              className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 ${isRTL ? "text-right" : "text-left"}`}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Permanent Access Token</label>
+            <label className={`block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${isRTL ? "text-right" : "text-left"}`}>{t("integrations.modals.whatsapp.accessToken")}</label>
             <input
               type="password"
-              placeholder={initialConfig?.configured ? "•••••••••••••••• (Leave blank to keep current)" : "Enter Access Token"}
+              placeholder={initialConfig?.configured ? t("integrations.modals.whatsapp.keepCurrentAccessToken") : t("integrations.modals.whatsapp.enterAccessToken")}
               value={accessToken}
               onChange={(e) => setAccessToken(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+              className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 ${isRTL ? "text-right" : "text-left"}`}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Webhook Secret (App Secret)</label>
+            <label className={`block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${isRTL ? "text-right" : "text-left"}`}>{t("integrations.modals.whatsapp.webhookSecret")}</label>
             <input
               type="password"
-              placeholder={initialConfig?.configured ? "•••••••••••••••• (Leave blank to keep current)" : "Enter Webhook App Secret (Optional)"}
+              placeholder={initialConfig?.configured ? t("integrations.modals.whatsapp.keepCurrentWebhookSecret") : t("integrations.modals.whatsapp.enterWebhookSecret")}
               value={webhookSecret}
               onChange={(e) => setWebhookSecret(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+              className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 ${isRTL ? "text-right" : "text-left"}`}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
             <input
               type="checkbox"
               id="wa-active"
@@ -884,26 +884,26 @@ function WhatsAppConfigModal({ spaceId, initialConfig, onClose, onSaved }) {
               onChange={(e) => setIsActive(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
             />
-            <label htmlFor="wa-active" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Enable WhatsApp Channel</label>
+            <label htmlFor="wa-active" className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("integrations.modals.whatsapp.enableChannel")}</label>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-850 text-[11px] space-y-1 text-slate-500">
-            <span className="font-bold text-slate-600 dark:text-slate-400 block">Copy this Webhook Callback URL:</span>
+          <div className={`bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-850 text-[11px] space-y-1 text-slate-500 ${isRTL ? "text-right" : "text-left"}`}>
+            <span className="font-bold text-slate-600 dark:text-slate-400 block">{t("integrations.modals.whatsapp.callbackLabel")}</span>
             <code className="bg-slate-100 dark:bg-slate-850 px-1 py-0.5 rounded break-all select-all font-mono text-[10px] text-sky-600">{webhookUrl}</code>
           </div>
-          <div className="border-t border-slate-100 dark:border-slate-900 pt-4 flex gap-2 justify-end">
+          <div className={`border-t border-slate-100 dark:border-slate-900 pt-4 flex gap-2 ${isRTL ? "justify-start flex-row-reverse" : "justify-end"}`}>
             <button
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl transition cursor-pointer"
             >
-              Cancel
+              {t("integrations.modals.whatsapp.cancel")}
             </button>
             <button
               type="submit"
               disabled={busy}
               className="px-4 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-500 rounded-xl transition cursor-pointer"
             >
-              {busy ? "Saving..." : "Save Settings"}
+              {busy ? t("integrations.modals.whatsapp.saving") : t("integrations.modals.whatsapp.save")}
             </button>
           </div>
         </form>

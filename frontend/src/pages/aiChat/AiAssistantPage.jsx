@@ -10,647 +10,32 @@ import {
   useAiRiskMutation,
   useAiStreamingMutation,
 } from "../../hooks/useAiQueries";
-import { extractTextFromPayload } from "../../utils/extractTextFromPayload";
+import { readStorageJson, writeStorageJson } from "../../utils/browserStorage";
 import { useBoardTasksQuery } from "../../hooks/useTaskListQueries";
 import ErrorBoundary from "../../components/ErrorBoundary";
-
-const STORAGE_KEYS = {
-  context: "mongez.ai.context",
-  sessions: "mongez.ai.sessions",
-};
-const MAX_COMPOSER_LENGTH = 4000;
-
-function buildQuickPrompts(t) {
-  return t("aiAssistant.quickPrompts", { returnObjects: true }).map((item, index) => ({
-    ...item,
-    icon: [
-      "fa-triangle-exclamation",
-      "fa-shield-halved",
-      "fa-users",
-      "fa-arrow-up-right-dots",
-      "fa-file-invoice",
-      "fa-eye",
-    ][index],
-    accentClassName: [
-      "text-rose-500 bg-rose-50 dark:bg-rose-950/20",
-      "text-amber-500 bg-amber-50 dark:bg-amber-950/20",
-      "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/20",
-      "text-sky-500 bg-sky-50 dark:bg-sky-950/20",
-      "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20",
-      "text-purple-500 bg-purple-50 dark:bg-purple-950/20",
-    ][index],
-  }));
-}
-
-function makeId(prefix) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function readJsonStorage(key, fallbackValue) {
-  try {
-    const rawValue = window.localStorage.getItem(key);
-    return rawValue ? JSON.parse(rawValue) : fallbackValue;
-  } catch {
-    return fallbackValue;
-  }
-}
-
-function saveJsonStorage(key, value) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Ignore storage failures
-  }
-}
-
-function truncateText(text, maxLength = 72) {
-  const trimmed = text.trim();
-  if (trimmed.length <= maxLength) return trimmed;
-  return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
-}
-
-function extractTraceId(payload) {
-  return payload?.traceId || payload?.data?.traceId || payload?.meta?.traceId || payload?.result?.traceId || "";
-}
-
-function formatApiResult(payload) {
-  const extractedText = extractTextFromPayload(payload);
-  if (extractedText) return extractedText;
-  return JSON.stringify(payload, null, 2);
-}
-
-function createSessionSnapshot({ sessionId, messages, context, t }) {
-  const firstUserMessage = messages.find((message) => message.role === "user" && message.kind === "text");
-  return {
-    id: sessionId,
-    title: truncateText(firstUserMessage?.text || t("aiAssistant.untitledConversation")),
-    createdAt: new Date().toISOString(),
-    messages,
-    context,
-  };
-}
-
-function getUserFriendlyErrorMessage(error, t) {
-  if (!error) return t("aiAssistant.errors.workspaceUnavailable");
-
-  // Never expose raw provider errors to users
-  const rawMsg = (typeof error === "string" ? error : error.message || error.toString() || "").toLowerCase();
-  if (rawMsg.includes("429") || rawMsg.includes("rate") || rawMsg.includes("too many") || rawMsg.includes("busy")) {
-    return t("aiAssistant.errors.busy");
-  }
-  if (rawMsg.includes("error code:") || rawMsg.includes("{'status'") || rawMsg.includes("status error") || rawMsg.includes("status: 429")) {
-    return t("aiAssistant.errors.workspaceUnavailable");
-  }
-
-  if (typeof error === "string") return error;
-  const status = error.status || error.response?.status;
-  const message = error.message || "";
-
-  const isNetworkOrTimeout =
-    message.toLowerCase().includes("network") ||
-    message.toLowerCase().includes("timeout") ||
-    message.toLowerCase().includes("fetch") ||
-    error.code === "ECONNABORTED";
-
-  if (isNetworkOrTimeout || status === 500 || status === 502 || status === 503 || status === 504) {
-    return t("aiAssistant.errors.workspaceUnavailable");
-  }
-
-  switch (status) {
-    case 400: return t("aiAssistant.errors.invalidRequest");
-    case 401: return t("aiAssistant.errors.sessionExpired");
-    case 403: return t("aiAssistant.errors.accessDenied");
-    case 404: return t("aiAssistant.errors.resourceNotFound");
-    case 429: return t("aiAssistant.errors.rateLimit");
-    default: return message || t("aiAssistant.errors.workspaceUnavailable");
-  }
-}
-
-function preprocessMessageContent(text) {
-  if (!text) return "";
-  let cleanText = text.trim();
-  
-  // Strip markdown block markers if LLM leaked them e.g. ```json { "answer": ... } ```
-  if (cleanText.startsWith("```json")) {
-    cleanText = cleanText.substring(7).trim();
-  } else if (cleanText.startsWith("```")) {
-    cleanText = cleanText.substring(3).trim();
-  }
-  if (cleanText.endsWith("```")) {
-    cleanText = cleanText.substring(0, cleanText.length - 3).trim();
-  }
-
-  // If it starts with { and ends with }, let's try to parse it
-  if (cleanText.startsWith("{") && cleanText.endsWith("}")) {
-    try {
-      const parsed = JSON.parse(cleanText);
-      if (parsed && typeof parsed.answer === "string") {
-        return parsed.answer;
-      }
-    } catch {
-      // Not valid JSON
-    }
-  }
-
-  // In case the JSON is partially leaked or starts/ends differently,
-  // search for "answer": "..." using brace matching
-  if (cleanText.includes('"answer"')) {
-    try {
-      const startBrace = cleanText.indexOf('{');
-      const endBrace = cleanText.lastIndexOf('}');
-      if (startBrace !== -1 && endBrace !== -1 && endBrace > startBrace) {
-        const jsonSub = cleanText.substring(startBrace, endBrace + 1);
-        const parsed = JSON.parse(jsonSub);
-        if (parsed && typeof parsed.answer === "string") {
-          return parsed.answer;
-        }
-      }
-    } catch {
-      // Ignore
-    }
-  }
-  
-  return text;
-}
-
-const MarkdownRenderer = ({ content }) => {
-  const { i18n } = useTranslation();
-  const isRTL = i18n.dir(i18n.language) === "rtl";
-  const processedText = useMemo(() => preprocessMessageContent(content), [content]);
-
-  // Inline formatting helper
-  const formatInline = (text) => {
-    if (!text) return "";
-    
-    const regex = /(\*\*.*?\*\*|`.*?`|\[.*?\]\(.*?\))/g;
-    const parts = text.split(regex);
-    
-    return parts.map((part, i) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={i} className="font-extrabold text-slate-900 dark:text-white">{part.slice(2, -2)}</strong>;
-      }
-      if (part.startsWith("`") && part.endsWith("`")) {
-        return <code key={i} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-indigo-500 dark:text-indigo-400 text-[12px]">{part.slice(1, -1)}</code>;
-      }
-      if (part.startsWith("[") && part.includes("](")) {
-        const closeBrack = part.indexOf("]");
-        const label = part.slice(1, closeBrack);
-        const url = part.slice(closeBrack + 2, -1);
-        return (
-          <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-indigo-650 hover:text-indigo-750 dark:text-indigo-450 dark:hover:text-indigo-300 underline font-semibold transition-colors">
-            {label}
-          </a>
-        );
-      }
-      return part;
-    });
-  };
-
-  // Block parsing
-  const blocks = useMemo(() => {
-    if (!processedText) return [];
-    
-    const rawLines = processedText.split(/\r?\n/);
-    const resolvedBlocks = [];
-    let currentBlock = null;
-
-    for (let i = 0; i < rawLines.length; i++) {
-      const line = rawLines[i];
-      const trimmedLine = line.trim();
-
-      // Code Block parsing
-      if (trimmedLine.startsWith("```")) {
-        if (currentBlock && currentBlock.type === "code") {
-          resolvedBlocks.push(currentBlock);
-          currentBlock = null;
-        } else {
-          if (currentBlock) resolvedBlocks.push(currentBlock);
-          currentBlock = { type: "code", language: trimmedLine.slice(3).trim(), lines: [] };
-        }
-        continue;
-      }
-
-      if (currentBlock && currentBlock.type === "code") {
-        currentBlock.lines.push(line);
-        continue;
-      }
-
-      // Table parsing
-      if (trimmedLine.startsWith("|")) {
-        if (currentBlock && currentBlock.type === "table") {
-          currentBlock.lines.push(line);
-        } else {
-          if (currentBlock) resolvedBlocks.push(currentBlock);
-          currentBlock = { type: "table", lines: [line] };
-        }
-        continue;
-      } else {
-        if (currentBlock && currentBlock.type === "table") {
-          resolvedBlocks.push(currentBlock);
-          currentBlock = null;
-        }
-      }
-
-      // List parsing
-      if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ") || /^\d+\.\s/.test(trimmedLine)) {
-        const isNumbered = /^\d+\.\s/.test(trimmedLine);
-        const listText = isNumbered ? trimmedLine.replace(/^\d+\.\s/, "") : trimmedLine.slice(2);
-        
-        if (currentBlock && currentBlock.type === "list" && currentBlock.numbered === isNumbered) {
-          currentBlock.items.push(listText);
-        } else {
-          if (currentBlock) resolvedBlocks.push(currentBlock);
-          currentBlock = { type: "list", numbered: isNumbered, items: [listText] };
-        }
-        continue;
-      } else {
-        if (currentBlock && currentBlock.type === "list") {
-          resolvedBlocks.push(currentBlock);
-          currentBlock = null;
-        }
-      }
-
-      // Headings
-      if (trimmedLine.startsWith("#")) {
-        if (currentBlock) resolvedBlocks.push(currentBlock);
-        const match = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
-        if (match) {
-          resolvedBlocks.push({ type: "heading", level: match[1].length, text: match[2] });
-          currentBlock = null;
-          continue;
-        }
-      }
-
-      // Paragraph
-      if (trimmedLine === "") {
-        if (currentBlock) {
-          resolvedBlocks.push(currentBlock);
-          currentBlock = null;
-        }
-      } else {
-        if (currentBlock && currentBlock.type === "paragraph") {
-          currentBlock.text += "\n" + line;
-        } else {
-          if (currentBlock) resolvedBlocks.push(currentBlock);
-          currentBlock = { type: "paragraph", text: line };
-        }
-      }
-    }
-
-    if (currentBlock) resolvedBlocks.push(currentBlock);
-    return resolvedBlocks;
-  }, [processedText]);
-
-  return (
-    <div className="space-y-3">
-      {blocks.map((block, bIdx) => {
-        switch (block.type) {
-          case "heading": {
-            const level = Math.min(3, block.level);
-            const text = block.text.trim();
-            
-            let icon = null;
-            if (text.toLowerCase().includes("executive summary") || text.toLowerCase().includes("summary")) {
-              icon = <i className={`fa-solid fa-robot text-indigo-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
-            } else if (text.toLowerCase().includes("insights") || text.toLowerCase().includes("metrics")) {
-              icon = <i className={`fa-solid fa-chart-line text-emerald-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
-            } else if (text.toLowerCase().includes("risks") || text.toLowerCase().includes("blockers")) {
-              icon = <i className={`fa-solid fa-triangle-exclamation text-rose-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
-            } else if (text.toLowerCase().includes("actions") || text.toLowerCase().includes("reminders")) {
-              icon = <i className={`fa-solid fa-circle-play text-amber-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
-            } else if (text.toLowerCase().includes("sources") || text.toLowerCase().includes("citations")) {
-              icon = <i className={`fa-solid fa-folder-open text-sky-500 shrink-0 ${isRTL ? "ml-2" : "mr-2"}`} />;
-            }
-
-            const hClasses = {
-              1: "text-md font-extrabold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-1 mt-3 mb-2 flex items-center gap-1.5",
-              2: "text-sm font-bold text-slate-805 dark:text-slate-150 mt-2.5 mb-1.5 flex items-center gap-1.5",
-              3: "text-[12.5px] font-bold text-slate-800 dark:text-slate-200 mt-2 mb-1 flex items-center gap-1.5",
-            };
-            const Tag = `h${level}`;
-            return (
-              <Tag key={bIdx} className={hClasses[level]}>
-                {icon}
-                {formatInline(text)}
-              </Tag>
-            );
-          }
-          case "list": {
-            const ListTag = block.numbered ? "ol" : "ul";
-            return (
-              <ListTag key={bIdx} className={`${isRTL ? "pr-5 text-right" : "pl-5 text-left"} space-y-1 mb-2.5 ${block.numbered ? "list-decimal" : "list-disc"}`}>
-                {block.items.map((item, iIdx) => (
-                  <li key={iIdx} className="text-slate-705 dark:text-slate-300 leading-relaxed font-medium">
-                    {formatInline(item)}
-                  </li>
-                ))}
-              </ListTag>
-            );
-          }
-          case "code": {
-            return (
-              <pre key={bIdx} className="p-3.5 rounded-2xl bg-slate-950 text-slate-200 font-mono text-[11.5px] overflow-x-auto border border-slate-850 my-2.5 leading-relaxed shadow-inner">
-                <code>{block.lines.join("\n")}</code>
-              </pre>
-            );
-          }
-          case "table": {
-            const rows = block.lines
-              .map(line => line.split("|").map(cell => cell.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1))
-              .filter(row => row.length > 0);
-
-            if (rows.length === 0) return null;
-
-            const hasSeparator = rows.length > 1 && rows[1].every(cell => /^:-*-:|^:-*-|^ -*:-*|^-+$/.test(cell));
-            const headers = rows[0];
-            const dataRows = hasSeparator ? rows.slice(2) : rows.slice(1);
-
-            return (
-              <div key={bIdx} className="overflow-x-auto border border-slate-150 dark:border-slate-800/80 rounded-2xl shadow-sm my-3">
-                <table className={`w-full text-[12px] border-collapse bg-white dark:bg-slate-900 ${i18n.dir(i18n.language) === "rtl" ? "text-right" : "text-left"}`}>
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-850/50 border-b border-slate-150 dark:border-slate-800/80">
-                      {headers.map((h, hIdx) => (
-                        <th key={hIdx} className="px-3.5 py-2.5 font-bold text-slate-800 dark:text-slate-200 tracking-wider">
-                          {formatInline(h)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-808/40">
-                    {dataRows.map((row, rIdx) => (
-                      <tr key={rIdx} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20 transition-colors">
-                        {row.map((cell, cIdx) => (
-                          <td key={cIdx} className="px-3.5 py-2.5 text-slate-655 dark:text-slate-350 leading-relaxed">
-                            {formatInline(cell)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
-          }
-          case "paragraph":
-          default: {
-            return (
-              <p key={bIdx} className="text-slate-750 dark:text-slate-300 leading-relaxed font-normal whitespace-pre-line mb-2">
-                {formatInline(block.text)}
-              </p>
-            );
-          }
-        }
-      })}
-    </div>
-  );
-};
-
-function ChatBubble({
-  message,
-  feedbackState,
-  onFeedback,
-  onRetry,
-  onActionDecision,
-  reviewingActionId,
-}) {
-  const { t, i18n } = useTranslation();
-  const isArabic = i18n.language?.startsWith("ar");
-  const isRTL = isArabic;
-
-  if (message.kind === "welcome") {
-    return (
-      <div className="text-[13.5px] leading-relaxed text-slate-700 dark:text-slate-300 p-2 font-medium" dir="auto">
-        <MarkdownRenderer content={message.text} />
-      </div>
-    );
-  }
-
-  if (message.role === "user") {
-    return (
-      <div
-        className={`rounded-[22px] bg-gradient-to-tr from-indigo-600 to-indigo-500 px-5 py-3 text-[13.5px] font-semibold leading-relaxed whitespace-pre-wrap text-white shadow-md shadow-indigo-500/10 ${
-          isRTL ? "rounded-tl-sm" : "rounded-tr-sm"
-        }`}
-        dir="auto"
-      >
-        {message.text}
-      </div>
-    );
-  }
-
-  // 1. ERROR: Retry Card
-  if (message.error) {
-    return (
-      <div className="rounded-3xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4" dir="auto">
-        {message.label && (
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-            <i className={`fa-solid ${message.icon || "fa-sparkles"} text-rose-500`} />
-            <span>{message.label}</span>
-          </div>
-        )}
-        <div
-          className={`animate-pulse rounded-2xl border border-rose-100/50 bg-rose-50/50 px-4 py-3 dark:border-rose-900/30 dark:bg-rose-955/10 ${
-            isRTL ? "flex flex-row-reverse items-center justify-between gap-3 text-right" : "flex items-center justify-between gap-3"
-          }`}
-        >
-          <span className="text-[12.5px] text-rose-605 dark:text-rose-455 font-bold leading-relaxed">⚠️ {message.error}</span>
-          <button
-            type="button"
-            onClick={() => onRetry?.(message.id)}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-rose-500 hover:bg-rose-600 px-3.5 py-1 text-[11px] font-bold text-white transition-all cursor-pointer shadow-sm"
-          >
-            <i className="fa-solid fa-arrows-rotate" />
-            {t("aiAssistant.labels.retry")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // 2. LOADING: Thinking Steps indicator
-  if (message.loading) {
-    return (
-      <div className="text-[13px] leading-relaxed text-slate-750 dark:text-slate-300 p-2 space-y-3.5" dir="auto">
-        <div className="flex items-center gap-2.5 text-slate-500 dark:text-slate-400">
-          <div className="flex gap-1 items-center shrink-0">
-            <span className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-            <span className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-            <span className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce" />
-          </div>
-          <span className="text-[12.5px] font-bold tracking-wide animate-pulse">
-            {message.status || t("aiAssistant.labels.thinking")}
-          </span>
-        </div>
-        {message.thinkingSteps && message.thinkingSteps.length > 0 && (
-          <div className={`py-1 space-y-2.5 ${isRTL ? "border-r-2 border-slate-100 pr-4 dark:border-slate-800" : "border-l-2 border-slate-100 pl-4 dark:border-slate-800"}`}>
-            {message.thinkingSteps.map((step, idx) => (
-              <div key={idx} className="flex items-center gap-2.5 text-[11.5px] font-bold">
-                {step.active ? (
-                  <i className="fa-solid fa-circle-notch fa-spin text-indigo-500 shrink-0 text-[10px]" />
-                ) : step.status.startsWith("✗") || step.status.includes("Failed") ? (
-                  <i className="fa-solid fa-circle-xmark text-rose-500 shrink-0 text-[10px]" />
-                ) : (
-                  <i className="fa-solid fa-circle-check text-emerald-500 shrink-0 text-[10px]" />
-                )}
-                <span className={step.active ? "text-slate-805 dark:text-slate-200" : "text-slate-400 dark:text-slate-500"}>
-                  {step.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const hasActions = message.actions && message.actions.length > 0;
-
-  // 3. PLAN and CHAT layouts
-  return (
-    <div className="space-y-3.5">
-      <div className={`text-[13.5px] leading-relaxed ${
-        hasActions 
-          ? "rounded-3xl border border-slate-150 dark:border-slate-808 bg-white dark:bg-slate-900 p-6 shadow-sm" 
-          : "text-slate-755 dark:text-slate-200 font-normal p-2"
-      }`} dir="auto">
-        {hasActions && message.label && (
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-4">
-            <i className={`fa-solid ${message.icon || "fa-sparkles"} text-indigo-500`} />
-            <span>{message.label}</span>
-          </div>
-        )}
-        <MarkdownRenderer content={message.text} />
-
-        {/* Suggested Actions for Plan layout */}
-        {hasActions && (
-          <div className="border-t border-slate-100 dark:border-slate-808/40 pt-4 mt-4">
-            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-2.5">{t("aiAssistant.labels.chat.suggestedActionTasks")}</span>
-            <div className="grid grid-cols-1 gap-2.5">
-              {message.actions.map((act, index) => (
-                <div
-                  key={index}
-                  className={`rounded-2xl border border-slate-150/60 bg-slate-50 p-3.5 shadow-sm dark:border-slate-808 dark:bg-slate-955 ${
-                    isRTL ? "flex flex-col gap-3 text-right md:flex-row-reverse md:items-center md:justify-between" : "flex flex-col gap-3 text-left md:flex-row md:items-center md:justify-between"
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-[9px] font-bold text-indigo-655 dark:text-indigo-400 tracking-wide uppercase">
-                      {act.commandType || act.type || t("aiAssistant.labels.chat.actionFallback")}
-                    </span>
-                    <p className="mt-1 text-[12.5px] font-bold text-slate-808 dark:text-slate-255 leading-relaxed">{act.reason || act.description}</p>
-                  </div>
-                  <div className="flex gap-2 shrink-0 w-full md:w-auto">
-                    <button
-                      type="button"
-                      disabled={reviewingActionId === (act.id || act.actionId)}
-                      onClick={() => onActionDecision?.(act.id || act.actionId, "approve")}
-                      className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 px-3.5 py-1.5 text-[11px] font-bold text-white transition disabled:opacity-55 cursor-pointer shadow-sm"
-                    >
-                      <i className="fa-solid fa-check" /> {t("aiAssistant.labels.actions.approve")}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={reviewingActionId === (act.id || act.actionId)}
-                      onClick={() => onActionDecision?.(act.id || act.actionId, "reject")}
-                      className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 rounded-full border border-rose-200 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-[11px] font-bold text-rose-605 dark:text-rose-455 transition hover:bg-rose-50 dark:hover:bg-rose-955/20 disabled:opacity-55 cursor-pointer"
-                    >
-                      <i className="fa-solid fa-xmark" /> {t("aiAssistant.labels.actions.reject")}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Message feedback buttons */}
-      {message.traceId && (
-        <div className="flex flex-wrap items-center gap-2 px-2">
-          <button
-            type="button"
-            disabled={feedbackState?.submitting}
-            onClick={() => onFeedback(message.traceId, "positive")}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold tracking-wide uppercase transition-colors cursor-pointer ${
-              feedbackState?.rating === "positive"
-                ? "border-emerald-205 bg-emerald-50/80 text-emerald-700 dark:bg-emerald-955/20 dark:text-emerald-455"
-                : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-808 dark:border-slate-808 dark:bg-slate-900 dark:text-slate-400"
-            }`}
-          >
-            <i className={`fa-solid ${feedbackState?.submitting ? "fa-spinner fa-spin" : "fa-thumbs-up"}`} />
-            {t("aiAssistant.labels.feedback.helpful")}
-          </button>
-          <button
-            type="button"
-            disabled={feedbackState?.submitting}
-            onClick={() => onFeedback(message.traceId, "negative")}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold tracking-wide uppercase transition-colors cursor-pointer ${
-              feedbackState?.rating === "negative"
-                ? "border-amber-205 bg-amber-55/80 text-amber-750 dark:bg-amber-955/20 dark:text-amber-455"
-                : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-808 dark:border-slate-808 dark:bg-slate-900 dark:text-slate-400"
-            }`}
-          >
-            <i className="fa-solid fa-thumbs-down" />
-            {t("aiAssistant.labels.feedback.needsWork")}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ToastContainer({ toasts, onClose }) {
-  const { i18n } = useTranslation();
-  const isRTL = i18n.dir(i18n.language) === "rtl";
-
-  return (
-    <div className={`fixed bottom-5 z-55 flex max-w-sm flex-col gap-2.5 pointer-events-none ${isRTL ? "left-5" : "right-5"}`}>
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={`pointer-events-auto flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md animate-slideIn ${
-            t.type === "success"
-              ? "border-emerald-100 bg-emerald-55/90 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/90"
-              : t.type === "error"
-                ? "border-rose-100 bg-rose-55/90 text-rose-900 dark:border-rose-900 dark:bg-rose-950/90"
-                : t.type === "info"
-                  ? "border-sky-100 bg-sky-55/90 text-sky-900 dark:border-sky-900 dark:bg-sky-950/90"
-                  : "border-slate-200 bg-white/90 text-slate-850 dark:border-slate-800 dark:bg-slate-900/90"
-          }`}
-        >
-          <i
-            className={`fa-solid ${
-              t.type === "success"
-                ? "fa-circle-check text-emerald-500"
-                : t.type === "error"
-                  ? "fa-circle-xmark text-rose-500"
-                  : "fa-circle-info text-sky-550"
-            }`}
-          />
-          <span className="text-[12px] font-bold leading-5">{t.message}</span>
-          <button
-            type="button"
-            onClick={() => onClose(t.id)}
-            className={`${isRTL ? "mr-auto" : "ml-auto"} flex h-5 w-5 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-900/5 hover:text-slate-650 cursor-pointer`}
-          >
-            <i className="fa-solid fa-xmark text-[10px]" />
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { consumeAiLaunchDraft } from "../../lib/aiLauncher";
+import { ChatBubble, ToastContainer } from "./AiAssistantMessageParts";
+import {
+  buildQuickPrompts,
+  createSessionSnapshot,
+  extractTraceId,
+  formatApiResult,
+  getUserFriendlyErrorMessage,
+  makeId,
+  MAX_COMPOSER_LENGTH,
+  STORAGE_KEYS,
+} from "./aiAssistantUtils";
 
 function AiAssistantPage() {
   const { t, i18n } = useTranslation();
-  const { setPath } = useOutletContext();
+  const { setPath } = useOutletContext() || {};
   const { activeSpace, activeBoard, spaces, activeBoards, setActiveSpace, setActiveBoard, user } = useAppContext();
   const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
   const isRTL = i18n.dir(i18n.language) === "rtl";
   const formatDate = (value, options) => new Date(value).toLocaleDateString(locale, options);
   const formatTime = (value, options) => new Date(value).toLocaleTimeString(locale, options);
   const formatDateTime = (value, options) => new Date(value).toLocaleString(locale, options);
+  const [initialLaunchDraft] = useState(() => consumeAiLaunchDraft());
   const welcomeMessage = useMemo(
     () => ({
       id: "welcome-message",
@@ -660,7 +45,7 @@ function AiAssistantPage() {
     }),
     [t],
   );
-  const [composer, setComposer] = useState("");
+  const [composer, setComposer] = useState(() => initialLaunchDraft?.prompt || "");
   const [historyOpen, setHistoryOpen] = useState(true);
   const [headerSpaceOpen, setHeaderSpaceOpen] = useState(false);
   const [headerBoardOpen, setHeaderBoardOpen] = useState(false);
@@ -668,11 +53,11 @@ function AiAssistantPage() {
   const [boardDropdownOpen, setBoardDropdownOpen] = useState(false);
   const [toneDropdownOpen, setToneDropdownOpen] = useState(false);
   const [taskDropdownOpen, setTaskDropdownOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview"); // overview, actions, approvals, insights, chat
+  const [activeTab, setActiveTab] = useState(() => (initialLaunchDraft?.prompt ? "chat" : "overview")); // overview, actions, approvals, insights, chat
   const [toasts, setToasts] = useState([]);
   
   const [contextValues, setContextValues] = useState(() => {
-    const stored = readJsonStorage(STORAGE_KEYS.context, {});
+    const stored = readStorageJson(STORAGE_KEYS.context, {});
     return {
       spaceId: stored.spaceId || "",
       boardId: stored.boardId || "",
@@ -681,7 +66,7 @@ function AiAssistantPage() {
     };
   });
   const [relativeNow, setRelativeNow] = useState(() => Date.now());
-  const [recentSessions, setRecentSessions] = useState(() => readJsonStorage(STORAGE_KEYS.sessions, []));
+  const [recentSessions, setRecentSessions] = useState(() => readStorageJson(STORAGE_KEYS.sessions, []));
   const [currentSessionId, setCurrentSessionId] = useState(() => makeId("session"));
   const [messages, setMessages] = useState(() => [welcomeMessage]);
   const [pageError, setPageError] = useState("");
@@ -692,6 +77,7 @@ function AiAssistantPage() {
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const chatAbortRef = useRef(null);
+  const toastTimeoutsRef = useRef(new Map());
   const suggestionChips = useMemo(() => t("aiAssistant.suggestionChips", { returnObjects: true }), [t]);
   const effectiveContextValues = useMemo(
     () => ({
@@ -705,12 +91,19 @@ function AiAssistantPage() {
   const showToast = (message, type = "success") => {
     const id = makeId("toast");
     setToasts((current) => [...current, { id, message, type }]);
-    setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       setToasts((current) => current.filter((t) => t.id !== id));
+      toastTimeoutsRef.current.delete(id);
     }, 4500);
+    toastTimeoutsRef.current.set(id, timeoutId);
   };
 
   const handleToastClose = (id) => {
+    const timeoutId = toastTimeoutsRef.current.get(id);
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+      toastTimeoutsRef.current.delete(id);
+    }
     setToasts((current) => current.filter((t) => t.id !== id));
   };
 
@@ -766,11 +159,11 @@ function AiAssistantPage() {
   }, [setPath, activeSpace?.name, t]);
 
   useEffect(() => {
-    saveJsonStorage(STORAGE_KEYS.context, effectiveContextValues);
+    writeStorageJson(STORAGE_KEYS.context, effectiveContextValues);
   }, [effectiveContextValues]);
 
   useEffect(() => {
-    saveJsonStorage(STORAGE_KEYS.sessions, recentSessions);
+    writeStorageJson(STORAGE_KEYS.sessions, recentSessions);
   }, [recentSessions]);
 
   useEffect(() => {
@@ -791,6 +184,18 @@ function AiAssistantPage() {
 
     return () => {
       window.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const toastTimeouts = toastTimeoutsRef.current;
+
+    return () => {
+      chatAbortRef.current?.abort();
+      toastTimeouts.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      toastTimeouts.clear();
     };
   }, []);
 
@@ -2169,3 +1574,4 @@ function AiAssistantPageWithErrorBoundary(props) {
 }
 
 export default AiAssistantPageWithErrorBoundary;
+

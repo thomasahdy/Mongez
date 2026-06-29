@@ -1,4 +1,4 @@
-const appPagesAr = {
+﻿const appPagesAr = {
   common: {
     workspace: "مساحة العمل",
     loading: "جاري التحميل...",
@@ -187,7 +187,7 @@ const appPagesAr = {
           quote:
             "منجز غيّر طريقة إدارتنا لبرامج التعليم. كشف مخاطر الذكاء الاصطناعي لوحده أنقذنا من ثلاث تأخيرات تمويل حرجة الربع اللي فات.",
           name: "أحمد حسن",
-          role: "مدير البرامج، مؤسسة النور",
+          role: "مدير البرامج، شبكة التعليم الإقليمية",
         },
         {
           quote:
@@ -1340,6 +1340,7 @@ const appPagesAr = {
   layout: {
     sidebarAria: "تنقل الشريط الجانبي",
     openSidebar: "فتح الشريط الجانبي",
+    closeSidebar: "إغلاق الشريط الجانبي",
     searchPlaceholder: 'ابحث أو اسأل الذكاء الاصطناعي... "اعرض ملخص المؤشرات" | "حالة الميزانية"',
     searchAria: "ابحث أو اسأل الذكاء الاصطناعي",
     shortcut: "Ctrl K",
@@ -1350,6 +1351,36 @@ const appPagesAr = {
     closeAiPanel: "إغلاق لوحة الذكاء الاصطناعي",
     activeBoardTable: "جدول اللوحة النشطة",
     createOrSelectSpace: "أنشئ مساحة أو اختر مساحة",
+    walkthrough: {
+      badge: "جولة سريعة",
+      back: "رجوع",
+      skip: "تخطي",
+      next: "التالي",
+      finish: "إنهاء",
+      stepCounter: "الخطوة {{current}} من {{total}}",
+      steps: {
+        workspaceSwitcher: {
+          title: "التنقل بين مساحات العمل",
+          description: "استخدم هذا المبدل للتنقل بين المساحات حتى تظل دائمًا داخل مساحة العمل والفريق واللوحة الصحيحة.",
+        },
+        navigation: {
+          title: "التنقل داخل التطبيق",
+          description: "هذا الشريط الجانبي هو خريطتك الرئيسية. من هنا يمكنك الوصول إلى شغلي، الوارد، لوحة المعلومات، التقويم، التقارير وباقي أدوات العمل.",
+        },
+        search: {
+          title: "ابحث في كل شيء",
+          description: "ابحث في المهام والأشخاص والملفات والتعليقات من مكان واحد، ويمكنك أيضًا سؤال الذكاء الاصطناعي مباشرة بلغة طبيعية.",
+        },
+        ai: {
+          title: "استخدم الذكاء الاصطناعي بسرعة",
+          description: "افتح لوحة الذكاء الاصطناعي للحصول على ملخصات واقتراحات ومتابعات وخطوات تالية أذكى بدون مغادرة سير العمل.",
+        },
+        quickActions: {
+          title: "أنشئ العمل بسرعة",
+          description: "استخدم الإجراءات السريعة لإنشاء المهام والقوالب الشائعة بشكل أسرع، خصوصًا عندما تريد تسجيل العمل بدون فتح شاشات كثيرة.",
+        },
+      },
+    },
   },
   searchPage: {
     emptyAria: "البحث",
@@ -1578,7 +1609,7 @@ const appPagesAr = {
       quote:
         '"ساعدنا منجز على تقليل تأخير المشاريع بنسبة 40%. تنبيهات الذكاء الاصطناعي مفيدة جدًا للحفاظ على سير العمل."',
       quoteAuthor: "أحمد حسن",
-      quoteRole: "مدير، مؤسسة النور",
+      quoteRole: "مدير، شبكة التعليم الإقليمية",
     },
   },
   registerUi: {
@@ -1614,7 +1645,7 @@ const appPagesAr = {
       title: "أعِد منظمتك",
       description: "أخبرنا عن منظمتك حتى نخصص تجربتك.",
       organizationName: "اسم المنظمة",
-      organizationNamePlaceholder: "مثال: مؤسسة النور",
+      organizationNamePlaceholder: "مثال: شبكة التعليم الإقليمية",
       industry: "القطاع",
       selectIndustry: "اختر القطاع...",
       organizationSize: "حجم المنظمة",
@@ -1808,7 +1839,8 @@ const appPagesAr = {
     weeklyStreakAria: "سلسلة الإنجاز الأسبوعية",
     dayCompleted: "مكتمل",
     dayMissed: "فات",
-    previousMonth: "الشهر السابق",
+    completedSoFar: "تم إنجاز {{count}} حتى الآن",
+    completionHistoryPending: "سيظهر سجل الإنجاز هنا عندما يتوفر تتبع يومي من الواجهة الخلفية.",    previousMonth: "الشهر السابق",
     nextMonth: "الشهر التالي",
     hasTasks: "يحتوي على مهام",
     today: "اليوم",
@@ -2144,4 +2176,268 @@ appPagesAr.securityPage.twoFactor = {
   codePlaceholder: "000000",
 };
 
+appPagesAr.errorUi = {
+  title: "حدث خطأ ما",
+  genericDescription:
+    "حدث خطأ غير متوقع في هذا القسم. حاول إعادة تحميل الصفحة أو إعادة ضبط حالة التطبيق.",
+  frontendDescription: "حدث خطأ غير متوقع في الواجهة. حاول مرة أخرى أو أعد تحميل الصفحة.",
+  tryAgain: "حاول مرة أخرى",
+  refreshPage: "تحديث الصفحة",
+  reloadPage: "إعادة تحميل الصفحة",
+  stackTrace: "تفاصيل الخطأ",
+};
+
+appPagesAr.aiPreview = {
+  title: "منجز AI",
+  panelAria: "لوحة المساعد الذكي",
+  closePanel: "إغلاق لوحة المساعد الذكي",
+  askAria: "اسأل الذكاء الاصطناعي",
+  sendMessage: "إرسال الرسالة",
+  openAssistant: "افتح المساعد الكامل",
+  inputPlaceholder: "أو اكتب طلبك الخاص...",
+  context: "السياق",
+  message:
+    "أساعدك في فهم العوائق وصياغة المتابعات ومراجعة المخاطر عبر مساحة عملك الحالية.",
+  contextItems: {
+    workspace: "يستخدم سياق مساحة العمل واللوحة الحالية",
+    board: "يستطيع تلخيص العمل المفتوح والعوائق والقرارات المعلقة",
+    followUps: "يفتح المساعد الكامل لتحليل أعمق ومتابعات أدق",
+  },
+  suggestedActions: "إجراءات مقترحة",
+  actions: {
+    summarizeBlockers: "لخص العوائق",
+    draftFollowUp: "اكتب متابعة",
+    reviewRisks: "راجع مخاطر اللوحة",
+  },
+  prompts: {
+    summarizeBlockers: "لخص لي أهم العوائق في مساحة عملي الحالية والأولويات التي تحتاج انتباهاً أولاً.",
+    draftFollowUp: "اكتب لي رسالة متابعة قصيرة لأعلى عنصر متأخر وذو أولوية في مساحة عملي الحالية.",
+    reviewRisks: "راجع اللوحة الحالية وأظهر لي أهم المخاطر والتأخيرات والموافقات التي تحتاج إجراء.",
+  },
+  nudge: {
+    greeting: "محتاج مساعدة ذكية سريعة؟",
+    body:
+      "أقدر ألخص العوائق وأصيغ المتابعات وأراجع مخاطر اللوحة بدون تغيير أي منطق عملك.",
+    dismiss: "إخفاء تنبيه الذكاء الاصطناعي",
+    yes: "افتح المساعد",
+    tomorrow: "ذكرني غداً",
+    notNow: "ليس الآن",
+    launchPrompt: "اديني ملخصاً سريعاً لأهم العوائق والتأخيرات والمتابعات في مساحة عملي الحالية.",
+  },
+};
+
+appPagesAr.fab = {
+  buttonAria: "إنشاء عنصر جديد",
+  create: "إنشاء",
+  space: "مساحة",
+  missingBoard: "يرجى إنشاء لوحة وأعمدة في هذه المساحة لاستخدام الإنشاء السريع.",
+  sections: {
+    quickCreate: "إنشاء سريع",
+    ngoTemplates: "قوالب المنظمات المصرية",
+    recent: "الأخيرة",
+  },
+  items: {
+    task: "مهمة",
+    meeting: "اجتماع",
+    donorReportQ4: "تقرير المانحين (الربع الرابع)",
+    ministrySubmission: "تسليم الوزارة",
+    fundingRequest: "طلب تمويل",
+    procurement: "مشتريات (3 عروض)",
+    staffEvaluation: "تقييم الموظفين",
+    donorReportOct15: "تقرير المانحين (15 أكتوبر)",
+  },
+  templates: {
+    meeting: {
+      title: "اجتماع مواءمة المشروع",
+      type: "مهمة",
+      description: "اجتماع تنسيقي للفريق لمزامنة المهام والمعالم الرئيسية.",
+    },
+    donorReportQ4: {
+      title: "إعداد تقرير المانحين للربع الرابع",
+      priority: "HIGH",
+      description: "مراجعة وتجميع جميع تقارير المشاريع للعرض على المانحين في الربع الرابع.",
+    },
+    ministrySubmission: {
+      title: "مستندات التسليم للوزارة",
+      priority: "HIGH",
+      description: "تقديم مستندات الامتثال المحدثة إلى وزارة التضامن الاجتماعي.",
+    },
+    fundingRequest: {
+      title: "مقترح طلب تمويل",
+      priority: "MEDIUM",
+      description: "إعداد طلب منحة لمشاريع التنمية المجتمعية القادمة.",
+    },
+    procurement: {
+      title: "المشتريات (جمع 3 عروض)",
+      priority: "MEDIUM",
+      description: "جمع ثلاثة عروض أسعار متنافسة لمستلزمات المكتب والتدريب.",
+    },
+    staffEvaluation: {
+      title: "التقييم السنوي للموظفين ومراجعات الأداء",
+      priority: "LOW",
+      description: "إجراء مقابلات التقييم وتوثيق أهداف الأداء.",
+    },
+  },
+};
+
+appPagesAr.legacySettingsPage = {
+  breadcrumb: "الإعدادات",
+  loading: "جارٍ تحميل الإعدادات...",
+  eyebrow: "إعدادات الملف الشخصي",
+  title: "حسابك",
+  description: "أدر تفاصيل ملفك الشخصي المحمّلة من الواجهة الخلفية.",
+  name: "الاسم",
+  email: "البريد الإلكتروني",
+  language: "اللغة",
+  success: "تم تحديث الملف الشخصي بنجاح.",
+  saving: "جارٍ الحفظ...",
+  saveChanges: "حفظ التغييرات",
+};
+
+appPagesAr.legacyListView = {
+  groupBy: "تجميع حسب:",
+  status: "الحالة",
+  assignee: "المسؤول",
+  priority: "الأولوية",
+  none: "بدون",
+  loading: "جارٍ تحميل المهام...",
+  untitled: "بدون عنوان",
+  task_one: "مهمة",
+  task_other: "مهام",
+  noTasks: "لا توجد مهام",
+  unassigned: "غير مُسند",
+  normal: "عادي",
+  allTasks: "كل المهام",
+};
+
+appPagesAr.legacyRedesignView = {
+  workspace: "مساحة العمل",
+  board: "اللوحة",
+  selectBoard: "اختر لوحة لفتح عرض اللوحة.",
+  loading: "جارٍ تحميل اللوحة...",
+  untitledTask: "مهمة بدون عنوان",
+  noTasksInColumn: "لا توجد مهام في {{column}}.",
+  statuses: {
+    TODO: "المهام",
+    IN_PROGRESS: "قيد التنفيذ",
+    WAITING: "بانتظار",
+    DONE: "مكتمل",
+  },
+};
+
+appPagesAr.billing.settings = "الإعدادات";
+appPagesAr.billing.titleExtended = "الفوترة والاشتراك";
+appPagesAr.billing.periodDays = "تم الحساب على فترة {{count}} يوم";
+appPagesAr.billing.limitSuffix = "حد {{label}}";
+
+appPagesAr.calendar.calendarSystems = {
+  label: "نظام التقويم",
+  gregory: "ميلادي",
+  islamic: "هجري",
+};
+appPagesAr.calendar.labels.hijri = "هجري";
+appPagesAr.calendar.labels.gregorian = "ميلادي";
+
+appPagesAr.integrations.buttons.configure = "إعداد";
+appPagesAr.integrations.modals = {
+  telegram: {
+    title: "إعداد بوت تيليجرام",
+    username: "اسم مستخدم البوت",
+    usernamePlaceholder: "@MyWorkspaceBot",
+    token: "رمز البوت",
+    keepCurrentToken: "•••••••••••••••• (اتركه فارغاً للاحتفاظ بالحالي)",
+    enterToken: "أدخل رمز API للبوت",
+    enableChannel: "تفعيل قناة البوت",
+    registerWebhook: "تسجيل Webhook",
+    registeringWebhook: "جارٍ تسجيل Webhook...",
+    webhookSuccess: "تم تسجيل Webhook بنجاح!",
+    webhookFailed: "فشل تسجيل Webhook.",
+    cancel: "إلغاء",
+    saving: "جارٍ الحفظ...",
+    save: "حفظ البوت",
+    usernameRequired: "اسم مستخدم البوت مطلوب",
+    saveFailed: "فشل حفظ إعدادات البوت",
+    registerFailed: "فشل تسجيل Webhook",
+  },
+  whatsapp: {
+    title: "إعداد واتساب للأعمال",
+    displayName: "اسم العرض",
+    displayNamePlaceholder: "مثال: مؤسستي",
+    phoneNumberId: "معرّف رقم الهاتف",
+    phoneNumberIdPlaceholder: "أدخل معرّف رقم الهاتف من Meta",
+    wabaId: "معرّف حساب واتساب للأعمال (WABA ID)",
+    wabaIdPlaceholder: "أدخل WABA ID (اختياري)",
+    accessToken: "رمز الوصول الدائم",
+    keepCurrentAccessToken: "•••••••••••••••• (اتركه فارغاً للاحتفاظ بالحالي)",
+    enterAccessToken: "أدخل رمز الوصول",
+    webhookSecret: "سر Webhook (App Secret)",
+    keepCurrentWebhookSecret: "•••••••••••••••• (اتركه فارغاً للاحتفاظ بالحالي)",
+    enterWebhookSecret: "أدخل سر التطبيق لـ Webhook (اختياري)",
+    enableChannel: "تفعيل قناة واتساب",
+    callbackLabel: "انسخ رابط Webhook Callback التالي:",
+    cancel: "إلغاء",
+    saving: "جارٍ الحفظ...",
+    save: "حفظ الإعدادات",
+    validation: "معرّف رقم الهاتف واسم العرض مطلوبان",
+    saveFailed: "فشل حفظ إعدادات واتساب",
+  },
+};
+
+appPagesAr.notificationsPage.messagingLinking = {
+  telegramTitle: "قناة تيليجرام",
+  whatsappTitle: "قناة واتساب",
+  connected: "متصل",
+  telegramNotConfigured:
+    "تيليجرام غير مُعدّ لهذه المساحة. اطلب من المسؤول إعداد رمز البوت ضمن تكاملات التطبيق.",
+  whatsappNotConfigured:
+    "رسائل واتساب غير مُعدة لهذه المساحة. اطلب من المسؤول إعداد معرّف رقم الهاتف ضمن تكاملات التطبيق.",
+  linkedUsername: "اسم الحساب المرتبط: {{value}}",
+  chatId: "معرّف المحادثة: {{value}}",
+  telegramIntro: "اربط تيليجرام لتصلك تحديثات المهام والموافقات مباشرة على جهازك.",
+  step1: "الخطوة 1: افتح البوت",
+  step1Description: "اضغط هنا لبدء محادثة مع البوت:",
+  step1Action: "ثم اضغط Start.",
+  step2: "الخطوة 2: ربط المحادثة",
+  scanLoading: "جارٍ فحص الرسائل الأخيرة...",
+  scanIdle: "ابحث عن محادثتي",
+  recentChats: "أحدث المحادثات النشطة:",
+  anonymous: "مجهول",
+  pairAccount: "ربط الحساب",
+  pairManual: "أو اربط يدوياً",
+  chatIdPlaceholder: "معرّف محادثة تيليجرام",
+  usernamePlaceholder: "اسم المستخدم (اختياري)",
+  link: "ربط",
+  disconnectTelegram: "فصل البوت",
+  noNewChats: "لم يتم العثور على محادثات نشطة جديدة. تأكد من إرسال /start إلى البوت أولاً.",
+  telegramLinked: "تم ربط حساب تيليجرام بنجاح!",
+  telegramLinkedManual: "تم ربط حساب تيليجرام يدوياً!",
+  telegramDisconnected: "تم فصل بوت تيليجرام.",
+  telegramScanFailed: "فشل فحص المحادثات",
+  telegramPairFailed: "فشل ربط تيليجرام",
+  telegramDisconnectFailed: "فشل فصل تيليجرام",
+  linkedPhone: "رقم الهاتف المرتبط: {{value}}",
+  verifiedActive: "الحالة: تم التحقق وهو نشط.",
+  whatsappIntro: "تحقق من رقم هاتفك لتصلك الإشعارات المهمة على واتساب.",
+  phoneNumber: "رقم الهاتف",
+  phoneNumberPlaceholder: "مثال: +201002345678",
+  sendCode: "إرسال رمز التحقق",
+  sendingCode: "جارٍ إرسال الرمز...",
+  enteringCodeFor: "إدخال الرمز للرقم {{value}}.",
+  codeLabel: "رمز مكوّن من 6 أرقام",
+  codePlaceholder: "أدخل الرمز المكون من 6 أرقام",
+  changeNumber: "تغيير الرقم",
+  verifyCode: "تحقق من الرمز",
+  confirming: "جارٍ التأكيد...",
+  whatsappCodeSent: "تم إرسال رمز OTP إلى رقم واتساب الخاص بك.",
+  whatsappLinked: "تم ربط واتساب بنجاح!",
+  whatsappDisconnected: "تم تعطيل إشعارات واتساب.",
+  whatsappSendFailed: "فشل إرسال الرمز",
+  whatsappVerifyFailed: "فشل التحقق من الرمز",
+  whatsappDisconnectFailed: "فشل فصل واتساب",
+};
+
+appPagesAr.inboxPage.open = "فتح";
+appPagesAr.taskDetails.notices.renderFailed = "حدث خطأ أثناء عرض تفاصيل المهمة";
+
 export default appPagesAr;
+

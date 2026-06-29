@@ -5,6 +5,11 @@ import ViewTabs from '../home/viewtabs/ViewTabs';
 import Toolbar from '../home/toolbar/Toolbar';
 import { useBoardTableQuery, useCreateBoardTaskMutation } from '../../hooks/useDashboardQueries';
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import {
+  formatTranslatedStatusLabel,
+  getTableStatusClasses,
+  normalizeTaskStatus,
+} from "./taskStatusUtils";
 
 function renderSortIcon(sortConfig, column, isRTL) {
   if (sortConfig.key !== column) {
@@ -56,8 +61,7 @@ export default function TableView() {
   const error = tableQuery.error?.message || null;
   const creating = createTaskMutation.isPending;
   const formatStatusLabel = (status) => {
-    const normalized = String(status || "TODO").toUpperCase();
-    return t(`tableView.statuses.${normalized}`);
+    return formatTranslatedStatusLabel(t, "tableView.statuses", status);
   };
 
   useEffect(() => {
@@ -119,14 +123,8 @@ export default function TableView() {
   };
 
   const getStatusBadge = (status) => {
-    const statusMap = {
-      TODO: { bg: 'bg-red-100', text: 'text-red-700' },
-      IN_PROGRESS: { bg: 'bg-blue-100', text: 'text-blue-700' },
-      WAITING: { bg: 'bg-orange-100', text: 'text-orange-700' },
-      DONE: { bg: 'bg-green-100', text: 'text-green-700' },
-    };
-    const statusUpper = status?.toUpperCase() || 'TODO';
-    const config = statusMap[statusUpper] || statusMap.TODO;
+    const statusUpper = normalizeTaskStatus(status);
+    const config = getTableStatusClasses(statusUpper);
 
     return (
       <span className={`rounded-md px-2 py-1 text-xs font-semibold ${config.bg} ${config.text}`}>

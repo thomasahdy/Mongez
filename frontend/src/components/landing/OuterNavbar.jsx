@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
-import mongezWordmark from "../../assets/Mongez.svg";
-import mongezMark from "../../assets/MongezMLogo.svg";
+import BrandLogo from "../branding/BrandLogo";
 import ToggleLanguage from "../layout/ToggleLanguage";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
@@ -15,12 +14,12 @@ function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/90 bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6 lg:px-8">
-        <a href="#hero" className="flex items-center gap-0 text-slate-900" aria-label={t("landing.nav.homeAria")}>
-          <div className="grid h-10 w-10 place-items-center rounded-xl">
-            <img src={mongezMark} alt={t("landing.nav.markAlt")} className="h-9 w-8 object-contain" />
-          </div>
-          <img src={mongezWordmark} alt={t("landing.nav.wordmarkAlt")} className="h-11 w-auto object-contain" />
-        </a>
+        <BrandLogo
+          to="/"
+          markWrapperClassName="flex h-13 w-13 items-center justify-center rounded-xl"
+          markClassName="h-13 w-13 object-contain"
+          wordmarkClassName="h-12 w-auto object-contain"
+        />
 
         <nav className="hidden items-center gap-8 text-[14px] font-medium text-slate-500 lg:flex">
           {navLinks.map((link) => (

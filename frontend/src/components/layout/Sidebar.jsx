@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import BrandLogo from "../branding/BrandLogo";
 import Badge from "../ui/Badge";
 import NavItem from "./NavItem";
 import NavSection from "./NavSection";
@@ -57,16 +59,18 @@ const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
 
   return (
     <aside
+      data-tour="primary-navigation"
       className={`workspace-sidebar flex h-screen w-[260px] flex-col overflow-y-auto bg-white px-3 py-4 dark:bg-slate-800 [scrollbar-width:none] ${isRTL ? "border-l border-slate-200 dark:border-slate-700" : "border-r border-slate-200 dark:border-slate-700"}`}
       aria-label={t("layout.sidebarAria")}
     >
       <div className="flex justify-around p-3">
-        <a href="/dashboard" className="flex items-center gap-0 text-slate-900"  aria-label={t("landing.nav.homeAria")}>
-          <div className="grid h-10 w-10 place-items-center rounded-xl">
-            <img src={mongezMark} alt={t("landing.nav.markAlt")} className="h-8 w-7 object-contain" />
-          </div>
-          <img src={mongezWordmark} alt={t("landing.nav.wordmarkAlt")} className="h-10 w-auto object-contain" />
-        </a>
+        <BrandLogo
+          to="/dashboard"
+          ariaLabelKey="landing.nav.homeAria"
+          markWrapperClassName="flex h-10 w-10 items-center justify-center rounded-xl"
+          markClassName="h-12 w-12 object-contain"
+          wordmarkClassName="h-10 w-auto object-contain"
+        />
         {setLanguage ? <ToggleLanguage setLanguage={setLanguage} language={language} /> : null}
       </div>
 

@@ -4,16 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
-import { formatSavedAt, useWhiteboardScene } from "../../hooks/useWhiteboardScene";
+import {
+  formatSavedAt,
+  sanitizeWhiteboardAppState,
+  useWhiteboardScene,
+} from "../../hooks/useWhiteboardScene";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
-
-function getSafeAppState(appState) {
-  const safeAppState = appState && typeof appState === "object" ? { ...appState } : {};
-  safeAppState.collaborators = new Map();
-  return safeAppState;
-}
 
 export default function WhiteBoardPage() {
   const { t, i18n } = useTranslation();
@@ -135,7 +133,7 @@ export default function WhiteBoardPage() {
         elements: Array.isArray(parsed.elements) ? parsed.elements : [],
         appState: {
           viewBackgroundColor: "#f8fafc",
-          ...getSafeAppState(parsed.appState),
+          ...sanitizeWhiteboardAppState(parsed.appState),
         },
         files: parsed.files || {},
       };
@@ -159,11 +157,11 @@ export default function WhiteBoardPage() {
         <section className="mb-4 rounded-[28px] border border-slate-200 bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
           <div className={`flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between ${isRTL ? "lg:flex-row-reverse" : ""}`}>
             <div>
-              <p className="text-[16px] font-black uppercase tracking-[0.18em] text-sky-500">{t("whiteboard.title")}</p>
-              <p className={`mt-1 text-sm text-slate-500 ${isRTL ? "text-right" : "text-left"}`}>{t("whiteboard.description")}</p>
+              <p className="text-[18px] font-black uppercase tracking-[0.18em] text-sky-500">{t("whiteboard.title")}</p>
+         
               <div className={`mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400 ${isRTL ? "flex-row-reverse" : ""}`}>
                 <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-500">
-                  {formatSavedAt(lastSavedAt, locale, t)}
+                  {formatSavedAt(lastSavedAt, t, locale)}
                 </span>
                 {statusMessage ? <span>{statusMessage}</span> : null}
               </div>

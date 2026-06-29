@@ -12,6 +12,7 @@ import {
   useUpdateSpaceMemberRoleMutation,
 } from "../../hooks/useSettingsQueries";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { buildSettingsPath } from "./settingsPath";
 
 const ROLE_OPTIONS = ["MEMBER", "ADMIN"];
 const MANAGE_ROLES = new Set(["OWNER", "ADMIN"]);
@@ -98,10 +99,7 @@ export default function SettingsMembersPage({ setPath }) {
   };
 
   useEffect(() => {
-    setPath?.([
-      { name: t("settingsSidebar.workspace"), color: "text-slate-400", ref: "/settings" },
-      { name: t("members.breadcrumb"), color: "text-slate-800", ref: "/settings/members" },
-    ]);
+    setPath?.(buildSettingsPath(t, t("members.breadcrumb"), "/settings/members"));
   }, [setPath, t]);
 
   const currentMembership = useMemo(

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { readStorageJson, removeStorageValue, writeStorageJson } from "../utils/browserStorage";
 
-function getSafeAppState(appState) {
+export function sanitizeWhiteboardAppState(appState) {
   const safeAppState = appState && typeof appState === "object" ? { ...appState } : {};
   safeAppState.collaborators = new Map();
   return safeAppState;
@@ -16,34 +17,26 @@ function createEmptyScene() {
 }
 
 function loadScene(storageKey) {
-  try {
-    const saved = localStorage.getItem(storageKey);
+  const parsed = readStorageJson(storageKey, null);
 
-    if (!saved) {
-      return {
-        scene: createEmptyScene(),
-        updatedAt: "",
-      };
-    }
-
-    const parsed = JSON.parse(saved);
-    return {
-      scene: {
-        elements: parsed.elements || [],
-        appState: {
-          viewBackgroundColor: "#f8fafc",
-          ...getSafeAppState(parsed.appState),
-        },
-        files: parsed.files || {},
-      },
-      updatedAt: parsed.updatedAt || "",
-    };
-  } catch {
+  if (!parsed) {
     return {
       scene: createEmptyScene(),
       updatedAt: "",
     };
   }
+
+  return {
+    scene: {
+      elements: parsed.elements || [],
+      appState: {
+        viewBackgroundColor: "#f8fafc",
+        ...sanitizeWhiteboardAppState(parsed.appState),
+      },
+      files: parsed.files || {},
+    },
+    updatedAt: parsed.updatedAt || "",
+  };
 }
 
 export function formatSavedAt(value, t, locale = "en-US") {
@@ -84,17 +77,18 @@ export function useWhiteboardScene(boardId) {
         const updatedAt = new Date().toISOString();
         const nextScene = {
           elements,
-          appState: getSafeAppState(appState),
+          appState: sanitizeWhiteboardAppState(appState),
           files,
         };
 
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({
-            ...nextScene,
-            updatedAt,
-          }),
-        );
+        const saved = writeStorageJson(storageKey, {
+          ...nextScene,
+          updatedAt,
+        });
+
+        if (!saved) {
+          throw new Error("Unable to persist whiteboard scene.");
+        }
 
         latestSceneRef.current = nextScene;
         latestSavedAtRef.current = updatedAt;
@@ -108,7 +102,7 @@ export function useWhiteboardScene(boardId) {
 
   const resetScene = useCallback(() => {
     const emptyScene = createEmptyScene();
-    localStorage.removeItem(storageKey);
+    removeStorageValue(storageKey);
     latestSceneRef.current = emptyScene;
     latestSavedAtRef.current = "";
     setLastSavedAt("");

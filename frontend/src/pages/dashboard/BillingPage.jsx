@@ -4,11 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
 import { PanelSkeleton, Skeleton } from "../../components/loading/Skeleton";
 import { useBillingQuery } from "../../hooks/useDashboardQueries";
-
-const billingBreadcrumbs = [
-  { name: "Settings", color: "text-slate-400", ref: "/settings" },
-  { name: "Billing", color: "text-slate-800", ref: "/settings/billing" },
-];
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { buildSettingsPath } from "../settings/settingsPath";
 
 export default function BillingPage({ setPath: propSetPath }) {
   const context = useOutletContext() || {};
@@ -33,8 +30,8 @@ export default function BillingPage({ setPath: propSetPath }) {
   );
 
   useEffect(() => {
-    setPath?.(billingBreadcrumbs);
-  }, [setPath]);
+    setPath?.(buildSettingsPath(t, t("billing.title"), "/settings/billing"));
+  }, [setPath, t]);
 
   const queryError = !spaceId
     ? t("billing.selectWorkspace")
@@ -49,7 +46,7 @@ export default function BillingPage({ setPath: propSetPath }) {
     }
     return String(value);
   };
-  const formatLabel = (group, key) => t(`billing.${group}.${key}`, { defaultValue: humanizeKey(key) });
+  const formatLabel = (group, key) => t(`billing.${group}.${key}`, { defaultValue: key });
 
   if (loading) {
     return (
@@ -82,27 +79,27 @@ export default function BillingPage({ setPath: propSetPath }) {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 p-6 space-y-6">
+    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 p-6 space-y-6" dir={isRTL ? "rtl" : "ltr"}>
       <div className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-sky-500">Settings</p>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">Billing & Subscription</h1>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-sky-500">{t("billing.settings")}</p>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">{t("billing.titleExtended")}</h1>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              This page only shows data exposed by the current backend billing and analytics APIs.
+              {t("billing.description")}
             </p>
           </div>
 
           <button
             type="button"
             onClick={() => {
-              setError("");
+              setActionError("");
               billingQuery.refetch();
             }}
             disabled={loading || !spaceId}
             className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:border-sky-200 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-sky-500/40"
           >
-            {loading ? "Refreshing..." : "Refresh billing"}
+            {loading ? t("billing.refreshing") : t("billing.refresh")}
           </button>
         </div>
       </div>
@@ -122,28 +119,30 @@ export default function BillingPage({ setPath: propSetPath }) {
       {billingInfo && (
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm">
-            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-505">Current plan</div>
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-505">{t("billing.currentPlan")}</div>
             <h2 className="mt-2 text-2xl font-black text-slate-900 dark:text-slate-50">
-              {billingInfo.hasPlanData ? billingInfo.currentPlan?.name || "Unknown plan" : "Plan unavailable"}
+              {billingInfo.hasPlanData ? billingInfo.currentPlan?.name || t("billing.unknownPlan") : t("billing.planUnavailable")}
             </h2>
             <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-              Workspace: <span className="font-semibold text-slate-700 dark:text-slate-300">{activeSpace?.name || spaceId}</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                {t("billing.workspace", { name: activeSpace?.name || spaceId })}
+              </span>
             </p>
 
             <div className="mt-6">
-              <div className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">Enabled features</div>
+              <div className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{t("billing.enabledFeatures")}</div>
               <div className="flex flex-wrap gap-2">
                 {(billingInfo.currentPlan?.features || []).map((feature) => (
                   <span
                     key={feature}
                     className="rounded-full bg-sky-50 dark:bg-sky-955/40 px-3 py-1 text-xs font-semibold text-sky-700 dark:text-sky-400"
                   >
-                    {feature}
+                    {t(`billing.featureLabels.${feature}`, { defaultValue: feature })}
                   </span>
                 ))}
                 {!billingInfo.currentPlan?.features?.length && (
                   <span className="text-sm text-slate-500 dark:text-slate-400">
-                    {billingInfo.hasPlanData ? "No feature metadata returned." : "Plan metadata is unavailable for this workspace."}
+                    {billingInfo.hasPlanData ? t("billing.noFeatureMetadata") : t("billing.planMetadataUnavailable")}
                   </span>
                 )}
               </div>
@@ -151,20 +150,20 @@ export default function BillingPage({ setPath: propSetPath }) {
           </section>
 
           <section className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm">
-            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-505">Usage</div>
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-505">{t("billing.usage")}</div>
             {billingInfo.usageStats?.periodDays && (
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Calculated over a {billingInfo.usageStats.periodDays}-day period</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("billing.periodDays", { count: billingInfo.usageStats.periodDays })}</p>
             )}
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {Object.entries(billingInfo.usageStats?.usage || {}).map(([key, value]) => (
                 <div key={key} className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-slate-800/60">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-505">{key}</div>
-                  <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{String(value)}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-505">{formatLabel("usageLabels", key)}</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{formatValue(value)}</div>
                 </div>
               ))}
               {!Object.keys(billingInfo.usageStats?.usage || {}).length && (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 sm:col-span-2 dark:border-slate-800 dark:bg-slate-900/20 dark:text-slate-400">
-                  No usage metrics were returned for this workspace.
+                  {t("billing.noUsage")}
                 </div>
               )}
             </div>
@@ -174,26 +173,28 @@ export default function BillingPage({ setPath: propSetPath }) {
 
       {billingInfo && (
         <section className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm">
-          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-550">Plan limits</div>
+          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-550">{t("billing.planLimits")}</div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries(billingInfo.currentPlan?.limits || {})
               .filter(([key]) => key !== "features" && key !== "quotas")
               .map(([key, value]) => (
                 <div key={key} className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-slate-800/60">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-505">{key}</div>
-                  <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{String(value)}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-505">{formatLabel("limitLabels", key)}</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{formatValue(value)}</div>
                 </div>
               ))}
             {Object.entries(billingInfo.currentPlan?.limits?.quotas || {}).map(([key, value]) => (
               <div key={key} className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-slate-800/60">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-505">{key} limit</div>
-                <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{String(value)}</div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-505">
+                  {t("billing.limitSuffix", { label: formatLabel("limitLabels", key) })}
+                </div>
+                <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{formatValue(value)}</div>
               </div>
             ))}
             {!Object.keys(billingInfo.currentPlan?.limits || {}).filter((key) => key !== "features" && key !== "quotas").length && 
              !Object.keys(billingInfo.currentPlan?.limits?.quotas || {}).length && (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 sm:col-span-2 lg:col-span-4 dark:border-slate-800 dark:bg-slate-900/20 dark:text-slate-400">
-                No plan limit metadata was returned by the backend.
+                {t("billing.noLimits")}
               </div>
             )}
           </div>
@@ -202,17 +203,17 @@ export default function BillingPage({ setPath: propSetPath }) {
 
       {billingInfo && (
         <section className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm">
-          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-550">AI usage</div>
+          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-550">{t("billing.aiUsage")}</div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {Object.entries(billingInfo.aiUsage || {}).map(([key, value]) => (
               <div key={key} className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-slate-800/60">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-555">{key}</div>
-                <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{String(value)}</div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-555">{formatLabel("aiUsageLabels", key)}</div>
+                <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{formatValue(value)}</div>
               </div>
             ))}
             {!Object.keys(billingInfo.aiUsage || {}).length && (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 sm:col-span-3 dark:border-slate-800 dark:bg-slate-900/20 dark:text-slate-400">
-                No AI usage metrics were returned for this workspace.
+                {t("billing.noAiUsage")}
               </div>
             )}
           </div>
@@ -220,7 +221,9 @@ export default function BillingPage({ setPath: propSetPath }) {
       )}
 
       {user && (
-        <p className="text-xs text-slate-400 dark:text-slate-500">Logged in as {user.email || user.name}</p>
+        <p className={`text-xs text-slate-400 dark:text-slate-500 ${isRTL ? "text-right" : "text-left"}`}>
+          {t("billing.loggedInAs", { value: user.email || user.name })}
+        </p>
       )}
     </div>
   );

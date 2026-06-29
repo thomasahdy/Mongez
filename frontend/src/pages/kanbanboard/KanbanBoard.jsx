@@ -7,44 +7,38 @@ import TaskBoardSkeleton from '../../components/loading/TaskBoardSkeleton';
 import { useParams } from 'react-router';
 import { useBoard } from '../../hooks/api/useBoards';
 import useLocaleDirection from '../../hooks/useLocaleDirection';
+import { useAppContext } from '../../pages/AppContext';
 
 
-let path=[
-  {
-    name:"Al-Noor Foundation",
-    color:"text-slate-400",
-    ref:""
-  },
-  {
-    name:"Education",
-    color:"text-red-500",
-    ref:""
-  },
-  {
-    name:"Upper Egypt Education",
-    color:"text-slate-800",
-    ref:""
-  },
-]
 const KanbanBoard = ({setPath}) => {
   const { t } = useTranslation();
   const { dir, isRtl } = useLocaleDirection();
   const [activeTab, setActiveTab] = useState("board");
   const {boardId} = useParams();
+  const { activeSpace } = useAppContext();
 
   const {data: boardData, isLoading: boardLoading, isError: boardError, error, refetch} = useBoard(boardId);
   const {columns} = boardData || {columns: []};
 
   useEffect(() => {
     setPath([
-      path[0],
-      path[1],
       {
-        ...path[2],
-        name: t("kanbanPage.breadcrumb"),
+        name: activeSpace?.name || t("common.workspace"),
+        color: "text-slate-400",
+        ref: "",
+      },
+      {
+        name: boardData?.department?.name || t("kanbanPage.breadcrumb"),
+        color: "text-red-500",
+        ref: "",
+      },
+      {
+        name: boardData?.name || t("kanbanPage.breadcrumb"),
+        color: "text-slate-800",
+        ref: "",
       },
     ]);
-  }, [setPath, t]);
+  }, [activeSpace?.name, boardData?.department?.name, boardData?.name, setPath, t]);
 
   // ── Loading State ──
   if (boardLoading) {

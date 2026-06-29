@@ -6,14 +6,14 @@ import InviteDetailsTable from "./sections/InviteDetailsTable";
 import JoinForm from "./sections/JoinFrom";
 
 const MOCK_INVITE = {
-  organization: "Al-Noor Foundation",
+  organization: "Mongez Workspace",
   department: "Education Department",
   role: "Manager",
   expires: "Dec 1, 2026",
   inviter: {
     initials: "AH",
     name: "Ahmed Hassan",
-    email: "ahmed@alnoor-foundation.org",
+    email: "invite@mongez.app",
   },
 };
 

@@ -8,7 +8,7 @@ const TESTIMONIALS = [
     quote:
       'Mongez transformed how we manage our education programs. The AI risk detection alone saved us from three critical funding delays last quarter.',
     name: 'Ahmed Hassan',
-    role: 'Director of Programs, Al-Noor Foundation',
+    role: 'Director of Programs, Regional Education Network',
     initials: 'AH',
     accent: 'bg-blue-500',
   },

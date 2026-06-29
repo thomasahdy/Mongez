@@ -9,6 +9,10 @@ import TemplateStep from "./steps/TemplateStep";
 import authService from "../../../services/api/authService";
 import AuthLogo from "../shared/AuthLogo";
 import { useTranslation } from "react-i18next";
+import {
+  markOnboardingSessionActive,
+  persistPendingOnboardingDraft,
+} from "../../../lib/onboardingStorage";
 
 const initialValues = {
   account: {
@@ -29,7 +33,6 @@ const initialValues = {
     { email: "", role: "Member" },
   ],
 };
-
 const RegisterContainer = () => {
   const { t } = useTranslation();
   const [step, setStep] = useState(1);
@@ -70,14 +73,11 @@ const RegisterContainer = () => {
       return;
     }
 
-    localStorage.setItem(
-      "pendingOnboarding",
-      JSON.stringify({
-        organization: values.organization,
-        template: values.template,
-        invites: skipInvites ? [] : validInvites,
-      })
-    );
+    persistPendingOnboardingDraft({
+      organization: values.organization,
+      template: values.template,
+      invites: skipInvites ? [] : validInvites,
+    });
 
     try {
       const fullName = [values.account.firstName, values.account.lastName].filter(Boolean).join(" ").trim();
@@ -86,6 +86,7 @@ const RegisterContainer = () => {
         password: values.account.password,
         name: fullName,
       });
+      markOnboardingSessionActive();
       window.location.href = skipInvites ? "/dashboard" : "/";
     } catch (error) {
       const errorMessage = error?.message || error?.toString?.() || t("registerUi.registrationFailed");
@@ -93,7 +94,6 @@ const RegisterContainer = () => {
     } finally {
       setLoading(false);
     }
-
   };
 
   const stepAnimation = direction === "forward" ? "animate-slideLeft" : "animate-slideRight";
@@ -141,8 +141,6 @@ const RegisterContainer = () => {
               onSkip={() => handleSubmit({ skipInvites: true })}
               loading={loading}
               submitError={submitError}
-              onSkip={() => handleSubmit({ skipInvites: true })}
-              
             />
           )}
         </div>

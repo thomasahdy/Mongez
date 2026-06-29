@@ -40,23 +40,6 @@ const FLOW_DATA = [
   { day: "May 5",  todo: 20, progress: 35, done: 80 },
 ];
 
-
-
- let path=[
-  {
-    name:"Al-Noor Foundation",
-    color:"text-slate-400",
-    ref:""
-  },
-  {
-    name:"Reports",
-    color:"text-slate-800",
-    ref:""
-  },
-  
-]
-
-
 const ReportsPage = ({setPath}) => {
   const { t } = useTranslation();
   const { dir, isRtl } = useLocaleDirection();
@@ -82,13 +65,18 @@ const ReportsPage = ({setPath}) => {
   },])
   useEffect(()=>{
       setPath([
-        path[0],
         {
-          ...path[1],
+          name: selectedSpace?.name || t("common.workspace"),
+          color:"text-slate-400",
+          ref:""
+        },
+        {
           name: t("reportsPage.breadcrumb"),
+          color:"text-slate-800",
+          ref:""
         },
       ])
-    }, [setPath, t]);
+    }, [selectedSpace?.name, setPath, t]);
 
 
   return (

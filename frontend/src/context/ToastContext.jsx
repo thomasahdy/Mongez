@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useState, useRef } from 'react';
+import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { useLocaleDirection } from "../hooks/useLocaleDirection";
 
 const ToastContext = createContext(null);
 
@@ -43,22 +44,22 @@ const ICONS = {
 
 const COLORS = {
   success: {
-    border: 'border-l-emerald-500',
+    border: 'border-emerald-500',
     icon: 'text-emerald-500',
     bg: 'bg-emerald-50 dark:bg-emerald-950/30',
   },
   error: {
-    border: 'border-l-red-500',
+    border: 'border-red-500',
     icon: 'text-red-500',
     bg: 'bg-red-50 dark:bg-red-950/30',
   },
   warning: {
-    border: 'border-l-amber-500',
+    border: 'border-amber-500',
     icon: 'text-amber-500',
     bg: 'bg-amber-50 dark:bg-amber-950/30',
   },
   info: {
-    border: 'border-l-sky-500',
+    border: 'border-sky-500',
     icon: 'text-sky-500',
     bg: 'bg-sky-50 dark:bg-sky-950/30',
   },
@@ -66,6 +67,7 @@ const COLORS = {
 
 // ── Provider ──
 export function ToastProvider({ children }) {
+  const { isRTL } = useLocaleDirection();
   const [toasts, setToasts] = useState([]);
   const timersRef = useRef({});
 
@@ -118,7 +120,8 @@ export function ToastProvider({ children }) {
         <div
           aria-live="polite"
           aria-label="Notifications"
-          className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none max-w-sm w-full"
+          className={`fixed bottom-6 z-[9999] flex w-full max-w-sm flex-col gap-3 pointer-events-none ${isRTL ? "left-6" : "right-6"}`}
+          dir={isRTL ? "rtl" : "ltr"}
         >
           {toasts.map((t) => {
             const color = COLORS[t.type] || COLORS.info;
@@ -129,9 +132,8 @@ export function ToastProvider({ children }) {
                 className={`
                   pointer-events-auto flex items-start gap-3 p-4
                   bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800
-                  border-l-4 ${color.border}
+                  ${isRTL ? "border-r-4 flex-row-reverse text-right animate-[slideInLeft_0.3s_ease-out]" : "border-l-4 animate-[slideInRight_0.3s_ease-out]"} ${color.border}
                   rounded-xl shadow-lg
-                  animate-[slideInRight_0.3s_ease-out]
                 `}
               >
                 <span className={color.icon}>{ICONS[t.type] || ICONS.info}</span>

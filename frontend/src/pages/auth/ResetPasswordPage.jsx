@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import mongezMark from "../../assets/MongezMLogo.svg";
+import BrandLogo from "../../components/branding/BrandLogo";
 import {
   useForgotPasswordMutation,
   useResetPasswordMutation,
@@ -160,10 +160,14 @@ export default function ResetPasswordPage() {
   return (
     <div className="auth-page" dir={isRTL ? "rtl" : "ltr"}>
       <header className="auth-brand-row">
-        <NavLink to="/" className="auth-brand" aria-label={t("resetPassword.homeAria")}>
-          <img src={mongezMark} alt="" className="auth-brand-mark" />
-          <span className="auth-brand-text">Mongez</span>
-        </NavLink>
+        <BrandLogo
+          to="/"
+          ariaLabelKey="resetPassword.homeAria"
+          className="auth-brand"
+          markWrapperClassName="flex h-10 w-10 items-center justify-center rounded-xl"
+          markClassName="auth-brand-mark object-contain"
+          wordmarkClassName="h-10 w-auto object-contain"
+        />
       </header>
 
       <main className="auth-main">

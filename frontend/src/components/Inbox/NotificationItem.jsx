@@ -1,4 +1,3 @@
-import React from 'react'
 import { useTranslation } from "react-i18next";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import NotifIconBadge from './NotifIconBadge';
@@ -11,6 +10,8 @@ const NAVIGABLE_TYPES = new Set([
 ]);
 
 const NotificationItem = ({ notif, selected, onSelect, onAction, onClick }) => {
+  const { t } = useTranslation();
+  const { isRTL } = useLocaleDirection();
   const isNavigable = !!notif.entityId || NAVIGABLE_TYPES.has(notif.type);
 
   return (
@@ -72,7 +73,7 @@ const NotificationItem = ({ notif, selected, onSelect, onAction, onClick }) => {
           {isNavigable && (
             <span className="flex items-center gap-0.5 text-sky-400 dark:text-sky-500 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               <i className="fa-solid fa-arrow-up-right-from-square text-[9px]" />
-              <span>Open</span>
+              <span>{t("inboxPage.open")}</span>
             </span>
           )}
         </div>

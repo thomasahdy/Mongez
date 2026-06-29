@@ -6,6 +6,12 @@ import Toolbar from '../home/toolbar/Toolbar';
 import { useAppContext } from '../AppContext';
 import { useTimelineQuery } from '../../hooks/useDashboardQueries';
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import {
+  formatTranslatedStatusLabel,
+  getTimelineStatusColor,
+  normalizeTaskStatus,
+  TIMELINE_STATUS_ORDER,
+} from "./taskStatusUtils";
 
 const CELL_WIDTH = {
   days: 40,
@@ -165,16 +171,6 @@ function getTaskBarStyle(task, dates, scale, isRTL) {
   }
 }
 
-function getStatusColor(status) {
-  const colors = {
-    TODO: '#ef4444',
-    IN_PROGRESS: '#00a8e8',
-    WAITING: '#ea580c',
-    DONE: '#10b981',
-  };
-  return colors[String(status || '').toUpperCase()] || '#00a8e8';
-}
-
 export default function TimelineView() {
   const { boardId } = useParams();
   const { setPath, activeBoard } = useOutletContext() || {};
@@ -212,25 +208,20 @@ export default function TimelineView() {
   }, [dates, locale]);
 
   const groupedTasks = useMemo(() => {
-    const grouped = {
-      TODO: [],
-      IN_PROGRESS: [],
-      WAITING: [],
-      DONE: [],
-    };
+    const grouped = Object.fromEntries(TIMELINE_STATUS_ORDER.map((status) => [status, []]));
 
     tasks.forEach((task) => {
-      const status = String(task.status || task.statusId || 'TODO').toUpperCase();
+      const status = normalizeTaskStatus(task.status || task.statusId);
       if (grouped[status]) {
         grouped[status].push(task);
       } else {
-        grouped.TODO.push(task);
+        grouped[TIMELINE_STATUS_ORDER[0]].push(task);
       }
     });
 
     return grouped;
   }, [tasks]);
-  const formatStatusLabel = (status) => t(`timeline.statuses.${String(status || 'TODO').toUpperCase()}`);
+  const formatStatusLabel = (status) => formatTranslatedStatusLabel(t, "timeline.statuses", status);
 
   const eventCountsByPeriod = useMemo(
     () =>
@@ -340,7 +331,7 @@ export default function TimelineView() {
                 statusTasks.length > 0 ? (
                   <div key={status}>
                     <div className={`flex items-center gap-2 bg-slate-50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 ${isRTL ? "flex-row-reverse" : ""}`}>
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getStatusColor(status) }} />
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getTimelineStatusColor(status) }} />
                       {formatStatusLabel(status)}
                     </div>
                     {statusTasks.map((task) => (
@@ -349,7 +340,7 @@ export default function TimelineView() {
                         className={`flex cursor-pointer items-center gap-2 border-b border-slate-100 px-4 py-3 transition-colors hover:bg-sky-50 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
                         onClick={() => navigate(`/tasks/${task.id}`)}
                       >
-                        <div className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: getStatusColor(status) }} />
+                        <div className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: getTimelineStatusColor(status) }} />
                         <span className="flex-1 truncate text-xs font-medium text-slate-700">
                           {task.title || task.name || t('timeline.defaults.untitled')}
                         </span>
