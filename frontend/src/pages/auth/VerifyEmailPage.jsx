@@ -66,28 +66,6 @@ export default function VerifyEmailPage() {
   }, [resendCooldown]);
 
   useEffect(() => {
-    if (token && verificationTokenQuery.isError) {
-      setError(verificationTokenQuery.error?.message || t("verifyEmail.errors.verifyFailed"));
-      return;
-    }
-
-    if (!token && verificationStatusQuery.isError) {
-      setMessage(t("verifyEmail.errors.resendSignin"));
-      return;
-    }
-
-    if (data?.message) {
-      setMessage(data.message);
-    }
-  }, [t,
-    data?.message,
-    token,
-    verificationStatusQuery.isError,
-    verificationTokenQuery.error?.message,
-    verificationTokenQuery.isError,
-  ]);
-
-  useEffect(() => {
     if (!verified) {
       return undefined;
     }
@@ -111,6 +89,13 @@ export default function VerifyEmailPage() {
       setError(sendError.message || t("verifyEmail.errors.resendFailed"));
     }
   };
+
+  const displayError = error || (token && verificationTokenQuery.isError
+    ? verificationTokenQuery.error?.message || t("verifyEmail.errors.verifyFailed")
+    : "");
+  const displayMessage = message || (!token && verificationStatusQuery.isError
+    ? t("verifyEmail.errors.resendSignin")
+    : data?.message || "");
 
   return (
     <div className="auth-page" dir={isRTL ? "rtl" : "ltr"}>
@@ -160,8 +145,8 @@ export default function VerifyEmailPage() {
             ))}
           </div>
 
-          {message && <p className="text-sm text-emerald-600">{message}</p>}
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {displayMessage && <p className="text-sm text-emerald-600">{displayMessage}</p>}
+          {displayError && <p className="text-sm text-rose-600">{displayError}</p>}
 
           {showResend ? (
             <div className="grid gap-2">

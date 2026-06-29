@@ -61,12 +61,6 @@ export default function TableView() {
   };
 
   useEffect(() => {
-    if (!boardId && activeBoard?.id) {
-      setCurrentPage(1);
-    }
-  }, [activeBoard?.id, boardId]);
-
-  useEffect(() => {
     setPath?.([
       { name: t('common.workspace'), color: 'text-slate-400', ref: '/dashboard' },
       { name: board?.name || activeBoard?.name || t('tableView.title'), color: 'text-slate-800', ref: '' },
@@ -89,12 +83,6 @@ export default function TableView() {
   const totalPages = Math.max(1, Math.ceil((totalItems || tasks.length) / itemsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedTasks = sortedTasks;
-
-  useEffect(() => {
-    if (safeCurrentPage !== currentPage) {
-      setCurrentPage(safeCurrentPage);
-    }
-  }, [currentPage, safeCurrentPage]);
 
   const handleSort = (key) => {
     setSortConfig({

@@ -182,7 +182,6 @@ export default function TimelineView() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { isRTL } = useLocaleDirection();
-  const [error, setError] = useState(null);
   const [scale, setScale] = useState('days');
   const boardIdValue = boardId || activeBoard?.id;
   const spaceId = activeSpace?.id || spaces[0]?.id;
@@ -195,8 +194,8 @@ export default function TimelineView() {
     startDate: dates[0]?.toISOString(),
     endDate: dates[dates.length - 1]?.toISOString(),
   });
-  const tasks = timelineQuery.data?.tasks || [];
-  const calendarEvents = timelineQuery.data?.calendarEvents || [];
+  const tasks = useMemo(() => timelineQuery.data?.tasks || [], [timelineQuery.data?.tasks]);
+  const calendarEvents = useMemo(() => timelineQuery.data?.calendarEvents || [], [timelineQuery.data?.calendarEvents]);
   const loading = timelineQuery.isLoading || timelineQuery.isFetching;
   const tasksWithoutTimeline = useMemo(
     () => tasks.filter((task) => !getTaskDate(task, 'startDate') && !getTaskDate(task, 'endDate') && !task.dueDate).length,
@@ -263,19 +262,11 @@ export default function TimelineView() {
     ]);
   }, [setPath, activeBoard?.name, t]);
 
-  useEffect(() => {
-    if (!boardIdValue) {
-      setError(null);
-      return;
-    }
-
-    if (timelineQuery.isError) {
-      setError(timelineQuery.error?.message || t('timeline.loadFailed'));
-      return;
-    }
-
-    setError(null);
-  }, [boardIdValue, timelineQuery.error?.message, timelineQuery.isError, t]);
+  const error = !boardIdValue
+    ? null
+    : timelineQuery.isError
+      ? timelineQuery.error?.message || t('timeline.loadFailed')
+      : null;
 
   const isToday = (date) => startOfDay(date).getTime() === startOfDay(new Date()).getTime();
   const isWeekend = (date) => date.getDay() === 0 || date.getDay() === 6;

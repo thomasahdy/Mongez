@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext, useNavigate } from "react-router";
+import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
-import meetingsService from "../../services/api/meetingsService";
 import {
   useAiActionReviewMutation,
   useAiDashboardQuery,
@@ -14,8 +13,6 @@ import {
 import { extractTextFromPayload } from "../../utils/extractTextFromPayload";
 import { useBoardTasksQuery } from "../../hooks/useTaskListQueries";
 import ErrorBoundary from "../../components/ErrorBoundary";
-import mongezWordmark from "../../assets/Mongez.svg";
-import mongezMark from "../../assets/MongezMLogo.svg";
 
 const STORAGE_KEYS = {
   context: "mongez.ai.context",
@@ -129,10 +126,6 @@ function getUserFriendlyErrorMessage(error, t) {
   }
 }
 
-function FieldLabel({ children }) {
-  return <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">{children}</label>;
-}
-
 function preprocessMessageContent(text) {
   if (!text) return "";
   let cleanText = text.trim();
@@ -154,7 +147,7 @@ function preprocessMessageContent(text) {
       if (parsed && typeof parsed.answer === "string") {
         return parsed.answer;
       }
-    } catch (e) {
+    } catch {
       // Not valid JSON
     }
   }
@@ -172,7 +165,7 @@ function preprocessMessageContent(text) {
           return parsed.answer;
         }
       }
-    } catch (e) {
+    } catch {
       // Ignore
     }
   }
@@ -418,7 +411,6 @@ function ChatBubble({
   feedbackState,
   onFeedback,
   onRetry,
-  onCitationClick,
   onActionDecision,
   reviewingActionId,
 }) {
@@ -653,7 +645,6 @@ function ToastContainer({ toasts, onClose }) {
 function AiAssistantPage() {
   const { t, i18n } = useTranslation();
   const { setPath } = useOutletContext();
-  const navigate = useNavigate();
   const { activeSpace, activeBoard, spaces, activeBoards, setActiveSpace, setActiveBoard, user } = useAppContext();
   const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
   const isRTL = i18n.dir(i18n.language) === "rtl";
@@ -689,6 +680,7 @@ function AiAssistantPage() {
       commentTone: stored.commentTone || "professional",
     };
   });
+  const [relativeNow, setRelativeNow] = useState(() => Date.now());
   const [recentSessions, setRecentSessions] = useState(() => readJsonStorage(STORAGE_KEYS.sessions, []));
   const [currentSessionId, setCurrentSessionId] = useState(() => makeId("session"));
   const [messages, setMessages] = useState(() => [welcomeMessage]);
@@ -697,41 +689,18 @@ function AiAssistantPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [reviewingActionId, setReviewingActionId] = useState("");
   const [messageFeedback, setMessageFeedback] = useState({});
-  const [activeMeetingTranscript, setActiveMeetingTranscript] = useState(null);
-  const [loadingTranscript, setLoadingTranscript] = useState(false);
-  const [transcriptModalOpen, setTranscriptModalOpen] = useState(false);
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const chatAbortRef = useRef(null);
   const suggestionChips = useMemo(() => t("aiAssistant.suggestionChips", { returnObjects: true }), [t]);
-
-  const fetchAndShowTranscript = async (meetingId, title) => {
-    setLoadingTranscript(true);
-    setTranscriptModalOpen(true);
-    setActiveMeetingTranscript({ title, text: t("aiAssistant.errors.loadingTranscript") });
-    try {
-      const data = await meetingsService.getTranscript(meetingId, contextValues.spaceId);
-      setActiveMeetingTranscript({ title, text: data?.transcript || data || t("aiAssistant.errors.noTranscript") });
-    } catch (err) {
-      setActiveMeetingTranscript({ title, text: t("aiAssistant.errors.transcriptFailed", { message: err?.message || err }) });
-    } finally {
-      setLoadingTranscript(false);
-    }
-  };
-
-  const handleCitationClick = (citation) => {
-    if (citation.entity_type === "task") {
-      navigate(`/tasks/${citation.entity_id}`);
-    } else if (citation.entity_type === "meeting") {
-      void fetchAndShowTranscript(citation.entity_id, citation.title);
-    } else if (citation.entity_type === "decision") {
-      setActiveTab("overview");
-      showToast(t("aiAssistant.toasts.decisionSelected", { title: citation.title }), "info");
-    } else if (citation.entity_type === "approval" || citation.entity_type === "workflow") {
-      setActiveTab("approvals");
-      showToast(t("aiAssistant.toasts.workflowSelected", { title: citation.title }), "info");
-    }
-  };
+  const effectiveContextValues = useMemo(
+    () => ({
+      ...contextValues,
+      spaceId: contextValues.spaceId || activeSpace?.id || spaces[0]?.id || "",
+      boardId: contextValues.boardId || activeBoard?.id || "",
+    }),
+    [activeBoard?.id, activeSpace?.id, contextValues, spaces],
+  );
 
   const showToast = (message, type = "success") => {
     const id = makeId("toast");
@@ -745,22 +714,22 @@ function AiAssistantPage() {
     setToasts((current) => current.filter((t) => t.id !== id));
   };
 
-  const tasksQuery = useBoardTasksQuery(contextValues.boardId);
+  const tasksQuery = useBoardTasksQuery(effectiveContextValues.boardId);
   const boardTasks = tasksQuery.data || [];
 
   const chatContext = useMemo(
     () => ({
-      spaceId: contextValues.spaceId || undefined,
-      boardId: contextValues.boardId || undefined,
-      taskId: contextValues.taskId || undefined,
+      spaceId: effectiveContextValues.spaceId || undefined,
+      boardId: effectiveContextValues.boardId || undefined,
+      taskId: effectiveContextValues.taskId || undefined,
     }),
-    [contextValues.boardId, contextValues.spaceId, contextValues.taskId],
+    [effectiveContextValues.boardId, effectiveContextValues.spaceId, effectiveContextValues.taskId],
   );
 
   const quickPromptItems = useMemo(() => buildQuickPrompts(t), [t]);
 
   // Primary Workspace Intelligence query
-  const dashboardQuery = useAiDashboardQuery(contextValues.spaceId.trim());
+  const dashboardQuery = useAiDashboardQuery(effectiveContextValues.spaceId.trim());
   const dashboardData = dashboardQuery.data || {
     metrics: {
       openTasks: 0,
@@ -787,24 +756,7 @@ function AiAssistantPage() {
   const riskMutation = useAiRiskMutation();
   const reportMutation = useAiReportMutation();
   const feedbackMutation = useAiFeedbackMutation();
-  const reviewActionMutation = useAiActionReviewMutation(contextValues.spaceId.trim());
-
-  useEffect(() => {
-    setContextValues((current) => {
-      const nextSpaceId = current.spaceId || activeSpace?.id || spaces[0]?.id || "";
-      const nextBoardId = current.boardId || activeBoard?.id || "";
-
-      if (nextSpaceId === current.spaceId && nextBoardId === current.boardId) {
-        return current;
-      }
-
-      return {
-        ...current,
-        spaceId: nextSpaceId,
-        boardId: nextBoardId,
-      };
-    });
-  }, [activeSpace?.id, activeBoard?.id, spaces]);
+  const reviewActionMutation = useAiActionReviewMutation(effectiveContextValues.spaceId.trim());
 
   useEffect(() => {
     setPath?.([
@@ -814,8 +766,8 @@ function AiAssistantPage() {
   }, [setPath, activeSpace?.name, t]);
 
   useEffect(() => {
-    saveJsonStorage(STORAGE_KEYS.context, contextValues);
-  }, [contextValues]);
+    saveJsonStorage(STORAGE_KEYS.context, effectiveContextValues);
+  }, [effectiveContextValues]);
 
   useEffect(() => {
     saveJsonStorage(STORAGE_KEYS.sessions, recentSessions);
@@ -832,13 +784,23 @@ function AiAssistantPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setRelativeNow(Date.now());
+    }, 60000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   const persistCurrentSession = (nextMessages) => {
     const realMessages = nextMessages.filter((message) => message.kind !== "welcome");
     if (realMessages.length === 0) return;
     const snapshot = createSessionSnapshot({
       sessionId: currentSessionId,
       messages: nextMessages,
-      context: contextValues,
+      context: effectiveContextValues,
       t,
     });
     setRecentSessions((currentSessions) => {
@@ -1065,8 +1027,8 @@ function AiAssistantPage() {
     try {
       if (actionKey === "board_risk") {
         const payload = await riskMutation.mutateAsync({
-          spaceId: contextValues.spaceId.trim(),
-          boardId: contextValues.boardId.trim() || undefined,
+          spaceId: effectiveContextValues.spaceId.trim(),
+          boardId: effectiveContextValues.boardId.trim() || undefined,
         });
         appendAssistantResult(t("aiAssistant.scans.riskLabel"), formatApiResult(payload), {
           icon: "fa-chalkboard",
@@ -1075,8 +1037,8 @@ function AiAssistantPage() {
       }
       if (actionKey === "report") {
         const payload = await reportMutation.mutateAsync({
-          spaceId: contextValues.spaceId.trim(),
-          boardId: contextValues.boardId.trim() || undefined,
+          spaceId: effectiveContextValues.spaceId.trim(),
+          boardId: effectiveContextValues.boardId.trim() || undefined,
           reportType: "weekly",
         });
         appendAssistantResult(t("aiAssistant.scans.reportLabel"), formatApiResult(payload), {
@@ -1147,7 +1109,7 @@ function AiAssistantPage() {
     if (!session) return;
     setCurrentSessionId(session.id);
     setMessages(session.messages);
-    setContextValues(session.context || contextValues);
+    setContextValues(session.context || effectiveContextValues);
     setActiveTab("chat");
   };
 
@@ -1155,7 +1117,7 @@ function AiAssistantPage() {
 
   // Relative timestamp helper
   const relativeTime = (iso) => {
-    const diff = Date.now() - new Date(iso).getTime();
+    const diff = relativeNow - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
@@ -1285,7 +1247,7 @@ function AiAssistantPage() {
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 px-3 py-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:border-indigo-200 hover:bg-indigo-50/30 dark:hover:bg-slate-800 cursor-pointer transition-all duration-150"
                 >
                   <i className="fa-solid fa-folder text-indigo-500 text-[10px]" />
-                  {spaces.find(s => s.id === contextValues.spaceId)?.name || t("aiAssistant.labels.currentWorkspace")}
+                  {spaces.find(s => s.id === effectiveContextValues.spaceId)?.name || t("aiAssistant.labels.currentWorkspace")}
                   <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                 </button>
                 {headerSpaceOpen && (
@@ -1304,7 +1266,7 @@ function AiAssistantPage() {
                             setHeaderSpaceOpen(false);
                           }}
                           className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} ${
-                            contextValues.spaceId === s.id ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/40" : "text-slate-700 dark:text-slate-300"
+                            effectiveContextValues.spaceId === s.id ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/40" : "text-slate-700 dark:text-slate-300"
                           }`}
                         >
                           {s.name}
@@ -1319,12 +1281,12 @@ function AiAssistantPage() {
               <div className="relative">
                 <button
                   type="button"
-                  disabled={!contextValues.spaceId}
+                  disabled={!effectiveContextValues.spaceId}
                   onClick={() => setHeaderBoardOpen(!headerBoardOpen)}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 px-3 py-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:border-emerald-200 hover:bg-emerald-50/30 dark:hover:bg-slate-800 cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <i className="fa-solid fa-columns text-emerald-500 text-[10px]" />
-                  {activeBoards.find(b => b.id === contextValues.boardId)?.name || t("aiAssistant.labels.currentBoard")}
+                  {activeBoards.find(b => b.id === effectiveContextValues.boardId)?.name || t("aiAssistant.labels.currentBoard")}
                   <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                 </button>
                 {headerBoardOpen && (
@@ -1345,7 +1307,7 @@ function AiAssistantPage() {
                               setHeaderBoardOpen(false);
                             }}
                             className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} ${
-                              contextValues.boardId === b.id ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/40" : "text-slate-700 dark:text-slate-300"
+                              effectiveContextValues.boardId === b.id ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/40" : "text-slate-700 dark:text-slate-300"
                             }`}
                           >
                             {b.name}
@@ -1888,7 +1850,6 @@ function AiAssistantPage() {
                               feedbackState={message.traceId ? messageFeedback[message.traceId] : null}
                               onFeedback={(traceId, rating) => void handleMessageFeedback(traceId, rating)}
                               onRetry={handleRetry}
-                              onCitationClick={handleCitationClick}
                               onActionDecision={reviewFeedAction}
                               reviewingActionId={reviewingActionId}
                             />
@@ -1915,7 +1876,7 @@ function AiAssistantPage() {
                   {/* Suggestion Chips */}
                   <div className="flex flex-wrap gap-1.5 mb-3 items-center">
                     <span className={`text-[9.5px] font-bold text-slate-400 uppercase tracking-[0.12em] ${isRTL ? "ml-0.5" : "mr-0.5"}`}>{t("aiAssistant.labels.chat.tryAsking")}</span>
-                    {t("aiAssistant.suggestionChips", { returnObjects: true }).map((chip) => (
+                    {suggestionChips.map((chip) => (
                       <button
                         key={chip.label}
                         type="button"
@@ -1995,7 +1956,7 @@ function AiAssistantPage() {
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors"
                         >
                           <i className="fa-solid fa-folder text-indigo-500 text-[10px]" />
-                          {spaces.find(s => s.id === contextValues.spaceId)?.name || t("aiAssistant.labels.currentWorkspace")}
+                          {spaces.find(s => s.id === effectiveContextValues.spaceId)?.name || t("aiAssistant.labels.currentWorkspace")}
                           <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                         </button>
                         {spaceDropdownOpen && (
@@ -2014,7 +1975,7 @@ function AiAssistantPage() {
                                     setSpaceDropdownOpen(false);
                                   }}
                                   className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} ${
-                                    contextValues.spaceId === s.id
+                                    effectiveContextValues.spaceId === s.id
                                       ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
                                       : "text-slate-700 dark:text-slate-300"
                                   }`}
@@ -2031,12 +1992,12 @@ function AiAssistantPage() {
                       <div className="relative">
                         <button
                           type="button"
-                          disabled={!contextValues.spaceId}
+                          disabled={!effectiveContextValues.spaceId}
                           onClick={() => setBoardDropdownOpen(!boardDropdownOpen)}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <i className="fa-solid fa-columns text-emerald-500 text-[10px]" />
-                          {activeBoards.find(b => b.id === contextValues.boardId)?.name || t("aiAssistant.labels.currentBoard")}
+                          {activeBoards.find(b => b.id === effectiveContextValues.boardId)?.name || t("aiAssistant.labels.currentBoard")}
                           <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                         </button>
                         {boardDropdownOpen && (
@@ -2057,7 +2018,7 @@ function AiAssistantPage() {
                                       setBoardDropdownOpen(false);
                                     }}
                                     className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${isRTL ? "text-right" : "text-left"} ${
-                                      contextValues.boardId === b.id
+                                      effectiveContextValues.boardId === b.id
                                         ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
                                         : "text-slate-700 dark:text-slate-300"
                                     }`}
@@ -2075,12 +2036,12 @@ function AiAssistantPage() {
                       <div className="relative">
                         <button
                           type="button"
-                          disabled={!contextValues.boardId || tasksQuery.isLoading}
+                          disabled={!effectiveContextValues.boardId || tasksQuery.isLoading}
                           onClick={() => setTaskDropdownOpen(!taskDropdownOpen)}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <i className="fa-solid fa-list-check text-sky-500 text-[10px]" />
-                          {boardTasks.find(t => t.id === contextValues.taskId)?.title || t("aiAssistant.labels.focusTask")}
+                          {boardTasks.find(t => t.id === effectiveContextValues.taskId)?.title || t("aiAssistant.labels.focusTask")}
                           <i className={`fa-solid fa-chevron-down text-[8px] opacity-50 ${isRTL ? "mr-0.5" : "ml-0.5"}`} />
                         </button>
                         {taskDropdownOpen && (
@@ -2110,7 +2071,7 @@ function AiAssistantPage() {
                                         setTaskDropdownOpen(false);
                                       }}
                                       className={`w-full rounded-xl px-3.5 py-2.5 text-[11.5px] font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 truncate ${isRTL ? "text-right" : "text-left"} ${
-                                        contextValues.taskId === t.id
+                                        effectiveContextValues.taskId === t.id
                                           ? "text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-955/20"
                                           : "text-slate-700 dark:text-slate-300"
                                       }`}
@@ -2193,56 +2154,6 @@ function AiAssistantPage() {
           )}
         </div>
       </main>
-
-      {/* Meeting Transcript Modal */}
-      {transcriptModalOpen && activeMeetingTranscript && (
-        <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-808 flex flex-col max-h-[85vh] overflow-hidden animate-slideUp">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-slate-800/80">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">{t("aiAssistant.transcript.title")}</span>
-                <h3 className="text-[15px] font-black text-slate-900 dark:text-slate-100 truncate max-w-[450px]">
-                  {activeMeetingTranscript.title}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setTranscriptModalOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-              >
-                <i className="fa-solid fa-xmark text-sm" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 text-[13px] leading-6 whitespace-pre-wrap text-slate-750 dark:text-slate-350">
-              {loadingTranscript ? (
-                <div className="flex flex-col items-center justify-center py-16 gap-3">
-                  <i className="fa-solid fa-spinner fa-spin text-2xl text-indigo-500" />
-                  <span className="text-slate-400 font-bold">{t("aiAssistant.transcript.decrypting")}</span>
-                </div>
-              ) : (
-                <div className="bg-slate-50 dark:bg-slate-955 p-4.5 rounded-2xl border border-slate-150/50 dark:border-slate-808/60 font-sans">
-                  {activeMeetingTranscript.text}
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/80 flex justify-end bg-slate-50/50 dark:bg-slate-955/20">
-              <button
-                type="button"
-                onClick={() => setTranscriptModalOpen(false)}
-                className="rounded-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white px-5 py-2 text-[11.5px] font-bold text-white dark:text-slate-900 transition cursor-pointer shadow-sm"
-              >
-                {t("common.close")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <ToastContainer toasts={toasts} onClose={handleToastClose} />
     </div>
   );

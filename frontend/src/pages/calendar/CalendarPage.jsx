@@ -263,7 +263,6 @@ export default function CalendarPage() {
   const [calendarView, setCalendarView] = useState("month");
   const [draftFilters, setDraftFilters] = useState(() => readFilters(activeSpaceId, activeBoardId));
   const [appliedFilters, setAppliedFilters] = useState(() => readFilters(activeSpaceId, activeBoardId));
-  const [pageError, setPageError] = useState("");
   const [selectedDayEventsExpanded, setSelectedDayEventsExpanded] = useState(false);
   const preferencesQuery = useCalendarPreferencesQuery();
   const googleStatusQuery = useGoogleCalendarStatusQuery(activeSpaceId);
@@ -302,12 +301,20 @@ export default function CalendarPage() {
 
   const visibleRange = useMemo(() => getVisibleRange(anchorDate, calendarView), [anchorDate, calendarView]);
   const preferences = preferencesQuery.data || null;
+  const resolvedAppliedFilters = useMemo(
+    () => ({
+      spaceId: appliedFilters.spaceId.trim() || activeSpaceId || "",
+      boardId: appliedFilters.boardId.trim() || activeBoardId || "",
+      holidayCountry: appliedFilters.holidayCountry.trim() || preferences?.holidayCountry || "",
+    }),
+    [activeBoardId, activeSpaceId, appliedFilters.boardId, appliedFilters.holidayCountry, appliedFilters.spaceId, preferences?.holidayCountry],
+  );
   const calendarEventsQuery = useCalendarEventsQuery({
     from: formatDateKey(visibleRange.start),
     to: formatDateKey(visibleRange.end),
-    spaceId: appliedFilters.spaceId.trim(),
-    boardId: appliedFilters.boardId.trim(),
-    holidayCountry: appliedFilters.holidayCountry.trim() || preferences?.holidayCountry || "",
+    spaceId: resolvedAppliedFilters.spaceId,
+    boardId: resolvedAppliedFilters.boardId,
+    holidayCountry: resolvedAppliedFilters.holidayCountry,
     enabled: Boolean(visibleRange.start && visibleRange.end),
   });
   const normalizedEvents = useMemo(() => normalizeEvents(calendarEventsQuery.data, t), [calendarEventsQuery.data, t]);
@@ -343,8 +350,8 @@ export default function CalendarPage() {
   const selectedDateKey = formatDateKey(selectedDate);
   const selectedDayEvents = eventsByDate.get(selectedDateKey) || [];
   const nonWorkingEntries = useMemo(
-    () => buildNonWorkingEntries(visibleDates, eventsByDate, appliedFilters.holidayCountry || preferences?.holidayCountry || ""),
-    [appliedFilters.holidayCountry, eventsByDate, preferences?.holidayCountry, visibleDates],
+    () => buildNonWorkingEntries(visibleDates, eventsByDate, resolvedAppliedFilters.holidayCountry),
+    [eventsByDate, resolvedAppliedFilters.holidayCountry, visibleDates],
   );
   const nonWorkingDaySet = useMemo(() => new Set(nonWorkingEntries.map((entry) => entry.dateKey)), [nonWorkingEntries]);
 
@@ -355,44 +362,11 @@ export default function CalendarPage() {
     ]);
   }, [activeSpace?.name, setPath, t]);
 
-  useEffect(() => {
-    if (!preferences) {
-      return;
-    }
-
-    setDraftFilters((current) => ({
-      ...current,
-      holidayCountry: current.holidayCountry || preferences.holidayCountry || "",
-      spaceId: current.spaceId || activeSpaceId || "",
-      boardId: current.boardId || activeBoardId || "",
-    }));
-    setAppliedFilters((current) => ({
-      ...current,
-      holidayCountry: current.holidayCountry || preferences.holidayCountry || "",
-      spaceId: current.spaceId || activeSpaceId || "",
-      boardId: current.boardId || activeBoardId || "",
-    }));
-  }, [activeBoardId, activeSpaceId, preferences]);
-
-  useEffect(() => {
-    if (preferencesQuery.isError) {
-      setPageError(preferencesQuery.error?.message || t("calendar.notices.preferencesFailed"));
-      return;
-    }
-
-    if (calendarEventsQuery.isError) {
-      setPageError(calendarEventsQuery.error?.message || t("calendar.notices.calendarFailed"));
-      return;
-    }
-
-    setPageError("");
-  }, [
-    calendarEventsQuery.error?.message,
-    calendarEventsQuery.isError,
-    preferencesQuery.error?.message,
-    preferencesQuery.isError,
-    t,
-  ]);
+  const pageError = preferencesQuery.isError
+    ? preferencesQuery.error?.message || t("calendar.notices.preferencesFailed")
+    : calendarEventsQuery.isError
+      ? calendarEventsQuery.error?.message || t("calendar.notices.calendarFailed")
+      : "";
 
   useEffect(() => {
     try {
@@ -423,7 +397,11 @@ export default function CalendarPage() {
   };
 
   const handleApplyFilters = () => {
-    setAppliedFilters(draftFilters);
+    setAppliedFilters({
+      spaceId: draftFilters.spaceId.trim(),
+      boardId: draftFilters.boardId.trim(),
+      holidayCountry: draftFilters.holidayCountry.trim().toUpperCase(),
+    });
     setSelectedDayEventsExpanded(false);
   };
 

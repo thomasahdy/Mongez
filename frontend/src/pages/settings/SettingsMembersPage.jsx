@@ -69,8 +69,8 @@ export default function SettingsMembersPage({ setPath }) {
   const removeMemberMutation = useRemoveSpaceMemberMutation(activeSpaceId);
   const revokeInvitationMutation = useRevokeSpaceInvitationMutation(activeSpaceId);
   const leaveWorkspaceMutation = useLeaveSpaceMutation(activeSpaceId);
-  const spaceMembers = membersQuery.data || [];
-  const invitations = invitationsQuery.data?.items || [];
+  const spaceMembers = useMemo(() => membersQuery.data || [], [membersQuery.data]);
+  const invitations = useMemo(() => invitationsQuery.data?.items || [], [invitationsQuery.data?.items]);
   const canViewInvitations = invitationsQuery.data?.canViewInvitations ?? true;
   const loading = membersQuery.isLoading || membersQuery.isFetching;
   const loadingInvitations = invitationsQuery.isLoading || invitationsQuery.isFetching;
@@ -112,25 +112,11 @@ export default function SettingsMembersPage({ setPath }) {
   const currentRole = String(getMemberRole(currentMembership)).toUpperCase();
   const canManageMembers = MANAGE_ROLES.has(currentRole);
 
-  useEffect(() => {
-    if (membersQuery.isError) {
-      setPageError(membersQuery.error?.message || t("members.errors.membersFailed"));
-      return;
-    }
-
-    if (invitationsQuery.isError) {
-      setPageError(invitationsQuery.error?.message || t("members.errors.invitesFailed"));
-      return;
-    }
-
-    setPageError("");
-  }, [
-    invitationsQuery.error?.message,
-    invitationsQuery.isError,
-    membersQuery.error?.message,
-    membersQuery.isError,
-    t,
-  ]);
+  const queryError = membersQuery.isError
+    ? membersQuery.error?.message || t("members.errors.membersFailed")
+    : invitationsQuery.isError
+      ? invitationsQuery.error?.message || t("members.errors.invitesFailed")
+      : "";
 
   const handleRefresh = async () => {
     setPageError("");
@@ -334,9 +320,9 @@ export default function SettingsMembersPage({ setPath }) {
             />
           </div>
 
-          {error || pageError ? (
+          {error || pageError || queryError ? (
             <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-              {pageError || error}
+              {pageError || queryError || error}
             </div>
           ) : null}
 

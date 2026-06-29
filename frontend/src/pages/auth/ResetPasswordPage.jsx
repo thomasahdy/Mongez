@@ -98,12 +98,6 @@ export default function ResetPasswordPage() {
   }, [mode, tokenValid, tokenChecking]);
 
   useEffect(() => {
-    if (tokenVerificationQuery.isError) {
-      setError(tokenVerificationQuery.error?.message || t("resetPassword.errors.invalidLink"));
-    }
-  }, [t, tokenVerificationQuery.error?.message, tokenVerificationQuery.isError]);
-
-  useEffect(() => {
     if (!(mode === "reset" && success)) {
       return undefined;
     }
@@ -161,6 +155,7 @@ export default function ResetPasswordPage() {
 
   const canSubmitRequest = !submitting && isValidEmail(trimmedEmail);
   const canSubmitReset = tokenValid && !tokenChecking && password && confirmPassword && passwordIssues.length === 0;
+  const displayError = error || (tokenVerificationQuery.isError ? tokenVerificationQuery.error?.message || t("resetPassword.errors.invalidLink") : "");
 
   return (
     <div className="auth-page" dir={isRTL ? "rtl" : "ltr"}>
@@ -294,7 +289,7 @@ export default function ResetPasswordPage() {
             </div>
           )}
 
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {displayError && <p className="text-sm text-rose-600">{displayError}</p>}
           {success && (
             <p className="text-sm text-emerald-600">
               {success}

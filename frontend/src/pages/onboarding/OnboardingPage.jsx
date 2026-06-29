@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import mongezMark from "../../assets/MongezMLogo.svg";
@@ -7,21 +7,49 @@ import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const ONBOARDING_STORAGE_KEY = "pendingOnboarding";
 
+function readPendingOnboardingDraft() {
+  try {
+    const rawPending = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
+    if (!rawPending) {
+      return null;
+    }
+
+    const pending = JSON.parse(rawPending);
+    return {
+      orgName: pending?.organization?.name || "",
+      industry: pending?.organization?.industry || "NGO",
+      size: pending?.organization?.size || "MEDIUM",
+      country: pending?.organization?.country ? String(pending.organization.country).toUpperCase() : "EG",
+      selectedTemplate: pending?.template || "project-board",
+      invites:
+        Array.isArray(pending?.invites) && pending.invites.length > 0
+          ? pending.invites.map((invite) => ({
+              email: invite.email || "",
+              role: String(invite.role || "MEMBER").toUpperCase(),
+            }))
+          : [{ email: "", role: "MEMBER" }],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function OnboardingPage() {
   const { t } = useTranslation();
   const { isRTL } = useLocaleDirection();
   const navigate = useNavigate();
   const onboardingSetupMutation = useOnboardingSetupMutation();
   const templatesQuery = useOnboardingTemplatesQuery();
+  const initialDraft = useMemo(() => readPendingOnboardingDraft(), []);
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
 
-  const [orgName, setOrgName] = useState("");
-  const [industry, setIndustry] = useState("NGO");
-  const [size, setSize] = useState("MEDIUM");
-  const [country, setCountry] = useState("EG");
-  const [selectedTemplate, setSelectedTemplate] = useState("project-board");
-  const [invites, setInvites] = useState([{ email: "", role: "MEMBER" }]);
+  const [orgName, setOrgName] = useState(() => initialDraft?.orgName || "");
+  const [industry, setIndustry] = useState(() => initialDraft?.industry || "NGO");
+  const [size, setSize] = useState(() => initialDraft?.size || "MEDIUM");
+  const [country, setCountry] = useState(() => initialDraft?.country || "EG");
+  const [selectedTemplate, setSelectedTemplate] = useState(() => initialDraft?.selectedTemplate || "project-board");
+  const [invites, setInvites] = useState(() => initialDraft?.invites || [{ email: "", role: "MEMBER" }]);
 
   const industries = t("onboarding.industries", { returnObjects: true });
   const sizes = t("onboarding.sizes", { returnObjects: true });
@@ -31,32 +59,6 @@ export default function OnboardingPage() {
   }));
 
   const templates = templatesQuery.data?.length > 0 ? templatesQuery.data : fallbackTemplates;
-
-  useEffect(() => {
-    try {
-      const rawPending = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
-      if (!rawPending) {
-        return;
-      }
-
-      const pending = JSON.parse(rawPending);
-      if (pending?.organization?.name) setOrgName(pending.organization.name);
-      if (pending?.organization?.industry) setIndustry(pending.organization.industry);
-      if (pending?.organization?.size) setSize(pending.organization.size);
-      if (pending?.organization?.country) setCountry(String(pending.organization.country).toUpperCase());
-      if (pending?.template) setSelectedTemplate(pending.template);
-      if (Array.isArray(pending?.invites) && pending.invites.length > 0) {
-        setInvites(
-          pending.invites.map((invite) => ({
-            email: invite.email || "",
-            role: String(invite.role || "MEMBER").toUpperCase(),
-          })),
-        );
-      }
-    } catch {
-      // Ignore stale onboarding cache.
-    }
-  }, []);
 
   useEffect(() => {
     try {
@@ -183,7 +185,7 @@ export default function OnboardingPage() {
       });
 
       window.localStorage.removeItem(ONBOARDING_STORAGE_KEY);
-      navigate("/spaces", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (requestError) {
       setError(requestError.message || t("onboarding.errors.failed"));
     }

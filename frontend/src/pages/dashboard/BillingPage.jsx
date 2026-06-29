@@ -19,7 +19,7 @@ export default function BillingPage() {
   const { activeSpace, spaces, user } = useAppContext();
   const { t, i18n } = useTranslation();
   const { isRTL } = useLocaleDirection();
-  const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
 
   const spaceId = activeSpace?.id || spaces[0]?.id;
@@ -41,19 +41,12 @@ export default function BillingPage() {
     ]);
   }, [setPath, t]);
 
-  useEffect(() => {
-    if (!spaceId) {
-      setError(t("billing.selectWorkspace"));
-      return;
-    }
-
-    if (billingQuery.isError) {
-      setError(billingQuery.error?.message || t("billing.loadFailed"));
-      return;
-    }
-
-    setError("");
-  }, [billingQuery.error?.message, billingQuery.isError, spaceId, t]);
+  const queryError = !spaceId
+    ? t("billing.selectWorkspace")
+    : billingQuery.isError
+      ? billingQuery.error?.message || t("billing.loadFailed")
+      : "";
+  const error = actionError || queryError;
 
   const formatValue = (value) => {
     if (typeof value === "number") {
@@ -111,7 +104,7 @@ export default function BillingPage() {
             <button
               type="button"
               onClick={() => {
-                setError("");
+                setActionError("");
                 billingQuery.refetch();
               }}
               disabled={loading || !spaceId}

@@ -47,6 +47,31 @@ const integrationPath = [
   { name: "Integrations", color: "text-slate-800", ref: "/settings/integrations" },
 ];
 
+function consumeIntegrationQueryState() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("connected");
+    const authError = params.get("error") || "";
+
+    if (connected || authError) {
+      params.delete("connected");
+      params.delete("error");
+      const nextQuery = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`);
+    }
+
+    return {
+      connectedGoogle: connected === "google",
+      authError,
+    };
+  } catch {
+    return {
+      connectedGoogle: false,
+      authError: "",
+    };
+  }
+}
+
 function getStatus(provider, statuses, activeSpaceId, t) {
   if (provider.backend === "drive") {
     return statuses.googleDriveConnected
@@ -200,8 +225,9 @@ export default function IntegrationsPage({ setPath }) {
   const { activeSpace, activeSpaceId } = useAppContext();
   const { t } = useTranslation();
   const { isRTL } = useLocaleDirection();
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const initialQueryState = useMemo(() => consumeIntegrationQueryState(), []);
+  const [error, setError] = useState(() => initialQueryState.authError);
+  const [successMessage, setSuccessMessage] = useState(() => (initialQueryState.connectedGoogle ? t("integrations.success.driveConnected") : ""));
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("allApps");
   const [busyAction, setBusyAction] = useState("");
@@ -211,11 +237,14 @@ export default function IntegrationsPage({ setPath }) {
   const connectGoogleDrive = useGoogleDriveConnectAction();
   const connectCalendarMutation = useGoogleCalendarConnectMutation();
   const syncCalendarMutation = useGoogleCalendarSyncMutation(activeSpaceId);
-  const statuses = statusesQuery.data || {
-    googleDriveConnected: false,
-    whatsapp: null,
-    telegram: null,
-  };
+  const statuses = useMemo(
+    () => statusesQuery.data || {
+      googleDriveConnected: false,
+      whatsapp: null,
+      telegram: null,
+    },
+    [statusesQuery.data],
+  );
   const loading = statusesQuery.isLoading || statusesQuery.isFetching;
   const filters = useMemo(
     () => [
@@ -269,31 +298,13 @@ export default function IntegrationsPage({ setPath }) {
   }, []);
 
   useEffect(() => {
-    if (statusesQuery.isError) {
-      setError(statusesQuery.error?.message || t("integrations.errors.loadFailed"));
+    if (initialQueryState.connectedGoogle) {
+      void statusesQuery.refetch();
     }
-  }, [statusesQuery.error?.message, statusesQuery.isError, t]);
+  }, [initialQueryState.connectedGoogle, statusesQuery]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const connected = params.get("connected");
-    const authError = params.get("error");
-
-    if (connected === "google") {
-      setSuccessMessage(t("integrations.success.driveConnected"));
-      params.delete("connected");
-      const nextQuery = params.toString();
-      window.history.replaceState({}, "", `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`);
-      statusesQuery.refetch();
-    }
-
-    if (authError) {
-      setError(authError);
-      params.delete("error");
-      const nextQuery = params.toString();
-      window.history.replaceState({}, "", `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`);
-    }
-  }, [statusesQuery.refetch]);
+  const queryError = statusesQuery.isError ? statusesQuery.error?.message || t("integrations.errors.loadFailed") : "";
+  const displayError = error || queryError;
 
   const visibleProviders = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -495,9 +506,9 @@ export default function IntegrationsPage({ setPath }) {
             </div>
           </div>
 
-          {error ? (
+          {displayError ? (
             <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-              {error}
+              {displayError}
             </div>
           ) : null}
 

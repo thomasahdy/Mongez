@@ -157,123 +157,6 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function localizeTaskShell(root, t) {
-  const searchInput = root.querySelector('.unified-search-input');
-  if (searchInput) searchInput.placeholder = t('taskDetails.template.searchPlaceholder');
-
-  const headerActionLabels = root.querySelectorAll('.header-actions .action-btn span');
-  if (headerActionLabels[0]) headerActionLabels[0].textContent = t('taskDetails.template.like');
-  if (headerActionLabels[1]) headerActionLabels[1].textContent = t('taskDetails.template.share');
-  if (headerActionLabels[2]) headerActionLabels[2].textContent = t('taskDetails.template.aiAgents');
-  if (headerActionLabels[3]) headerActionLabels[3].textContent = t('taskDetails.template.newBadge');
-
-  const moreButton = root.querySelector('.toolbar-btn[title]');
-  if (moreButton) moreButton.title = t('taskDetails.template.more');
-
-  const attrLabels = root.querySelectorAll('.attr-label');
-  if (attrLabels[0]) attrLabels[0].textContent = t('taskDetails.template.status');
-  if (attrLabels[1]) attrLabels[1].textContent = t('taskDetails.template.assignee');
-  if (attrLabels[2]) attrLabels[2].textContent = t('taskDetails.template.dueDate');
-  if (attrLabels[3]) attrLabels[3].textContent = t('taskDetails.template.priority');
-  if (attrLabels[4]) attrLabels[4].textContent = t('taskDetails.template.storyPoints');
-  if (attrLabels[5]) attrLabels[5].textContent = t('taskDetails.template.sprint');
-
-  const sectionHeadings = root.querySelectorAll('.section-heading');
-  if (sectionHeadings[0]) sectionHeadings[0].textContent = t('taskDetails.template.description');
-  if (sectionHeadings[1]?.firstElementChild) sectionHeadings[1].firstElementChild.lastChild.textContent = ` ${t('taskDetails.template.subtasks')} (0)`;
-  if (sectionHeadings[2]?.firstElementChild) sectionHeadings[2].firstElementChild.lastChild.textContent = ` ${t('taskDetails.template.linkedTasks')} (0)`;
-  if (sectionHeadings[3]) sectionHeadings[3].textContent = t('taskDetails.template.activity');
-
-  const commentInput = root.querySelector('.comment-textarea');
-  if (commentInput) commentInput.placeholder = t('taskDetails.template.commentPlaceholder');
-
-  const replyInput = root.querySelector('.reply-input');
-  if (replyInput) replyInput.placeholder = t('taskDetails.template.replyPlaceholder');
-
-  const commentMode = root.querySelector('.comment-actions select');
-  if (commentMode?.options?.[0]) commentMode.options[0].text = t('taskDetails.template.visibilityPublic');
-  if (commentMode?.options?.[1]) commentMode.options[1].text = t('taskDetails.template.visibilityInternal');
-
-  const postCommentButton = root.querySelector('.comment-actions button[style*="background:var(--primary)"]');
-  if (postCommentButton) postCommentButton.textContent = t('taskDetails.template.commentButton');
-
-  const commentToolbarButtons = root.querySelectorAll('.comment-toolbar-btns button');
-  if (commentToolbarButtons[0]) commentToolbarButtons[0].title = t('taskDetails.template.mention');
-  if (commentToolbarButtons[1]) commentToolbarButtons[1].title = t('taskDetails.template.emoji');
-  if (commentToolbarButtons[2]) commentToolbarButtons[2].title = t('taskDetails.template.attachFile');
-  if (commentToolbarButtons[3]) commentToolbarButtons[3].title = t('taskDetails.template.codeBlock');
-  if (commentToolbarButtons[4]) commentToolbarButtons[4].title = t('taskDetails.template.screenshot');
-
-  const activityTabs = root.querySelectorAll('.activity-tab');
-  if (activityTabs[0]?.childNodes?.[0]) activityTabs[0].childNodes[0].textContent = t('taskDetails.template.activityAll');
-  if (activityTabs[1]?.childNodes?.[0]) activityTabs[1].childNodes[0].textContent = t('taskDetails.template.activityComments');
-  if (activityTabs[2]?.childNodes?.[0]) activityTabs[2].childNodes[0].textContent = t('taskDetails.template.activityHistory');
-
-  const sidebarHeadings = root.querySelectorAll('.sidebar-heading');
-  if (sidebarHeadings[0]) sidebarHeadings[0].childNodes[0].textContent = t('taskDetails.template.timeTracking');
-  if (sidebarHeadings[1]) sidebarHeadings[1].textContent = t('taskDetails.template.details');
-  if (sidebarHeadings[2]) sidebarHeadings[2].childNodes[0].textContent = t('taskDetails.template.customFields');
-  if (sidebarHeadings[3]) sidebarHeadings[3].childNodes[0].textContent = t('taskDetails.template.watchers');
-  if (sidebarHeadings[4]) sidebarHeadings[4].childNodes[0].textContent = t('taskDetails.template.attachments');
-
-  const timeButtons = root.querySelectorAll('.time-btn');
-  if (timeButtons[0]) timeButtons[0].innerHTML = `<i class="fa-solid fa-pause"></i> ${t('taskDetails.template.timePause')}`;
-  if (timeButtons[1]) timeButtons[1].innerHTML = `<i class="fa-solid fa-stop"></i> ${t('taskDetails.template.timeStop')}`;
-  if (timeButtons[2]) timeButtons[2].innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> ${t('taskDetails.template.timeLog')}`;
-
-  const sidebarLabels = root.querySelectorAll('.sidebar-label');
-  if (sidebarLabels[0]) sidebarLabels[0].textContent = t('taskDetails.template.created');
-  if (sidebarLabels[1]) sidebarLabels[1].textContent = t('taskDetails.template.updated');
-  if (sidebarLabels[2]) sidebarLabels[2].textContent = t('taskDetails.template.startDate');
-  if (sidebarLabels[3]) sidebarLabels[3].textContent = t('taskDetails.template.department');
-  if (sidebarLabels[4]) sidebarLabels[4].textContent = t('taskDetails.template.reviewer');
-
-  const customFieldLabels = root.querySelectorAll('.custom-field-label');
-  if (customFieldLabels[0]) customFieldLabels[0].textContent = t('taskDetails.template.designCompletion');
-  if (customFieldLabels[1]) customFieldLabels[1].textContent = t('taskDetails.template.clientApproved');
-  if (customFieldLabels[2]) customFieldLabels[2].textContent = t('taskDetails.template.targetAudience');
-
-  const pendingReview = root.querySelector('.custom-field:nth-of-type(2) .custom-field-value');
-  if (pendingReview) pendingReview.innerHTML = `<i class="fa-solid fa-clock"></i> ${t('taskDetails.template.pendingReview')}`;
-}
-
-function sanitizeTaskShell(root, t, locale) {
-  const breadcrumbs = root.querySelectorAll('.task-breadcrumbs .crumb');
-  if (breadcrumbs[0]) breadcrumbs[0].textContent = t('taskDetails.template.boardFallback');
-  if (breadcrumbs[1]) breadcrumbs[1].textContent = t('taskDetails.template.groupFallback');
-  if (breadcrumbs[2]) breadcrumbs[2].textContent = t('taskDetails.breadcrumb');
-
-  const tags = root.querySelector('.task-tags');
-  if (tags) tags.innerHTML = '';
-
-  setText(root, '.task-id-badge', `# ${t('taskDetails.defaults.task')}`);
-  setText(root, '.task-title', t('taskDetails.breadcrumb'));
-  setText(root, '.task-description', t('taskDetails.notices.loading'));
-
-  setCountHeading(root, 1, t('taskDetails.template.subtasks'), ' (0)');
-  setCountHeading(root, 2, t('taskDetails.template.linkedTasks'), ' (0)');
-
-  hydrateSubtasks(root, [], t, locale);
-  hydrateRelations(root, [], t);
-  hydrateComments(root, [], t, locale);
-  hydrateWatchers(root, [], t);
-  hydrateAttachments(root, [], t, locale);
-  hydrateTime(root, [], null, t);
-
-  const sidebarValues = root.querySelectorAll('.sidebar-value');
-  sidebarValues.forEach((node) => {
-    node.textContent = t('taskDetails.defaults.noValue');
-  });
-
-  const customValues = root.querySelectorAll('.custom-field-value');
-  if (customValues[0]) customValues[0].textContent = '0%';
-  if (customValues[1]) customValues[1].innerHTML = `<i class="fa-solid fa-clock"></i> ${t('taskDetails.template.pendingReview')}`;
-  if (customValues[2]) customValues[2].textContent = t('taskDetails.defaults.noValue');
-
-  const progressFill = root.querySelector('.progress-mini-fill');
-  if (progressFill) progressFill.style.width = '0%';
-}
-
 function TaskDetailsPage() {
   const { taskId } = useParams();
   const { t, i18n } = useTranslation();
@@ -496,7 +379,6 @@ function TaskDetailsPage() {
   // Calculate Time Tracking details
   const totalMinutes = timeLogs.reduce((total, item) => total + (Number(item.durationMinutes) || Number(item.hours) * 60 || 0), 0);
   const totalHours = Math.floor(totalMinutes / 60);
-  const remainingMinutes = Math.round(totalMinutes % 60);
   const estimatedHours = task.estimatedHours || 0;
   const timePercent = estimatedHours > 0 ? Math.min(100, Math.round((totalMinutes / (estimatedHours * 60)) * 100)) : 0;
 
@@ -528,7 +410,9 @@ function TaskDetailsPage() {
       await applyTaskUpdate({ title: editedTitle.trim() });
       setIsEditingTitle(false);
       setFeedback(t("taskDetails.feedback.titleUpdated"), 'success');
-    } catch (err) {}
+    } catch {
+      // applyTaskUpdate already reports a user-facing error.
+    }
   };
 
   // Description Save Handler
@@ -537,7 +421,9 @@ function TaskDetailsPage() {
       await applyTaskUpdate({ description: editedDesc });
       setIsEditingDesc(false);
       setFeedback(t("taskDetails.feedback.descriptionUpdated"), 'success');
-    } catch (err) {}
+    } catch {
+      // applyTaskUpdate already reports a user-facing error.
+    }
   };
 
   // Subtask Toggle Handler
@@ -546,7 +432,7 @@ function TaskDetailsPage() {
     try {
       await tasksService.updateTask(subtaskId, { status: nextStatus });
       await taskDetailsQuery.refetch();
-    } catch (error) {
+    } catch {
       setFeedback(t("taskDetails.feedback.subtaskUpdateFailed"), 'error');
     }
   };
@@ -567,7 +453,7 @@ function TaskDetailsPage() {
       setIsAddingSubtask(false);
       await taskDetailsQuery.refetch();
       setFeedback(t("taskDetails.feedback.subtaskCreated"), 'success');
-    } catch (error) {
+    } catch {
       setFeedback(t("taskDetails.feedback.subtaskCreateFailed"), 'error');
     }
   };
@@ -583,7 +469,7 @@ function TaskDetailsPage() {
       setCommentText('');
       setIsCommentFocused(false);
       setFeedback(t("taskDetails.feedback.commentAdded"), 'success');
-    } catch (error) {
+    } catch {
       setFeedback(t("taskDetails.feedback.commentFailed"), 'error');
     }
   };
@@ -594,7 +480,7 @@ function TaskDetailsPage() {
     try {
       await deleteCommentMutation.mutateAsync(commentId);
       setFeedback(t("taskDetails.feedback.commentDeleted"), 'success');
-    } catch (error) {
+    } catch {
       setFeedback(t("taskDetails.feedback.commentDeleteFailed"), 'error');
     }
   };
@@ -605,7 +491,7 @@ function TaskDetailsPage() {
     try {
       await deleteFileMutation.mutateAsync(fileId);
       setFeedback(t("taskDetails.feedback.attachmentDeleted"), 'success');
-    } catch (error) {
+    } catch {
       setFeedback(t("taskDetails.feedback.attachmentDeleteFailed"), 'error');
     }
   };
@@ -653,7 +539,7 @@ function TaskDetailsPage() {
         estimatedHours: task.estimatedHours || undefined,
         priority: task.priority || 'NONE'
       });
-    } catch (err) {
+    } catch {
       setFeedback(t("taskDetails.feedback.duplicateFailed"), 'error');
     }
   };
@@ -663,7 +549,9 @@ function TaskDetailsPage() {
     try {
       await applyTaskUpdate({ status: 'CANCELLED' });
       setFeedback(t("taskDetails.feedback.taskArchived"), 'success');
-    } catch (err) {}
+    } catch {
+      // applyTaskUpdate already reports a user-facing error.
+    }
   };
 
   // Log hours handler
@@ -911,7 +799,9 @@ function TaskDetailsPage() {
                           try {
                             await applyTaskUpdate({ status: s.value });
                             setFeedback(t("taskDetails.feedback.statusUpdated"), 'success');
-                          } catch (err) {}
+                          } catch {
+                            // applyTaskUpdate already reports a user-facing error.
+                          }
                         }}
                         className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${isRTL ? "text-right" : "text-left"} ${
                           task.status === s.value ? 'bg-primary-dim text-primary' : 'text-slate-700 dark:text-slate-300'
@@ -955,7 +845,9 @@ function TaskDetailsPage() {
                           try {
                             await applyTaskUpdate({ priority: p.value });
                             setFeedback(t("taskDetails.feedback.priorityUpdated"), 'success');
-                          } catch (err) {}
+                          } catch {
+                            // applyTaskUpdate already reports a user-facing error.
+                          }
                         }}
                         className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors cursor-pointer ${isRTL ? "text-right" : "text-left"} ${
                           task.priority === p.value ? 'bg-primary-dim text-primary' : 'text-slate-700 dark:text-slate-300'
@@ -1018,7 +910,9 @@ function TaskDetailsPage() {
                           try {
                             await applyTaskUpdate({ assigneeIds: [] });
                             setFeedback(t("taskDetails.feedback.assigneeCleared"), 'success');
-                          } catch (err) {}
+                          } catch {
+                            // applyTaskUpdate already reports a user-facing error.
+                          }
                         }}
                         className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-505 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
                       >
@@ -1037,8 +931,10 @@ function TaskDetailsPage() {
                               setAssigneeSearch('');
                               try {
                                 await applyTaskUpdate({ assigneeIds: [id] });
-                            setFeedback(t("taskDetails.feedback.assigneeUpdated"), 'success');
-                              } catch (err) {}
+                                setFeedback(t("taskDetails.feedback.assigneeUpdated"), 'success');
+                              } catch {
+                                // applyTaskUpdate already reports a user-facing error.
+                              }
                             }}
                             className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 cursor-pointer ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
                           >
@@ -1067,7 +963,9 @@ function TaskDetailsPage() {
                     try {
                       await applyTaskUpdate({ dueDate: val ? new Date(val).toISOString() : null });
                       setFeedback(t("taskDetails.feedback.dueDateUpdated"), 'success');
-                    } catch (err) {}
+                    } catch {
+                      // applyTaskUpdate already reports a user-facing error.
+                    }
                   }}
                   className={`bg-transparent border-none text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer outline-none p-0 focus:ring-0 w-full ${isRTL ? "text-right" : "text-left"}`}
                 />

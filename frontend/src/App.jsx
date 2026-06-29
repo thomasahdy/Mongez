@@ -40,6 +40,14 @@ const WorkflowInstancesList = lazy(() => import("./pages/workflow/WorkflowInstan
 const WorkflowBuilder = lazy(() => import("./pages/workflow/WorkflowBuilder"));
 const OAuthCallbackPage = lazy(() => import("./pages/auth/OAuthCallbackPage"));
 
+function hasPendingOnboarding() {
+  try {
+    return Boolean(window.localStorage.getItem("pendingOnboarding"));
+  } catch {
+    return false;
+  }
+}
+
 function FullScreenLoader() {
   const { t } = useTranslation();
 
@@ -62,7 +70,7 @@ function PublicOnlyRoute({ isAuthenticated, authReady, children }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/spaces" replace />;
+    return <Navigate to={hasPendingOnboarding() ? "/onboarding" : "/dashboard"} replace />;
   }
 
   return children;
@@ -79,6 +87,10 @@ function ProtectedShell({ isAuthenticated, authReady }) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  if (hasPendingOnboarding() && location.pathname !== "/onboarding") {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return <Outlet />;
 }
 
@@ -91,17 +103,24 @@ function AppContent() {
   const isAuthenticated = Boolean(authSession.data?.isAuthenticated);
 
   useEffect(() => {
-    const resolvedLanguage = (i18n.resolvedLanguage || i18n.language || "en").slice(0, 2);
-    if (resolvedLanguage !== language) {
-      setLanguage(resolvedLanguage);
-    }
-  }, [i18n.language, i18n.resolvedLanguage, language]);
+    const handleLanguageChange = (nextLanguage) => {
+      const resolvedLanguage = String(nextLanguage || i18n.resolvedLanguage || i18n.language || "en").slice(0, 2);
+      setLanguage((currentLanguage) => (currentLanguage === resolvedLanguage ? currentLanguage : resolvedLanguage));
+    };
+
+    i18n.on?.("languageChanged", handleLanguageChange);
+    return () => {
+      i18n.off?.("languageChanged", handleLanguageChange);
+    };
+  }, [i18n]);
 
   useEffect(() => {
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
     document.documentElement.lang = language;
     window.localStorage.setItem("mongez.language", language);
-    void i18n.changeLanguage(language);
+    if ((i18n.resolvedLanguage || i18n.language || "en").slice(0, 2) !== language) {
+      void i18n.changeLanguage(language);
+    }
   }, [i18n, language]);
 
   return (
@@ -113,7 +132,7 @@ function AppContent() {
             !authReady ? (
               <FullScreenLoader />
             ) : isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={hasPendingOnboarding() ? "/onboarding" : "/dashboard"} replace />
             ) : (
               <LandingPage />
             )
@@ -190,7 +209,7 @@ function AppContent() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to={isAuthenticated ? "/spaces" : "/"} replace />} />
+        <Route path="*" element={<Navigate to={isAuthenticated ? (hasPendingOnboarding() ? "/onboarding" : "/dashboard") : "/"} replace />} />
       </Routes>
     </Suspense>
   );

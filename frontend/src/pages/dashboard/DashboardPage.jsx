@@ -170,11 +170,11 @@ function DistributionChart({ items, emptyLabel, locale }) {
   }
 
   const total = items.reduce((sum, item) => sum + item.value, 0) || 1;
-  let cumulative = 0;
-  const angles = items.slice(0, 4).map((item) => {
-    cumulative += (item.value / total) * 360;
-    return `${Math.round(cumulative)}deg`;
-  });
+  const angles = items.slice(0, 4).reduce((accumulator, item) => {
+    const previousAngle = accumulator.length ? Number.parseInt(accumulator[accumulator.length - 1], 10) : 0;
+    const nextAngle = previousAngle + (item.value / total) * 360;
+    return [...accumulator, `${Math.round(nextAngle)}deg`];
+  }, []);
 
   return (
     <>
@@ -211,7 +211,7 @@ function DashboardPage() {
   const { t, i18n } = useTranslation();
   const { isRTL } = useLocaleDirection();
   const spaceId = activeSpace?.id || spaces[0]?.id;
-  const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [exporting, setExporting] = useState(false);
   const locale = i18n.language?.startsWith("ar") ? "ar-EG" : "en-US";
   const dashboardQuery = useDashboardAnalyticsQuery(spaceId);
@@ -233,28 +233,21 @@ function DashboardPage() {
     ]);
   }, [activeSpace?.name, setPath, t]);
 
-  useEffect(() => {
-    if (!spaceId) {
-      setError(t("dashboard.selectWorkspace"));
-      return;
-    }
-
-    if (dashboardQuery.isError) {
-      setError(dashboardQuery.error?.message || t("dashboard.loadFailed"));
-      return;
-    }
-
-    setError("");
-  }, [dashboardQuery.error?.message, dashboardQuery.isError, spaceId, t]);
+  const queryError = !spaceId
+    ? t("dashboard.selectWorkspace")
+    : dashboardQuery.isError
+      ? dashboardQuery.error?.message || t("dashboard.loadFailed")
+      : "";
+  const error = actionError || queryError;
 
   const exportDashboard = async () => {
     if (!spaceId) {
-      setError(t("dashboard.exportSelectWorkspace"));
+      setActionError(t("dashboard.exportSelectWorkspace"));
       return;
     }
 
     setExporting(true);
-    setError("");
+    setActionError("");
 
     try {
       const payload = {
@@ -278,7 +271,7 @@ function DashboardPage() {
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (exportError) {
-      setError(exportError.message || t("dashboard.exportFailed"));
+      setActionError(exportError.message || t("dashboard.exportFailed"));
     } finally {
       setExporting(false);
     }
@@ -404,7 +397,7 @@ function DashboardPage() {
               type="button"
               className="action-btn"
               onClick={() => {
-                setError("");
+                setActionError("");
                 dashboardQuery.refetch();
               }}
             >
