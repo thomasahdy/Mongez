@@ -78,6 +78,7 @@ const NotificationsPage = ({ setPath }) => {
             weekendNotifications,
         });
     };
+    const { t } = useTranslation();
 
     return (
         <div className="flex flex-1 overflow-hidden">

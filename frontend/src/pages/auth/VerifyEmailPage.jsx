@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
+import { NavLink } from "react-router-dom";
 import BrandLogo from "../../components/branding/BrandLogo";
 import {
   useSendVerificationEmailMutation,

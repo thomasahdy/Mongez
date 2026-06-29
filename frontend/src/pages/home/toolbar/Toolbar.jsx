@@ -53,26 +53,7 @@ function Toolbar() {
           <div className="text-sm font-semibold text-slate-800">{boardName}</div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {error && <span className="text-xs text-rose-600">{error}</span>}
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
-          >
-            <i className="fa-solid fa-rotate-right mr-1.5 text-[12px]" />
-            {t("toolbar.refresh")}
-          </button>
-          <button
-            type="button"
-            onClick={handleCreateTask}
-            disabled={creating}
-            className="rounded-lg bg-sky-500 px-3.5 py-1.5 text-[13px] font-semibold text-white transition-all hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <i className="fa-solid fa-plus mr-1.5" />
-            {creating ? t("toolbar.creating") : t("toolbar.newTask")}
-          </button>
-        </div>
+        
       </div>
     </div>
   );

@@ -3,7 +3,20 @@ import { useTranslation } from "react-i18next";
 import PriorityBar from "../../components/reports/PriorityBar";
 import ChartCard from "../../components/reports/ChartCard";
 import { usePriorityBreakdown } from "../../hooks/api/useAnalytics";
-
+export const PRIORITY_CONFIG = {
+  LOW: {
+    color: "#22c55e",
+  },
+  MEDIUM: {
+    color: "#3b82f6",
+  },
+  HIGH: {
+    color: "#f59e0b",
+  },
+  URGENT: {
+    color: "#ef4444",
+  },
+};
 const normalizePriority = (data = []) => {
   const total = data.reduce((sum, i) => sum + i.count, 0);
 
