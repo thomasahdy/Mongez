@@ -1,7 +1,7 @@
 import NotificationChannelsTable from "./NotificationChannelTable";
 
 const NotificationChannelsCard = ({ settings, onToggle, loading, }) => {
-    if(loading){
+    if (loading) {
         return (
             <div className="rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-slate-500 dark:text-slate-400">
                 Loading...
@@ -16,14 +16,14 @@ const NotificationChannelsCard = ({ settings, onToggle, loading, }) => {
                 Delivery Channels
             </div>
 
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 Toggle which channels receive each notification type. External channels require integration setup.
-            </p>
+            </div>
 
             <div className="overflow-x-auto mt-4">
                 <NotificationChannelsTable settings={settings} onToggle={onToggle}/>
             </div>
-        </div>
+        </div >
     );
 };
 

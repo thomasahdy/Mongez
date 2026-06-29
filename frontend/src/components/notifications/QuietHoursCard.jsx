@@ -15,9 +15,9 @@ const QuietHoursCard = ({
                 <span>Quiet Hours & Focus</span>
             </div>
 
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 Pause non-urgent notifications during off-hours to stay focused.
-            </p>
+            </div>
 
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 py-5">
                 <div>
@@ -97,7 +97,7 @@ const QuietHoursCard = ({
                     disabled={loading}
                 />
             </div>
-        </div>
+        </div >
     );
 };
 

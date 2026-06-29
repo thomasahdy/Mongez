@@ -1,4 +1,14 @@
-const NotificationChannelsRow = ({setting, onToggle }) => {
+import ToggleSwitch from "./ToggleSwitch";
+
+const labelOverrides = {
+  TASK_ASSIGNED: "Task assigned to me",
+  COMMENT_MENTION: "@mentioned in a comment",
+  TASK_UPDATED: "Task status changed",
+  TASK_DUE: "Deadline approaching (24h)",
+  FILE_UPLOADED: "File uploaded/updated",
+};
+
+const NotificationChannelsRow = ({ setting, onToggle }) => {
   const {
     id,
     label,
@@ -14,47 +24,31 @@ const NotificationChannelsRow = ({setting, onToggle }) => {
         {label}
       </td>
 
-      <td className="px-4 py-4 text-center">
-        <input
-          type="checkbox"
+      <td>
+        <ToggleSwitch
           checked={inApp}
-          onChange={(e) =>
-            onToggle(id, "inApp", e.target.checked)
-          }
-          className="h-4 w-4 cursor-pointer accent-indigo-500 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950"
+          onChange={(checked) => onToggle(id, "inApp", checked)}
         />
       </td>
 
-      <td className="px-4 py-4 text-center">
-        <input
-          type="checkbox"
+      <td>
+        <ToggleSwitch
           checked={email}
-          onChange={(e) =>
-            onToggle(id, "email", e.target.checked)
-          }
-          className="h-4 w-4 cursor-pointer accent-indigo-500 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950"
+          onChange={(checked) => onToggle(id, "email", checked)}
         />
       </td>
 
-      <td className="px-4 py-4 text-center">
-        <input
-          type="checkbox"
+      <td>
+        <ToggleSwitch
           checked={whatsapp}
-          onChange={(e) =>
-            onToggle(id, "whatsapp", e.target.checked)
-          }
-          className="h-4 w-4 cursor-pointer accent-indigo-500 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950"
+          onChange={(checked) => onToggle(id, "whatsapp", checked)}
         />
       </td>
 
-      <td className="px-4 py-4 text-center">
-        <input
-          type="checkbox"
+      <td>
+        <ToggleSwitch
           checked={telegram}
-          onChange={(e) =>
-            onToggle(id, "telegram", e.target.checked)
-          }
-          className="h-4 w-4 cursor-pointer accent-indigo-500 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-950"
+          onChange={(checked) => onToggle(id, "telegram", checked)}
         />
       </td>
     </tr>

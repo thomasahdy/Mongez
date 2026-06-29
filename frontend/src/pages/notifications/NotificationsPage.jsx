@@ -33,6 +33,7 @@ const NotificationsPage = ({ setPath }) => {
         updateChannel,
         updateQuietHours,
     } = useNotificationMutations();
+    const settingsData = data?.data ?? data;
 
     const handleToggleChannel = (
         id,
@@ -48,21 +49,21 @@ const NotificationsPage = ({ setPath }) => {
 
     const handleToggleQuietHours = (enabled) => {
         updateQuietHours({
-            ...data?.quietHours,
+            ...settingsData?.quietHours,
             enabled,
         });
     };
 
     const handleChangeStartTime = (startTime) => {
         updateQuietHours({
-            ...data?.quietHours,
+            ...settingsData?.quietHours,
             startTime,
         });
     };
 
     const handleChangeEndTime = (endTime) => {
         updateQuietHours({
-            ...data?.quietHours,
+            ...settingsData?.quietHours,
             endTime,
         });
     };
@@ -71,7 +72,7 @@ const NotificationsPage = ({ setPath }) => {
         weekendNotifications
     ) => {
         updateQuietHours({
-            ...data?.quietHours,
+            ...settingsData?.quietHours,
             weekendNotifications,
         });
     };
@@ -93,14 +94,14 @@ const NotificationsPage = ({ setPath }) => {
                             <NotificationsHeader />
 
                             <NotificationChannelsCard
-                                settings={data?.channels ?? []}
+                                settings={settingsData?.channels ?? []}
                                 onToggle={handleToggleChannel}
                                 loading={false}
                             />
 
                             <QuietHoursCard
                                 settings={
-                                    data?.quietHours ?? {
+                                    settingsData?.quietHours ?? {
                                         enabled: false,
                                         startTime: "22:00",
                                         endTime: "07:00",

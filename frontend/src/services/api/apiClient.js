@@ -32,6 +32,7 @@ export const getCsrfToken = async (force = false) => {
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "/api/v1",
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -71,14 +72,23 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    const shouldSkipRefresh = [
+      "/auth/login",
+      "/auth/register",
+      "/auth/forgot-password",
+      "/auth/reset-password",
+      "/auth/refresh",
+    ].some((url) => originalRequest?.url?.includes(url));
+    
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !shouldSkipRefresh) {
       const refreshToken = getRefreshToken();
       const path = window.location.pathname;
       const isPublicRoute = ['/login', '/register', '/reset-password', '/verify-email', '/'].includes(path);
 
       if (!refreshToken) {
         clearTokens();
-        if (!isPublicRoute) {
+
+        if (!isPublicRoute && !shouldSkipRefresh) {
           showToastBridge('Please sign in to access this page.', 'error');
           window.location.href = '/login';
         }
@@ -107,10 +117,9 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         clearTokens();
-        if (!isPublicRoute) {
+        if (!isPublicRoute && !shouldSkipRefresh) {
           showToastBridge('Your session has expired. Please sign in again.', 'error');
-
-          // Redirect to login — use a small delay so the toast renders first
+          
           setTimeout(() => {
             window.location.href = '/login';
           }, 300);

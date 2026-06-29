@@ -13,9 +13,9 @@ export default function SettingsAuditLogPage({ setPath }) {
   }, [setPath]);
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="settings-layout">
       <SettingsSidebar activeId="audit" />
-      <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950" aria-label="Audit log settings">
+      <main className="settings-content-area" style={{ padding: 0 }} aria-label="Audit log settings">
         <AuditLogPage />
       </main>
     </div>
