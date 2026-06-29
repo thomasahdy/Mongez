@@ -54,7 +54,7 @@ const Sidebar = ({ onCloseMobile, setLanguage, language }) => {
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = "/";
+    window.location.href = "/login";
   };
 
   return (

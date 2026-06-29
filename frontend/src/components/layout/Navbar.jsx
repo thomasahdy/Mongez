@@ -55,7 +55,7 @@ const Navbar = ({ onToggleAI, onToggleSidebar, isSidebarOpen = true, path }) => 
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = "/";
+    window.location.href = "/login";
   };
 
   return (

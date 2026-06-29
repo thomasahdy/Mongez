@@ -10,6 +10,8 @@ import authService from "../../../services/api/authService";
 import AuthLogo from "../shared/AuthLogo";
 import { useTranslation } from "react-i18next";
 import {
+  clearOnboardingSession,
+  clearPendingOnboardingDraft,
   markOnboardingSessionActive,
   persistPendingOnboardingDraft,
 } from "../../../lib/onboardingStorage";
@@ -73,11 +75,13 @@ const RegisterContainer = () => {
       return;
     }
 
-    persistPendingOnboardingDraft({
-      organization: values.organization,
-      template: values.template,
-      invites: skipInvites ? [] : validInvites,
-    });
+    if (!skipInvites) {
+      persistPendingOnboardingDraft({
+        organization: values.organization,
+        template: values.template,
+        invites: validInvites,
+      });
+    }
 
     try {
       const fullName = [values.account.firstName, values.account.lastName].filter(Boolean).join(" ").trim();
@@ -86,8 +90,15 @@ const RegisterContainer = () => {
         password: values.account.password,
         name: fullName,
       });
+      if (skipInvites) {
+        clearPendingOnboardingDraft();
+        clearOnboardingSession();
+        window.location.href = "/dashboard";
+        return;
+      }
+
       markOnboardingSessionActive();
-      window.location.href = skipInvites ? "/dashboard" : "/";
+      window.location.href = "/onboarding";
     } catch (error) {
       const errorMessage = error?.message || error?.toString?.() || t("registerUi.registrationFailed");
       setSubmitError(errorMessage);
