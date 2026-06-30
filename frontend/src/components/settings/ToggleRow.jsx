@@ -1,4 +1,3 @@
-import React from 'react'
 
 const ToggleRow = ({ id, title, description, checked, onChange, isLast = false }) => {
   return (

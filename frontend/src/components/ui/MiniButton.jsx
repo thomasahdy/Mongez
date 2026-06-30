@@ -1,4 +1,3 @@
-import React from 'react'
 
 const MiniButton = ({ children, variant = "default", onClick }) => {
   const variants = {

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { AuditAction } from '../constants/audit-actions.constant';
 import * as crypto from 'crypto';
+import { canLogSensitiveAuthLinks } from '../utils/sensitive-auth-log.util';
 
 @Injectable()
 export class EmailVerificationService {
@@ -64,8 +65,12 @@ export class EmailVerificationService {
     });
 
     // TODO: Send verification email
-    console.log(`Email verification token for ${user.email}: ${token}`);
-    console.log(`Verification link: ${this.configService.get<string>('FRONTEND_URL')}/verify-email?token=${token}`);
+    if (canLogSensitiveAuthLinks(this.configService)) {
+      console.log(`Email verification token for ${user.email}: ${token}`);
+      console.log(
+        `Verification link: ${this.configService.get<string>('FRONTEND_URL')}/verify-email?token=${token}`,
+      );
+    }
   }
 
   /**

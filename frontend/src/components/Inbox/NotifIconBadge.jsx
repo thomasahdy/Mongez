@@ -1,4 +1,3 @@
-import React from 'react'
 
 const NotifIconBadge = ({ bg, color, icon }) => {
   return (

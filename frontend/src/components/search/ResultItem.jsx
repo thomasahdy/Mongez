@@ -1,4 +1,3 @@
-import React from 'react'
 import { useNavigate } from "react-router";
 import ResultIconBadge from './ResultIconBadge';
 import HighlightedText from './../ui/HighlightedText'

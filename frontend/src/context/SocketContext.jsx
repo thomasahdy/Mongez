@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "../services/api/tokenService";
@@ -22,13 +22,15 @@ export const SocketProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [typingUsers, setTypingUsers] = useState({});
+  const socketRef = useRef(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const token = getAccessToken();
     if (!token) {
-      if (socket) {
-        socket.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
         setSocket(null);
         setIsConnected(false);
       }
@@ -236,11 +238,15 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
+    socketRef.current = socketInstance;
     setSocket(socketInstance);
 
     return () => {
       clearInterval(heartbeatInterval);
       socketInstance.disconnect();
+      if (socketRef.current === socketInstance) {
+        socketRef.current = null;
+      }
     };
   }, [queryClient]);
 

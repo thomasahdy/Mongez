@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getSessionSettings, updateSessionSettings } from "../../services/api/securityService";
 import useLocaleDirection from "../../hooks/useLocaleDirection";
@@ -15,23 +15,23 @@ const SessionManagementCard = () => {
     const [success, setSuccess] = useState("");
     const [saving, setSaving] = useState(false);
 
-    const loadingSetting = async () => {
+    const loadingSetting = useCallback(async () => {
         setLoading(true);
         setError("");
         try {
             const settings = await getSessionSettings();
             setSessionTimeout(String(settings.sessionTimeout));
             setPersistentLogin(settings.persistentLogin);
-        } catch (err) {
+        } catch {
             setError(t("securityPage.sessionManagement.loadFailed"));
         } finally {
             setLoading(false);  
         }
-    };
+    }, [t]);
 
     useEffect(() => {
         loadingSetting();
-    }, []);
+    }, [loadingSetting]);
 
     if(loading) {
         return (
@@ -51,7 +51,7 @@ const SessionManagementCard = () => {
                 persistentLogin,
             });
             setSuccess(t("securityPage.sessionManagement.saveSuccess"));
-        } catch (err) {
+        } catch {
             setError(t("securityPage.sessionManagement.saveFailed"));
         } finally {
             setSaving(false);

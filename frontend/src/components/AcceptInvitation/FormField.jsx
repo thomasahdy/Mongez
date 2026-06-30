@@ -1,4 +1,3 @@
-import React from "react";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const FormField = ({ id, label, type = "text", placeholder, value, onChange, required, autoComplete }) => {

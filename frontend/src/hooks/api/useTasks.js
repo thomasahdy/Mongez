@@ -73,12 +73,12 @@ export function useUpdateTask() {
 
       return { previousTask };
     },
-    onError: (err, variables, context) => {
+    onError: (_error, _variables, context) => {
       if (context?.previousTask) {
         queryClient.setQueryData(['tasks', context.previousTask.id], context.previousTask);
       }
     },
-    onSuccess: (_, { taskId }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['board', 'table'] });
       queryClient.invalidateQueries({ queryKey: ['board', 'tasks'] });
@@ -128,13 +128,13 @@ export function useMoveTask() {
 
       return { previousTasksData, queryKey };
     },
-    onError: (err, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Revert cache to original layout if API move fails
       if (context?.previousTasksData) {
         queryClient.setQueryData(context.queryKey, context.previousTasksData);
       }
     },
-    onSuccess: (data, variables, context) => {
+    onSuccess: (_data, _variables, context) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['board', 'table'] });
       queryClient.invalidateQueries({ queryKey: ['board', 'tasks'] });

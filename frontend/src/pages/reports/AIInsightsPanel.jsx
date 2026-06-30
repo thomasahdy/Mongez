@@ -1,4 +1,3 @@
-import React from "react";
 import { useTranslation } from "react-i18next";
 import InsightCard from "../../components/reports/InsightCard";
 import useLocaleDirection from "../../hooks/useLocaleDirection";

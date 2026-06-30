@@ -5,6 +5,7 @@ import { QUEUE_NAMES, JOB_NAMES } from '../../infrastructure/queue/queue.constan
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { AuditLogInput } from './dto/audit-log-input.dto';
 import { TraceContextService } from '../../infrastructure/logging/trace-context.service';
+import { redactPrivateIp } from '../../common/security/ip-redaction.util';
 
 @Injectable()
 export class AuditService {
@@ -77,7 +78,7 @@ export class AuditService {
       })
     ).map((m) => m.userId);
 
-    return this.prisma.auditLog.findMany({
+    const logs = await this.prisma.auditLog.findMany({
       where: {
         userId: { in: memberIds },
         ...(options.action ? { action: options.action } : {}),
@@ -88,6 +89,8 @@ export class AuditService {
       skip,
       take: limit,
     });
+
+    return this.redactPrivateIps(logs);
   }
 
   /**
@@ -98,7 +101,7 @@ export class AuditService {
     const limit = Math.min(options.limit ?? 50, 200);
     const skip = (page - 1) * limit;
 
-    return this.prisma.auditLog.findMany({
+    const logs = await this.prisma.auditLog.findMany({
       where: {
         userId,
         ...(options.action ? { action: options.action } : {}),
@@ -108,5 +111,14 @@ export class AuditService {
       skip,
       take: limit,
     });
+
+    return this.redactPrivateIps(logs);
+  }
+
+  private redactPrivateIps<T extends { ipAddress?: string | null }>(logs: T[]): T[] {
+    return logs.map((log) => ({
+      ...log,
+      ipAddress: redactPrivateIp(log.ipAddress),
+    }));
   }
 }

@@ -1,4 +1,3 @@
-import React from "react";
 import { NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useLocaleDirection } from "../../../hooks/useLocaleDirection";

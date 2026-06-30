@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useOutletContext, useNavigate } from "react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import workflowService from "../../services/api/workflowService";
 import { useAppContext } from "../AppContext";
@@ -11,7 +11,6 @@ export default function WorkflowInstancesList() {
   const { locale, isRTL } = useLocaleDirection();
   const { setPath } = useOutletContext() || {};
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { activeSpaceId } = useAppContext();
 
   useEffect(() => {

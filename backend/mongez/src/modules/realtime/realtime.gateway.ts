@@ -16,10 +16,11 @@ import { CacheService } from '../../infrastructure/cache/cache.service';
 import { Cron } from '@nestjs/schedule';
 import { Logger, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
+import { buildAllowedOrigins } from '../../common/security/http-security.config';
 
 
 @WebSocketGateway({
-  cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true },
+  cors: { origin: buildAllowedOrigins(), credentials: true },
   namespace: '/ws',
 })
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleDestroy {

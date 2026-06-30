@@ -1,4 +1,3 @@
-import React from "react";
 import { useTranslation } from "react-i18next";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import BoardChip from "./BoardChip";

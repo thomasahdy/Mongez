@@ -28,7 +28,7 @@ export async function createTestApp(
   // Global exception filter (Prisma error mapping + structured errors)
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  // Global response envelope: wraps every response in { success, data, timestamp }
+  // Global response envelope: wraps every response in { success, data }
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   // Validation pipe

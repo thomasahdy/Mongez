@@ -1,4 +1,3 @@
-import React from 'react'
 
 const MicroProgress = ({ value = 0 }) => {
   return (

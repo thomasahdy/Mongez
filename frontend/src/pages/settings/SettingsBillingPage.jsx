@@ -8,6 +8,27 @@ import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import SettingsSidebar from "./sections/SettingsSidebar";
 import { buildSettingsPath } from "./settingsPath";
 
+const PLAN_PREVIEWS = [
+  {
+    id: "free",
+    name: "Free",
+    tone: "from-emerald-500 to-sky-500",
+    pros: ["Core task and board management", "Basic workspace collaboration", "Starter usage visibility"],
+  },
+  {
+    id: "plus",
+    name: "Plus",
+    tone: "from-sky-500 to-indigo-500",
+    pros: ["Higher workspace and automation limits", "AI-assisted planning and summaries", "Priority collaboration features"],
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    tone: "from-violet-500 to-rose-500",
+    pros: ["Advanced governance and approvals", "Expanded AI, reporting, and audit insights", "Best fit for growing teams"],
+  },
+];
+
 function BillingContent({ setPath: propSetPath }) {
   const context = useOutletContext() || {};
   const setPath = propSetPath || context.setPath;
@@ -84,7 +105,7 @@ function BillingContent({ setPath: propSetPath }) {
 
   return (
     <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 p-6 space-y-6" dir={isRTL ? "rtl" : "ltr"}>
-      <div className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm">
+      <div className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm motion-safe:animate-[slideUp_0.32s_ease_both]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-sky-500">{t("billing.settings")}</p>
@@ -109,10 +130,38 @@ function BillingContent({ setPath: propSetPath }) {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300 motion-safe:animate-[slideUp_0.28s_ease_both]">
           {error}
         </div>
       )}
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {PLAN_PREVIEWS.map((plan, index) => (
+          <div
+            key={plan.id}
+            className="group relative overflow-hidden rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-sky-200 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:hover:border-sky-500/40 motion-safe:animate-[slideUp_0.34s_ease_both]"
+            style={{ animationDelay: `${index * 70}ms` }}
+          >
+            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${plan.tone}`} />
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-black text-slate-900 dark:text-slate-50">
+                {t(`billing.planPreview.${plan.id}.name`, { defaultValue: plan.name })}
+              </h2>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                {t("billing.planPreview.plan", { defaultValue: "Plan" })}
+              </span>
+            </div>
+            <ul className="mt-4 space-y-3">
+              {plan.pros.map((pro, proIndex) => (
+                <li key={pro} className="flex gap-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  <i className="fa-solid fa-check mt-1 text-xs text-emerald-500" aria-hidden="true" />
+                  <span>{t(`billing.planPreview.${plan.id}.pros.${proIndex}`, { defaultValue: pro })}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
 
       {!error && spaceId && !loading && billingInfo && !hasBillingSections ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-5 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
@@ -122,7 +171,7 @@ function BillingContent({ setPath: propSetPath }) {
 
       {billingInfo && (
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm">
+          <section className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-505">{t("billing.currentPlan")}</div>
             <h2 className="mt-2 text-2xl font-black text-slate-900 dark:text-slate-50">
               {billingInfo.hasPlanData ? billingInfo.currentPlan?.name || t("billing.unknownPlan") : t("billing.planUnavailable")}
@@ -153,7 +202,7 @@ function BillingContent({ setPath: propSetPath }) {
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm">
+          <section className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-505">{t("billing.usage")}</div>
             {billingInfo.usageStats?.periodDays && (
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("billing.periodDays", { count: billingInfo.usageStats.periodDays })}</p>
@@ -234,8 +283,10 @@ function BillingContent({ setPath: propSetPath }) {
 }
 
 export default function SettingsBillingPage({ setPath }) {
+  const { dir } = useLocaleDirection();
+
   return (
-    <div className="settings-layout">
+    <div className="settings-layout" dir={dir}>
       <SettingsSidebar activeId="billing" />
       <main className="settings-content-area" style={{ padding: 0 }} aria-label="Billing settings">
         <BillingContent setPath={setPath} />

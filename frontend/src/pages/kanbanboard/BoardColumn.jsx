@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useTranslation } from "react-i18next";
 import TaskCard from './TaskCard';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -8,7 +8,7 @@ import { useAppContext } from '../AppContext'; // 1. Import your actual context 
 import { useCreateTask } from '../../hooks/api/useTasks';
 import useLocaleDirection from '../../hooks/useLocaleDirection';
 
-const BoardColumn = ({ column, tasks = [], isLoading, isError }) => {
+const BoardColumn = ({ column, tasks = [] }) => {
   const { t } = useTranslation();
   const { dir } = useLocaleDirection();
   const { id, name, color, boardId } = column;

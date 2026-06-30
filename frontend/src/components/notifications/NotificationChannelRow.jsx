@@ -1,13 +1,4 @@
 import ToggleSwitch from "./ToggleSwitch";
-import { useTranslation } from "react-i18next";
-
-const labelOverrides = {
-  TASK_ASSIGNED: "notificationsPage.events.TASK_ASSIGNED",
-  COMMENT_MENTION: "notificationsPage.events.COMMENT_MENTION",
-  TASK_UPDATED: "notificationsPage.events.TASK_UPDATED",
-  TASK_DUE: "notificationsPage.events.TASK_DUE",
-  FILE_UPLOADED: "notificationsPage.events.FILE_UPLOADED",
-};
 
 const NotificationChannelsRow = ({ setting, onToggle }) => {
   const {

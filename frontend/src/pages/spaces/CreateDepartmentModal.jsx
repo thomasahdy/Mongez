@@ -1,11 +1,12 @@
-import React from "react";
 import { createDepartmentSchema } from "../../schemas/validationSchemas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const CreateDepartmentModal = ({ space, onSubmit, onClose }) => {
   const { t } = useTranslation();
+  const { dir, isRTL } = useLocaleDirection();
   const {
     register,
     handleSubmit,
@@ -34,8 +35,8 @@ const CreateDepartmentModal = ({ space, onSubmit, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-fadeIn dark:border-slate-800 dark:bg-slate-950">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="modal-title" dir={dir}>
+      <div className={`relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-fadeIn dark:border-slate-800 dark:bg-slate-950 ${isRTL ? "text-right" : "text-left"}`}>
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-400 to-indigo-500" />
 
         <div className="flex items-center justify-between border-b border-slate-100 px-6 pb-4 pt-6 dark:border-slate-900">
@@ -87,7 +88,7 @@ const CreateDepartmentModal = ({ space, onSubmit, onClose }) => {
             <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="department-color">
               {t("spacesPage.departmentColor")}
             </label>
-            <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
               <input
                 id="department-color"
                 type="color"
@@ -100,7 +101,7 @@ const CreateDepartmentModal = ({ space, onSubmit, onClose }) => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-900">
+          <div className={`flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-900 ${isRTL ? "flex-row-reverse" : ""}`}>
             <button
               type="button"
               onClick={onClose}

@@ -26,10 +26,12 @@ export class AuthExceptionFilter implements ExceptionFilter {
       success: false,
       message: isDevelopment ? message : 'An error occurred',
       statusCode: status,
-      timestamp: new Date().toISOString(),
-      path: request.url,
-      method: request.method,
     };
+
+    if (isDevelopment) {
+      (errorResponse as any).path = request.url;
+      (errorResponse as any).method = request.method;
+    }
 
     // In development, add stack trace and error details
     if (isDevelopment && exception instanceof Error) {

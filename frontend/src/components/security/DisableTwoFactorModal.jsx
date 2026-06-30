@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { disable2FA } from "../../services/api/securityService";
 import useLocaleDirection from "../../hooks/useLocaleDirection";

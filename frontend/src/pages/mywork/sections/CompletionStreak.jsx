@@ -1,4 +1,3 @@
-import React from "react";
 import { useTranslation } from "react-i18next";
 
 const CompletionStreak = ({ streak, bestStreak, days, historyAvailable = true, totalCompleted = 0 }) => {

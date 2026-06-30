@@ -125,6 +125,14 @@ html[dir="rtl"] .text-left {
   text-align: right !important;
 }
 
+html[dir="rtl"] .text-start {
+  text-align: start !important;
+}
+
+html[dir="rtl"] .rtl-text-left {
+  text-align: left !important;
+}
+
 html[dir="rtl"] .ml-auto {
   margin-left: 0 !important;
   margin-right: auto !important;
@@ -152,6 +160,26 @@ html[dir="rtl"] td {
 
 html[dir="rtl"] .rtl-safe-scroll {
   direction: rtl;
+}
+
+html[dir="rtl"] [dir="ltr"] {
+  font-family: var(--font-en);
+}
+
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="url"],
+html[dir="rtl"] input[type="tel"],
+html[dir="rtl"] input[type="password"],
+html[dir="rtl"] input[inputmode="numeric"],
+html[dir="rtl"] code,
+html[dir="rtl"] pre,
+html[dir="rtl"] kbd {
+  direction: ltr;
+}
+
+html[dir="rtl"] input[type="password"],
+html[dir="rtl"] input[inputmode="numeric"] {
+  text-align: left;
 }
 
 #root {
@@ -1818,6 +1846,11 @@ html[dir="rtl"] .ai-metric-bar::before {
   overflow-y: auto;
 }
 
+html[dir="rtl"] .settings-sidebar {
+  border-right: 0;
+  border-left: 1px solid var(--border);
+}
+
 .settings-group-title {
   font-size: 11px;
   font-weight: 700;
@@ -1873,6 +1906,11 @@ html[dir="rtl"] .ai-metric-bar::before {
   font-weight: 700;
   margin-left: 6px;
   text-transform: uppercase;
+}
+
+html[dir="rtl"] .pro-badge {
+  margin-left: 0;
+  margin-right: 6px;
 }
 
 .settings-content-area {

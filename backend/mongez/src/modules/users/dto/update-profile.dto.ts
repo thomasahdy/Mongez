@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsUrl, Length, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsUrl, Length, IsIn, ValidateIf } from 'class-validator';
 
 const SUPPORTED_LANGUAGES = ['en', 'ar', 'fr', 'es', 'de'];
 
@@ -9,6 +9,7 @@ export class UpdateProfileDto {
   name?: string;
 
   @IsOptional()
+  @ValidateIf((_, value) => value !== '')
   @IsUrl()
   avatarUrl?: string;
 

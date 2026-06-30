@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useTranslation } from "react-i18next";
 import BoardColumn from './BoardColumn'
 import { closestCorners, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { useBoard, useCreateColumn, useReorderColumns } from '../../hooks/api/useBoards';
+import { useCreateColumn, useReorderColumns } from '../../hooks/api/useBoards';
 import { useTasks, useMoveTask } from '../../hooks/api/useTasks';
 import CreateColumnModal from './CreateColumnModal';
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -88,7 +88,7 @@ const Board = ({id, columns }) => {
 
       const isOverColumn = columns.some((col) => col.id === over.id);
       let targetColumnId;
-      let targetPosition = 0;
+      let targetPosition;
 
       if (isOverColumn) {
         targetColumnId = over.id;

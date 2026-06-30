@@ -5,7 +5,6 @@ import { map } from 'rxjs/operators';
 export interface StandardResponse<T> {
   success: boolean;
   data: T;
-  timestamp: string;
 }
 
 @Injectable()
@@ -26,7 +25,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, StandardRespon
         return {
           success: true,
           data,
-          timestamp: new Date().toISOString(),
         };
       }),
     );

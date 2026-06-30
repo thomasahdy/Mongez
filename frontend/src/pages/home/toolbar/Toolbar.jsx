@@ -1,49 +1,12 @@
-import { useMemo, useState } from "react";
-import { useParams } from "react-router";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../AppContext";
-import { useBoard } from "../../../hooks/api/useBoards";
-import { useCreateBoardTaskMutation } from "../../../hooks/useDashboardQueries";
 
 function Toolbar() {
-  const { boardId: routeBoardId } = useParams();
   const { activeBoard } = useAppContext();
   const { t } = useTranslation();
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState("");
 
-  const boardId = routeBoardId || activeBoard?.id;
-  const boardQuery = useBoard(boardId);
-  const createTaskMutation = useCreateBoardTaskMutation();
   const boardName = useMemo(() => activeBoard?.name || t("toolbar.boardTools"), [activeBoard?.name, t]);
-
-  const handleCreateTask = async () => {
-    if (!boardId) {
-      setError(t("toolbar.selectBoard"));
-      return;
-    }
-
-    const title = window.prompt(t("toolbar.promptTitle"));
-
-    if (!title?.trim()) {
-      return;
-    }
-
-    try {
-      setCreating(true);
-      setError("");
-      const board = boardQuery.data || activeBoard;
-      if (!board) {
-        throw new Error(t("toolbar.boardLoading"));
-      }
-
-      await createTaskMutation.mutateAsync({ board, taskData: { title: title.trim() } });
-    } catch (createError) {
-      setError(createError.message || t("toolbar.createFailed"));
-    } finally {
-      setCreating(false);
-    }
-  };
 
   return (
     <div className="shrink-0 border-b border-slate-200 bg-white px-5 py-2">

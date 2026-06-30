@@ -1,8 +1,6 @@
 import { NavLink } from "react-router";
 
 const AuthFooterLink = ({ text, linkText, href, className = "" }) => {
-  const normalizedHref = href.startsWith("#") ? href : `#${href.replace(/^\//, "")}`;
-
   return (
     <div className={`text-center text-[13px] text-text-secondary ${className}`}>
       {text}{" "}

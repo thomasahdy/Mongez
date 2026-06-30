@@ -77,7 +77,7 @@ function calculateBestStreak(days) {
   return best;
 }
 
-export default function MyWorkPage({ userName = "Teammate", setPath }) {
+export default function MyWorkPage({ setPath }) {
   const { t } = useTranslation();
   const { isRTL, locale } = useLocaleDirection();
   const queryClient = useQueryClient();

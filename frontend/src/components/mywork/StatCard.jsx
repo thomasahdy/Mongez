@@ -1,4 +1,3 @@
-import React from 'react'
 
 const StatCard = ({ value, label, color }) => {
   return (

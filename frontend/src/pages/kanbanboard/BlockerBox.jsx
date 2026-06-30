@@ -1,4 +1,3 @@
-import React from 'react'
 import MiniButton from '../../components/ui/MiniButton';
 
 const BlockerBox = ({ stuck, since, days, expected, confidence, cases, avgDays }) => {

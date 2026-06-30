@@ -1,4 +1,3 @@
-import React from "react";
 import TrendBadge from "./TrendBadge";
 import useLocaleDirection from "../../hooks/useLocaleDirection";
 

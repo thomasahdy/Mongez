@@ -1,5 +1,4 @@
 import SessionTable from "./SessionTable";
-import React from "react";
 import { useTranslation } from "react-i18next";
 import useSecurity from "../../pages/security/useSecurity";
 import useLocaleDirection from "../../hooks/useLocaleDirection";

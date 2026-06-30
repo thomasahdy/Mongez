@@ -1,4 +1,3 @@
-import React from "react";
 import { useTranslation } from "react-i18next";
 import PriorityBar from "../../components/reports/PriorityBar";
 import ChartCard from "../../components/reports/ChartCard";

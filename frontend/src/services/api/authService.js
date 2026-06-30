@@ -96,7 +96,7 @@ export const getVerificationStatus = async () => {
  * Get Google OAuth Login URL
  */
 export const getGoogleAuthUrl = () => {
-  return `${import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"}/auth/google`;
+  return `${import.meta.env.VITE_API_URL || "/api/v1"}/auth/google`;
 };
 
 /**

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 import { useTranslation } from "react-i18next";
 import {enable2FA, verify2FA} from "../../services/api/securityService";
 import useLocaleDirection from "../../hooks/useLocaleDirection";
@@ -28,7 +28,7 @@ const EnableTwoFactorModal = ({ onClose, onSuccess }) => {
         };
 
         startEnrollment();
-    }, []);
+    }, [t]);
 
     const handleVerify = async (e) => { 
         e.preventDefault();
