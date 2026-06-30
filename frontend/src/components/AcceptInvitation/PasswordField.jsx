@@ -21,14 +21,14 @@ const PasswordField = ({ id, label, placeholder, value, onChange, required }) =>
           onChange={(event) => onChange(event.target.value)}
           required={required}
           autoComplete="new-password"
-          className={`w-full rounded-lg border border-slate-200 bg-white py-2.5 text-[13px] text-slate-800 text-start outline-none transition-all duration-150 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-sky-900/30 ${
+          className={`w-full rounded-lg border border-slate-200 bg-white py-2.5 text-[13px] text-slate-800 text-start outline-none transition-all duration-150 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-sky-900/30 ${
             isRTL ? "pl-10 pr-3.5" : "pr-10 pl-3.5"
           }`}
         />
         <button
           type="button"
           onClick={() => setVisible((current) => !current)}
-          className={`absolute top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300 ${
+          className={`absolute top-1/2 -translate-y-1/2 text-slate-400 transition-colors dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 ${
             isRTL ? "left-3" : "right-3"
           }`}
           aria-label={visible ? t("acceptInvitation.hidePassword") : t("acceptInvitation.showPassword")}
