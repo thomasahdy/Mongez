@@ -4,21 +4,20 @@ import Button from "../../components/ui/Button";
 import { useSpaces } from "../../hooks/api/useSpaces";
 import useLocaleDirection from "../../hooks/useLocaleDirection";
 
-const ReportsToolbar = ({selectedSpace, setSelectedSpace}) => {
+const ReportsToolbar = ({selectedSpace, setSelectedSpace, activePeriod, setActivePeriod}) => {
     const { t } = useTranslation();
     const { dir } = useLocaleDirection();
     const dateFilters = useMemo(
       () => [
-        t("reportsPage.periods.last30Days"),
-        t("reportsPage.periods.thisQuarter"),
-        t("reportsPage.periods.thisYear"),
+        { key: "month", label: t("reportsPage.periods.last30Days") },
+        { key: "quarter", label: t("reportsPage.periods.thisQuarter") },
+        { key: "year", label: t("reportsPage.periods.thisYear") },
       ],
       [t],
     );
-    const [activePeriod, setActivePeriod] = useState(t("reportsPage.periods.last30Days"));
     const { data: spaces, isLoading, error } = useSpaces();
 
-    const rawSpacesList = Array.isArray(spaces) ? spaces : (spaces?.spaces || []);
+  const rawSpacesList = Array.isArray(spaces) ? spaces : (spaces?.spaces || []);
   const normalizedSpaces = rawSpacesList.map((space) => ({
     ...space,
     gradient: space.gradient || 'from-indigo-500 to-indigo-400',
@@ -31,18 +30,25 @@ const ReportsToolbar = ({selectedSpace, setSelectedSpace}) => {
     },
     departments: space.departments || [],
   }));
-    return (
+
+  React.useEffect(() => {
+    if (!selectedSpace?.id && normalizedSpaces.length > 0) {
+      setSelectedSpace(normalizedSpaces[0]);
+    }
+  }, [normalizedSpaces, selectedSpace?.id, setSelectedSpace]);
+
+  return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm mb-6" dir={dir}>
       {/* Date range */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0" role="group" aria-label={t("reportsPage.dateRangeAria")}>
-        {dateFilters.map((label) => (
+        {dateFilters.map(({ key, label }) => (
           <Button
-            key={label}
+            key={key}
             variant="outline"
             size="md"
-            active={activePeriod === label}
-            onClick={() => setActivePeriod(label)}
-            aria-pressed={activePeriod === label}
+            active={activePeriod === key}
+            onClick={() => setActivePeriod(key)}
+            aria-pressed={activePeriod === key}
           >
             {label}
           </Button>
@@ -66,8 +72,16 @@ const ReportsToolbar = ({selectedSpace, setSelectedSpace}) => {
         <select
           id="spaces"
           name="spaces"
-          value={selectedSpace}
-          onChange={(e) => setSelectedSpace(e.target.value)}
+          value={selectedSpace?.id || ""}
+          onChange={(e) => {
+            const spaceId = e.target.value;
+            if (!spaceId) {
+              setSelectedSpace({});
+            } else {
+              const spaceObj = normalizedSpaces.find(s => s.id === spaceId);
+              if (spaceObj) setSelectedSpace(spaceObj);
+            }
+          }}
           disabled={isLoading}
           className="inline-flex items-center justify-center gap-1.5 font-semibold rounded-lg transition-all duration-150 cursor-pointer border px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 border-slate-200 dark:border-slate-600 bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200"
         >
@@ -77,8 +91,6 @@ const ReportsToolbar = ({selectedSpace, setSelectedSpace}) => {
             <option>{t("reportsPage.failedSpaces")}</option>
           ) : (
             <>
-              <option value="">{t("reportsPage.allSpaces")}</option>
-
               {normalizedSpaces.map((space) => (
                 <option key={space.id} value={space.id}>
                   {space.name}

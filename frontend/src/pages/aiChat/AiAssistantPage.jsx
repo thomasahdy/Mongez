@@ -56,8 +56,11 @@ function AiAssistantPage() {
   const [activeTab, setActiveTab] = useState(() => (initialLaunchDraft?.prompt ? "chat" : "overview")); // overview, actions, approvals, insights, chat
   const [toasts, setToasts] = useState([]);
   
+  const userContextKey = user?.id ? `mongez.ai.${user.id}.context` : STORAGE_KEYS.context;
+  const userSessionsKey = user?.id ? `mongez.ai.${user.id}.sessions` : STORAGE_KEYS.sessions;
+
   const [contextValues, setContextValues] = useState(() => {
-    const stored = readStorageJson(STORAGE_KEYS.context, {});
+    const stored = readStorageJson(userContextKey, {});
     return {
       spaceId: stored.spaceId || "",
       boardId: stored.boardId || "",
@@ -66,7 +69,7 @@ function AiAssistantPage() {
     };
   });
   const [relativeNow, setRelativeNow] = useState(() => Date.now());
-  const [recentSessions, setRecentSessions] = useState(() => readStorageJson(STORAGE_KEYS.sessions, []));
+  const [recentSessions, setRecentSessions] = useState(() => readStorageJson(userSessionsKey, []));
   const [currentSessionId, setCurrentSessionId] = useState(() => makeId("session"));
   const [messages, setMessages] = useState(() => [welcomeMessage]);
   const [pageError, setPageError] = useState("");
@@ -79,14 +82,16 @@ function AiAssistantPage() {
   const chatAbortRef = useRef(null);
   const toastTimeoutsRef = useRef(new Map());
   const suggestionChips = useMemo(() => t("aiAssistant.suggestionChips", { returnObjects: true }), [t]);
-  const effectiveContextValues = useMemo(
-    () => ({
+  const effectiveContextValues = useMemo(() => {
+    const isSpaceValid = contextValues.spaceId && spaces.some((s) => s.id === contextValues.spaceId);
+    const spaceId = isSpaceValid ? contextValues.spaceId : activeSpace?.id || spaces[0]?.id || "";
+    const boardId = contextValues.boardId || activeBoard?.id || "";
+    return {
       ...contextValues,
-      spaceId: contextValues.spaceId || activeSpace?.id || spaces[0]?.id || "",
-      boardId: contextValues.boardId || activeBoard?.id || "",
-    }),
-    [activeBoard?.id, activeSpace?.id, contextValues, spaces],
-  );
+      spaceId,
+      boardId,
+    };
+  }, [activeBoard?.id, activeSpace?.id, contextValues, spaces]);
 
   const showToast = (message, type = "success") => {
     const id = makeId("toast");
@@ -159,12 +164,12 @@ function AiAssistantPage() {
   }, [setPath, activeSpace?.name, t]);
 
   useEffect(() => {
-    writeStorageJson(STORAGE_KEYS.context, effectiveContextValues);
-  }, [effectiveContextValues]);
+    writeStorageJson(userContextKey, effectiveContextValues);
+  }, [effectiveContextValues, userContextKey]);
 
   useEffect(() => {
-    writeStorageJson(STORAGE_KEYS.sessions, recentSessions);
-  }, [recentSessions]);
+    writeStorageJson(userSessionsKey, recentSessions);
+  }, [recentSessions, userSessionsKey]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -1566,9 +1571,10 @@ function AiAssistantPage() {
 
 function AiAssistantPageWithErrorBoundary(props) {
   const { t } = useTranslation();
+  const { user } = useAppContext() || {};
   return (
     <ErrorBoundary fallbackMessage={t("aiAssistant.labels.errorBoundary")}>
-      <AiAssistantPage {...props} />
+      <AiAssistantPage key={user?.id || "anonymous"} {...props} />
     </ErrorBoundary>
   );
 }

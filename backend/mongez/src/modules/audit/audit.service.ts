@@ -62,6 +62,25 @@ export class AuditService {
   }
 
   /**
+   * Persist user activity log. Called by the queue processor.
+   */
+  async recordUserActivity(data: any): Promise<void> {
+    try {
+      await this.prisma.userActivity.create({
+        data: {
+          userId: data.userId,
+          action: data.action,
+          feature: data.feature,
+          spaceId: data.spaceId,
+          metadata: data.metadata,
+        },
+      });
+    } catch (err) {
+      this.logger.error(`Failed to record user activity: ${(err as Error).message}`);
+    }
+  }
+
+  /**
    * Query audit logs for a space (ADMIN only). Space-scoped via entity lookups.
    */
   async findBySpace(spaceId: string, options: { action?: string; entityType?: string; page?: number; limit?: number }) {

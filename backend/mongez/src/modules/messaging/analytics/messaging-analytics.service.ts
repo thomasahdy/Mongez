@@ -1,11 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { NotificationFunnelStage, NotificationChannelType } from '@prisma/client';
+import { QUEUE_NAMES, JOB_NAMES } from '../../../infrastructure/queue/queue.constants';
 
 /**
  * MessagingAnalyticsService — Tracks notification funnel events.
  *
- * Records events at each stage of the notification lifecycle:
+ * Records events at each stage of the notification lifecycle via BullMQ:
  * - SENT: Notification handed off to channel adapter
  * - DELIVERED: Channel confirms delivery (webhook callback or success response)
  * - OPENED: User opened the notification (deep link click or in-app read)
@@ -18,10 +21,13 @@ import { NotificationFunnelStage, NotificationChannelType } from '@prisma/client
 export class MessagingAnalyticsService {
   private readonly logger = new Logger(MessagingAnalyticsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue(QUEUE_NAMES.ANALYTICS_FUNNEL) private readonly funnelQueue: Queue,
+  ) {}
 
   /**
-   * Record a funnel event.
+   * Record a funnel event by queuing it.
    *
    * @param stage Funnel stage
    * @param payload Event payload
@@ -38,24 +44,13 @@ export class MessagingAnalyticsService {
     },
   ): Promise<void> {
     try {
-      await this.prisma.notificationEvent.create({
-        data: {
-          notificationId: payload.notificationId,
-          userId: payload.userId,
-          spaceId: payload.spaceId,
-          channel: payload.channel,
-          eventType: payload.eventType,
-          stage,
-          metadata: payload.metadata as any,
-        },
-      });
-
+      await this.funnelQueue.add(JOB_NAMES.FUNNEL_RECORD, { stage, payload });
       this.logger.debug(
-        `Analytics: ${stage} for notification ${payload.notificationId} via ${payload.channel}`,
+        `Analytics queued: ${stage} for notification ${payload.notificationId} via ${payload.channel}`,
       );
     } catch (error) {
       // Don't throw — analytics failures shouldn't block notifications
-      this.logger.error(`Failed to record analytics event:`, error);
+      this.logger.error(`Failed to queue analytics event:`, error);
     }
   }
 

@@ -1,38 +1,46 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
-import { QUEUE_NAMES } from '../../../infrastructure/queue/queue.constants';
+import { QUEUE_NAMES, JOB_NAMES } from '../../../infrastructure/queue/queue.constants';
+import { PrismaService } from '../../../infrastructure/database/prisma.service';
 
 /**
- * Placeholder processor for the ANALYTICS_FUNNEL queue.
+ * Processor for the ANALYTICS_FUNNEL queue.
  *
- * This processor prevents Redis memory buildup by consuming jobs from the 'analytics-funnel' queue
- * even when analytics funnel tracking is not fully implemented. Funnel jobs are logged and acknowledged.
- *
- * TODO: Replace this with a real analytics funnel processor once funnel events are configured.
+ * Processes and stores messaging funnel tracking events.
  */
 @Processor(QUEUE_NAMES.ANALYTICS_FUNNEL)
 export class AnalyticsFunnelPlaceholderProcessor extends WorkerHost {
   private readonly logger = new Logger(AnalyticsFunnelPlaceholderProcessor.name);
 
-  async process(job: Job<any>): Promise<any> {
-    this.logger.log(
-      `[AnalyticsFunnelPlaceholder] Processing job ${job.id} (${job.name}). ` +
-      `Analytics funnel tracking not yet implemented - job acknowledged.`
-    );
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
 
-    // Log job data for debugging
-    if (job.data) {
-      const sanitizedData = {
-        ...job.data,
-        // Sanitize potential sensitive fields
-        userId: job.data.userId ? '[REDACTED]' : undefined,
-        spaceId: job.data.spaceId ? '[REDACTED]' : undefined,
-      };
-      this.logger.debug(`[AnalyticsFunnelPlaceholder] Job data: ${JSON.stringify(sanitizedData)}`);
+  async process(job: Job<any>): Promise<any> {
+    if (job.name === JOB_NAMES.FUNNEL_RECORD) {
+      const { stage, payload } = job.data;
+      
+      try {
+        await this.prisma.notificationEvent.create({
+          data: {
+            notificationId: payload.notificationId,
+            userId: payload.userId,
+            spaceId: payload.spaceId,
+            channel: payload.channel,
+            eventType: payload.eventType,
+            stage,
+            metadata: payload.metadata || {},
+          },
+        });
+        return { status: 'success' };
+      } catch (err: any) {
+        this.logger.error(`Failed to store funnel event for job ${job.id}: ${err.message}`);
+        throw err; // BullMQ will handle retries based on config
+      }
     }
 
-    // Acknowledge the job to prevent Redis buildup
+    // Acknowledge unknown jobs
     return { status: 'acknowledged', queue: 'analytics-funnel', jobId: job.id };
   }
 }

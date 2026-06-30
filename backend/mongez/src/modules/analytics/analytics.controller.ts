@@ -23,6 +23,13 @@ export class AnalyticsController {
     return this.analytics.getOverview(spaceId);
   }
 
+  @Get('analytics/executive')
+  @RequirePermissions(['read', 'analytics'])
+  @ApiOperation({ summary: 'Executive summary metrics' })
+  async getExecutiveMetrics(@Query('spaceId') spaceId: string) {
+    return this.analytics.getExecutiveMetrics(spaceId);
+  }
+
   @Get('analytics/tasks')
   @RequirePermissions(['read', 'analytics'])
   @ApiOperation({ summary: 'Task velocity & completion rate' })
@@ -30,8 +37,9 @@ export class AnalyticsController {
     @Query('spaceId') spaceId: string,
     @Query('boardId') _boardId: string,
     @Query('period') period: string,
+    @Query('groupBy') groupBy: string,
   ) {
-    return this.analytics.getTaskMetrics(spaceId, this.toPeriod(period));
+    return this.analytics.getTaskMetrics(spaceId, this.toPeriod(period), groupBy);
   }
 
   @Get('analytics/team')
@@ -40,8 +48,19 @@ export class AnalyticsController {
   async getTeamMetrics(
     @Query('spaceId') spaceId: string,
     @Query('period') period: string,
+    @Query('role') role: string,
   ) {
-    return this.analytics.getTeamMetrics(spaceId, this.toPeriod(period));
+    return this.analytics.getTeamMetrics(spaceId, this.toPeriod(period), role);
+  }
+
+  @Get('analytics/workflows')
+  @RequirePermissions(['read', 'analytics'])
+  @ApiOperation({ summary: 'Workflow analytics' })
+  async getWorkflowAnalytics(
+    @Query('spaceId') spaceId: string,
+    @Query('period') period: string,
+  ) {
+    return this.analytics.getWorkflowAnalytics(spaceId, this.toPeriod(period));
   }
 
   @Get('analytics/approvals')
@@ -52,6 +71,30 @@ export class AnalyticsController {
     @Query('period') period: string,
   ) {
     return this.analytics.getApprovalMetrics(spaceId, this.toPeriod(period));
+  }
+
+  @Get('analytics/flow')
+  @RequirePermissions(['read', 'analytics'])
+  @ApiOperation({ summary: 'Cumulative flow diagram data' })
+  async getFlowMetrics(
+    @Query('spaceId') spaceId: string,
+    @Query('period') period: string,
+  ) {
+    return this.analytics.getFlowMetrics(spaceId, this.toPeriod(period));
+  }
+
+  @Get('analytics/performers')
+  @RequirePermissions(['read', 'analytics'])
+  @ApiOperation({ summary: 'Top performers based on completed tasks' })
+  async getTopPerformers(@Query('spaceId') spaceId: string) {
+    return this.analytics.getTopPerformers(spaceId);
+  }
+
+  @Get('analytics/insights')
+  @RequirePermissions(['read', 'analytics'])
+  @ApiOperation({ summary: 'AI generated insights text for dashboard' })
+  async getAiInsights(@Query('spaceId') spaceId: string) {
+    return this.analytics.getDashboardAiInsights(spaceId);
   }
 
   @Get('analytics/ai')
@@ -66,9 +109,10 @@ export class AnalyticsController {
 
   @Get('analytics/export')
   @RequirePermissions(['read', 'analytics'])
-  @ApiOperation({ summary: 'Export raw task data (CSV-able rows)' })
-  async exportData(@Query('spaceId') spaceId: string) {
-    return this.analytics.exportData(spaceId);
+  @ApiOperation({ summary: 'Export raw task data (CSV-able rows) asynchronously' })
+  async exportData(@Req() req: any, @Query('spaceId') spaceId: string) {
+    const userId = req.user?.id || req.user?.sub;
+    return this.analytics.queueExportData(spaceId, userId);
   }
 
   @Get('analytics/adoption')

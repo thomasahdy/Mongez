@@ -12,16 +12,41 @@ export class SpaceRepository {
   };
 
   async findById(id: string) {
-    return this.prisma.space.findUnique({ where: { id }, include: this.INCLUDE_SUMMARY });
+    const space = await this.prisma.space.findUnique({ where: { id }, include: this.INCLUDE_SUMMARY });
+    if (!space) return null;
+    const boardCount = await this.prisma.board.count({
+      where: { department: { spaceId: id }, isArchived: false }
+    });
+    return {
+      ...space,
+      _count: {
+        ...space._count,
+        boards: boardCount,
+      }
+    };
   }
 
   async findAllForUser(userId: string, page: number = 1, limit: number = 50) {
     const skip = (page - 1) * limit;
     const where = { memberships: { some: { userId } } };
-    const [data, total] = await Promise.all([
+    const [spaces, total] = await Promise.all([
       this.prisma.space.findMany({ where, skip, take: limit, include: this.INCLUDE_SUMMARY, orderBy: { createdAt: 'desc' } }),
       this.prisma.space.count({ where }),
     ]);
+
+    const data = await Promise.all(spaces.map(async (space) => {
+      const boardCount = await this.prisma.board.count({
+        where: { department: { spaceId: space.id }, isArchived: false }
+      });
+      return {
+        ...space,
+        _count: {
+          ...space._count,
+          boards: boardCount,
+        }
+      };
+    }));
+
     return { data, total };
   }
 
@@ -104,16 +129,30 @@ export class DepartmentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findBySpace(spaceId: string) {
-    return this.prisma.department.findMany({
+    const depts = await this.prisma.department.findMany({
       where: { spaceId },
       orderBy: { createdAt: 'asc' },
       include: {
         boards: {
           where: { isArchived: false },
           orderBy: { position: 'asc' as const },
+          include: {
+            _count: { select: { tasks: { where: { isArchived: false } } } }
+          }
         },
         _count: { select: { boards: true } },
       },
+    });
+
+    return depts.map(dept => {
+      const tasksCount = dept.boards.reduce((sum, board) => sum + (board._count?.tasks ?? 0), 0);
+      return {
+        ...dept,
+        _count: {
+          ...dept._count,
+          tasks: tasksCount,
+        }
+      };
     });
   }
 

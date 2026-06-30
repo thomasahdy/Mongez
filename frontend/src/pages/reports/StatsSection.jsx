@@ -4,41 +4,61 @@ import MetricCard from "../../components/reports/MetricCard";
 import { useDashboardStats } from "../../hooks/api/useAnalytics";
 
 const StatsSection = ({spaceId}) => {
-    const { t } = useTranslation();
+  const { t } = useTranslation();
+  const {data: metrics, isLoading, error} = useDashboardStats(spaceId);
+  let rawMetrics = [];
+  if (metrics) {
+    if (metrics.healthScore) {
+      rawMetrics.push({
+        id: "health",
+        title: "Workspace Health",
+        value: `${metrics.healthScore.score}%`,
+        icon: "fa-heart-pulse",
+        iconColor: "text-emerald-500",
+        iconBg: "bg-emerald-100 dark:bg-emerald-900/40",
+        trend: {
+          direction: metrics.healthScore.score >= 80 ? "up" : "down",
+          label: `Grade: ${metrics.healthScore.grade}`
+        }
+      });
+    }
+    if (metrics.taskSummary) {
+      const activeCount = Array.isArray(metrics.taskSummary) 
+        ? metrics.taskSummary.reduce((sum, s) => ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'BACKLOG'].includes(s.status) ? sum + s.count : sum, 0)
+        : (metrics.taskSummary.todo + metrics.taskSummary.inProgress || 0);
+        
+      rawMetrics.push({
+        id: "tasks",
+        title: "Active Tasks",
+        value: String(activeCount),
+        icon: "fa-list-check",
+        iconColor: "text-blue-500",
+        iconBg: "bg-blue-100 dark:bg-blue-900/40",
+      });
+    }
+    if (metrics.memberCount !== undefined) {
+      rawMetrics.push({
+        id: "members",
+        title: "Team Members",
+        value: String(metrics.memberCount),
+        icon: "fa-users",
+        iconColor: "text-purple-500",
+        iconBg: "bg-purple-100 dark:bg-purple-900/40",
+      });
+    }
+    if (metrics.pendingApprovals !== undefined) {
+      rawMetrics.push({
+        id: "approvals",
+        title: "Pending Approvals",
+        value: String(metrics.pendingApprovals),
+        icon: "fa-clock",
+        iconColor: "text-orange-500",
+        iconBg: "bg-orange-100 dark:bg-orange-900/40",
+      });
+    }
+  }
 
-    const {data: metrics, isLoading, error} = useDashboardStats(spaceId);
-    const rawMetrics = Array.isArray(metrics)
-  ? metrics
-  : (metrics?.metrics || []);
-
-const normalizedMetrics = rawMetrics.map((metric) => ({
-  ...metric,
-  id: metric.id || metric.key || metric.name?.toLowerCase().replace(/\s+/g, "-"),
-
-  title: metric.title || metric.label || "Untitled Metric",
-
-  value: String(metric.value ?? metric.count ?? 0),
-
-  unit: metric.unit ?? null,
-
-  icon: metric.icon || "fa-chart-column",
-
-  trend: {
-    direction:
-      metric.trend?.direction ||
-      ((metric.change ?? 0) >= 0 ? "up" : "down"),
-
-    label:
-      metric.trend?.label ||
-      t("reportsPage.metricsChange", { count: Math.abs(metric.change ?? 0) }),
-  },
-
-  accentColor: metric.accentColor || "#00a8e8",
-
-  iconBg: metric.iconBg || "bg-sky-100 dark:bg-sky-900/40",
-
-  iconColor: metric.iconColor || "text-sky-500",
-}));
+  const normalizedMetrics = rawMetrics;
 if (isLoading) {
   return (
     <div className="flex items-center justify-center py-10">

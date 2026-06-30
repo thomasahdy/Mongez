@@ -1,6 +1,5 @@
 import apiClient from "./apiClient";
 import tasksService from "./tasksService";
-import { toArrayPayload } from "./responseUtils";
 
 export const getDashboardStats = async (spaceId) => {
   const [overview, stats] = await Promise.allSettled([
@@ -18,14 +17,14 @@ export const getDashboardActivity = async (spaceId) => {
   const response = await apiClient.get(`/spaces/${spaceId}/audit-logs`, {
     params: { spaceId, limit: 6 },
   });
-  return toArrayPayload(response.data, ["data", "items", "logs"]);
+  return response.data?.data?.items || response.data?.logs || [];
 };
 
 export const getDashboardTaskCompletion = async (spaceId, period) => {
   const response = await apiClient.get("/analytics/tasks", {
     params: { spaceId, period: "month" },
   });
-  return toArrayPayload(response.data, ["data", "items", "tasks"]);
+  return response.data?.weeklyCompletion || [];
 };
 
 export const getDashboardPriorityBreakdown = async (spaceId) => {
@@ -35,8 +34,8 @@ export const getDashboardPriorityBreakdown = async (spaceId) => {
     const response = await apiClient.get('/analytics/tasks', {
       params: { spaceId, period: 'month', groupBy: 'priority' },
     });
-    const items = toArrayPayload(response.data, ['breakdown', 'data', 'items']);
-    if (items.length > 0) {
+    const items = response.data?.breakdown?.data?.items;
+    if (Array.isArray(items) && items.length > 0) {
       return items;
     }
   } catch {
@@ -58,52 +57,42 @@ export const getDashboardTeamLoad = async (spaceId) => {
   const response = await apiClient.get("/analytics/team", {
     params: { spaceId, period: "month" },
   });
-  return toArrayPayload(response.data, ["data", "items", "members"]);
+  return response.data?.members || [];
 };
 
 export const getExecutiveMetrics = async (spaceId) => {
-  try {
-    const response = await apiClient.get("/analytics/executive", {
-      params: { spaceId },
-    });
-    return response.data || {};
-  } catch {
-    const fallback = await apiClient.get("/analytics/overview", {
-      params: { spaceId },
-    });
-    return fallback.data || {};
-  }
+  const response = await apiClient.get("/analytics/executive", { params: { spaceId } });
+  return response.data || {};
 };
 
 export const getSlaMetrics = async (spaceId) => {
-  try {
-    const response = await apiClient.get("/analytics/sla", { params: { spaceId } });
-    return response.data || {};
-  } catch {
-    return {};
-  }
+  const response = await apiClient.get("/analytics/approvals", { params: { spaceId } });
+  return response.data || {};
 };
 
 export const getWorkflowAnalytics = async (spaceId) => {
-  try {
-    const response = await apiClient.get("/analytics/workflows", {
-      params: { spaceId },
-    });
-    return response.data || {};
-  } catch {
-    return {};
-  }
+  const response = await apiClient.get("/analytics/workflows", { params: { spaceId } });
+  return response.data || {};
 };
 
 export const getApproverPerformance = async (spaceId) => {
-  try {
-    const response = await apiClient.get("/analytics/approvers", {
-      params: { spaceId },
-    });
-    return toArrayPayload(response.data, ["data", "items", "approvals"]);
-  } catch {
-    return [];
-  }
+  const response = await apiClient.get("/analytics/team", { params: { spaceId, role: "APPROVER" } });
+  return response.data?.members || [];
+};
+
+export const getDashboardFlow = async (spaceId) => {
+  const response = await apiClient.get("/analytics/flow", { params: { spaceId, period: "month" } });
+  return response.data?.data?.items || [];
+};
+
+export const getDashboardPerformers = async (spaceId) => {
+  const response = await apiClient.get("/analytics/performers", { params: { spaceId } });
+  return response.data?.data?.items || [];
+};
+
+export const getDashboardInsights = async (spaceId) => {
+  const response = await apiClient.get("/analytics/insights", { params: { spaceId } });
+  return response.data?.data?.items || [];
 };
 
 const analyticsService = {
@@ -112,6 +101,9 @@ const analyticsService = {
   getDashboardTaskCompletion,
   getDashboardPriorityBreakdown,
   getDashboardTeamLoad,
+  getDashboardFlow,
+  getDashboardPerformers,
+  getDashboardInsights,
   getExecutiveMetrics,
   getSlaMetrics,
   getWorkflowAnalytics,

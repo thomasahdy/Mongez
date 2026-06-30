@@ -33,6 +33,7 @@ export const JOB_NAMES = {
 
   // Activity
   LOG_ACTIVITY: 'log-activity',
+  LOG_USER_ACTIVITY: 'log-user-activity',
 
   // Messaging channels
   SEND_WHATSAPP: 'send-whatsapp',

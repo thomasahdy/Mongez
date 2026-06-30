@@ -2,10 +2,14 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import InsightCard from "../../components/reports/InsightCard";
 import useLocaleDirection from "../../hooks/useLocaleDirection";
+import { useAiInsights } from "../../hooks/api/useAnalytics";
 
-const AIInsightsPanel = ({ insights }) => {
+const AIInsightsPanel = ({ spaceId, period }) => {
   const { t } = useTranslation();
   const { dir } = useLocaleDirection();
+  const { data: insights = [], isLoading, error } = useAiInsights(spaceId, period);
+
+  if (!insights.length) return null;
 
   return (
     <section

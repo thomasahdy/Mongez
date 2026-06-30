@@ -38,11 +38,15 @@ const MetricCard = ({ metric }) => {
         </div>
 
         {/* Trend */}
-        <TrendBadge
-          direction={trend.direction}
-          label={trend.label}
-          isPositive={trend.isPositive}
-        />
+        {trend ? (
+          <TrendBadge
+            direction={trend.direction}
+            label={trend.label}
+            isPositive={trend.isPositive}
+          />
+        ) : (
+          <div className="h-5"></div>
+        )}
       </div>
     </article>
   );

@@ -19,15 +19,17 @@ export class AuditProcessor extends WorkerHost {
   }
 
   async process(job: Job<any>): Promise<any> {
-    if (job.name !== JOB_NAMES.LOG_ACTIVITY) return;
-
     const correlationId = job.data?.correlationId || randomUUID();
 
     return this.traceContext.run(correlationId, async () => {
       try {
-        await this.auditService.record(job.data as AuditLogInput);
+        if (job.name === JOB_NAMES.LOG_ACTIVITY) {
+          await this.auditService.record(job.data as AuditLogInput);
+        } else if (job.name === JOB_NAMES.LOG_USER_ACTIVITY) {
+          await this.auditService.recordUserActivity(job.data);
+        }
       } catch (err: any) {
-        this.logger.error(`Audit log job ${job.id} failed: ${err.message}`);
+        this.logger.error(`Audit/Activity log job ${job.id} failed: ${err.message}`);
         throw err;
       }
     });

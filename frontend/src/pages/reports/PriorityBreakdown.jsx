@@ -4,6 +4,13 @@ import PriorityBar from "../../components/reports/PriorityBar";
 import ChartCard from "../../components/reports/ChartCard";
 import { usePriorityBreakdown } from "../../hooks/api/useAnalytics";
 
+const PRIORITY_CONFIG = {
+  URGENT: { color: "#ef4444" },
+  HIGH: { color: "#f97316" },
+  MEDIUM: { color: "#3b82f6" },
+  LOW: { color: "#10b981" },
+};
+
 const normalizePriority = (data = []) => {
   const total = data.reduce((sum, i) => sum + i.count, 0);
 
@@ -15,9 +22,9 @@ const normalizePriority = (data = []) => {
   }));
 };
 
-const PriorityBreakdown = ({ spaceId }) => {
+const PriorityBreakdown = ({ spaceId, period }) => {
   const { t } = useTranslation();
-  const {data, isLoading, error} = usePriorityBreakdown(spaceId)
+  const {data, isLoading, error} = usePriorityBreakdown(spaceId, period);
   const priorities = normalizePriority(Array.isArray(data) ? data : []);
 
   if (isLoading) {
