@@ -168,6 +168,23 @@ function SummaryCard({ label, value, hint }) {
   );
 }
 
+function ProviderCardSkeleton() {
+  return (
+    <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" role="status">
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="h-12 w-12 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+        <div className="h-7 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <div className="h-4 w-36 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+      <div className="mt-4 space-y-2">
+        <div className="h-3 w-full animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+        <div className="h-3 w-5/6 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <div className="mt-8 h-10 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+    </article>
+  );
+}
+
 function ProviderAction({
   provider,
   statuses,
@@ -291,6 +308,7 @@ export default function IntegrationsPage({ setPath }) {
     [statusesQuery.data],
   );
   const loading = statusesQuery.isLoading || statusesQuery.isFetching;
+  const initialStatusLoading = statusesQuery.isLoading && !statusesQuery.data;
   const filters = useMemo(
     () => [
       { key: "allApps", label: t("integrations.filters.allApps") },
@@ -576,7 +594,9 @@ export default function IntegrationsPage({ setPath }) {
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
-            {visibleProviders.map((provider) => {
+            {initialStatusLoading ? (
+              Array.from({ length: 4 }, (_, index) => <ProviderCardSkeleton key={index} />)
+            ) : visibleProviders.map((provider) => {
               const status = getStatus(provider, statuses, activeSpaceId, t);
               const meta = providerMeta[provider.key];
 
@@ -628,7 +648,7 @@ export default function IntegrationsPage({ setPath }) {
             })}
           </div>
 
-          {!visibleProviders.length ? (
+          {!initialStatusLoading && !visibleProviders.length ? (
             <div className="mt-8 rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
               {t("integrations.noMatches")}
             </div>

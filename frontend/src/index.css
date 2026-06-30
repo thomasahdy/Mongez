@@ -1233,6 +1233,363 @@ html[dir="rtl"] .dashboard-page-actions {
   animation: cardFadeIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ============================================================
+   GLOBAL UX MOTION LAYER
+   Presentation-only polish for page transitions, cards, forms,
+   tables, nav items, and interactive controls.
+   ============================================================ */
+
+@keyframes pageReveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.995);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes softRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleSettle {
+  0% {
+    opacity: 0;
+    transform: scale(0.965) translateY(10px);
+  }
+  70% {
+    transform: scale(1.008) translateY(-1px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes glowSweep {
+  0% {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+:root {
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-shadow-lift: 0 16px 36px rgba(15, 23, 42, 0.10), 0 4px 12px rgba(15, 23, 42, 0.05);
+  --motion-ring: 0 0 0 4px rgba(0, 168, 232, 0.14);
+}
+
+.auth-page,
+.settings-layout,
+.dashboard-content,
+.workspace-scroll-area > *,
+.min-h-screen,
+.bg-white.text-slate-900 {
+  animation: pageReveal 560ms var(--motion-ease-out) both;
+}
+
+.auth-card,
+.settings-content-area > *,
+.settings-sidebar,
+.notif-section,
+.audit-table-wrap,
+.audit-filters,
+.audit-header,
+.channel-card,
+.dashboard-content > *,
+.ai-card-accent,
+.ai-session-card,
+.ai-metric-bar,
+.workspace-navbar,
+.workspace-sidebar {
+  animation: softRise 520ms var(--motion-ease-out) both;
+}
+
+.settings-content-area > *:nth-child(2),
+.dashboard-content > *:nth-child(2),
+.auth-card > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.settings-content-area > *:nth-child(3),
+.dashboard-content > *:nth-child(3),
+.auth-card > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.settings-content-area > *:nth-child(4),
+.dashboard-content > *:nth-child(4),
+.auth-card > *:nth-child(4) {
+  animation-delay: 135ms;
+}
+
+.settings-content-area > *:nth-child(n + 5),
+.dashboard-content > *:nth-child(n + 5),
+.auth-card > *:nth-child(n + 5) {
+  animation-delay: 180ms;
+}
+
+:where(
+  button,
+  a,
+  [role="button"],
+  input,
+  textarea,
+  select,
+  .settings-nav-item,
+  .page-btn,
+  .auth-primary-button,
+  .auth-brand,
+  .workspace-navbar,
+  .workspace-sidebar,
+  .workspace-sidebar a
+) {
+  transition:
+    transform 220ms var(--motion-ease-out),
+    box-shadow 260ms var(--motion-ease-out),
+    border-color 220ms var(--motion-ease-out),
+    background-color 220ms var(--motion-ease-out),
+    color 220ms var(--motion-ease-out),
+    opacity 220ms var(--motion-ease-out),
+    filter 220ms var(--motion-ease-out);
+}
+
+:where(button, a, [role="button"], .settings-nav-item, .page-btn):not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+:where(button, [role="button"], .page-btn):not(:disabled):active {
+  transform: translateY(0) scale(0.985);
+}
+
+:where(input, textarea, select):focus {
+  transform: translateY(-1px);
+  box-shadow: var(--motion-ring);
+}
+
+:where(button, a, input, textarea, select, [role="button"]):focus-visible {
+  outline: none;
+  box-shadow: var(--motion-ring);
+}
+
+[class*="rounded"][class*="bg-white"],
+[class*="rounded"][class*="bg-slate-"],
+[class*="rounded"][class*="dark:bg-slate-"] {
+  transition:
+    transform 260ms var(--motion-ease-out),
+    box-shadow 300ms var(--motion-ease-out),
+    border-color 240ms var(--motion-ease-out),
+    background-color 240ms var(--motion-ease-out);
+}
+
+[class*="rounded"][class*="bg-white"][class*="shadow"]:hover,
+[class*="rounded"][class*="bg-slate-"][class*="shadow"]:hover,
+.notif-section:hover,
+.auth-card:hover,
+.ai-card-accent:hover,
+.ai-metric-bar:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--motion-shadow-lift);
+}
+
+.settings-nav-item,
+.workspace-sidebar a,
+.page-btn,
+.auth-primary-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-nav-item::after,
+.workspace-sidebar a::after,
+.auth-primary-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.38) 45%, transparent 70%);
+  transform: translateX(-120%);
+  opacity: 0;
+}
+
+.settings-nav-item:hover::after,
+.workspace-sidebar a:hover::after,
+.auth-primary-button:hover::after {
+  animation: glowSweep 720ms var(--motion-ease-out);
+}
+
+tbody tr,
+.audit-table tr,
+.channel-matrix tr {
+  transition:
+    background-color 180ms var(--motion-ease-out),
+    transform 180ms var(--motion-ease-out),
+    box-shadow 180ms var(--motion-ease-out);
+}
+
+tbody tr:hover,
+.audit-table tr:hover,
+.channel-matrix tr:hover {
+  transform: translateX(2px);
+}
+
+html[dir="rtl"] tbody tr:hover,
+html[dir="rtl"] .audit-table tr:hover,
+html[dir="rtl"] .channel-matrix tr:hover {
+  transform: translateX(-2px);
+}
+
+[class*="shadow-2xl"],
+[class*="shadow-xl"] {
+  animation: scaleSettle 420ms var(--motion-ease-spring) both;
+}
+
+.animate-fadeIn {
+  animation-duration: 520ms;
+}
+
+.animate-slideLeft,
+.animate-slideRight,
+.animate-slideIn,
+.animate-slideDown,
+.animate-slideUp {
+  animation-duration: 420ms;
+}
+
+.route-transition-shell {
+  min-height: 100%;
+  animation: pageReveal 420ms var(--motion-ease-out) both;
+}
+
+.route-skeleton {
+  animation: pageReveal 360ms var(--motion-ease-out) both;
+}
+
+.dashboard-content .kpi-card,
+.dashboard-content .insights-section,
+.dashboard-content .chart-card,
+.dashboard-content .list-card {
+  animation: scaleSettle 520ms var(--motion-ease-spring) both;
+}
+
+.dashboard-content .kpi-card:nth-child(2),
+.dashboard-content .chart-card:nth-child(2),
+.dashboard-content .list-card:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.dashboard-content .kpi-card:nth-child(3) {
+  animation-delay: 110ms;
+}
+
+.dashboard-content .kpi-card:nth-child(4) {
+  animation-delay: 150ms;
+}
+
+.dashboard-content .chart-card,
+.dashboard-content .list-card {
+  transition:
+    transform 280ms var(--motion-ease-out),
+    box-shadow 320ms var(--motion-ease-out),
+    border-color 240ms var(--motion-ease-out);
+}
+
+.dashboard-content .chart-card:hover,
+.dashboard-content .list-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--motion-shadow-lift);
+}
+
+.settings-layout .settings-sidebar {
+  animation: slideRight 460ms var(--motion-ease-out) both;
+}
+
+html[dir="rtl"] .settings-layout .settings-sidebar {
+  animation-name: slideLeft;
+}
+
+.settings-layout .settings-content-area,
+.settings-layout main,
+.settings-layout section {
+  animation: softRise 500ms var(--motion-ease-out) both;
+}
+
+.page-motion-calendar main > div > section,
+.page-motion-calendar aside > section,
+.page-motion-calendar [class*="grid-cols-7"] > button {
+  animation: softRise 480ms var(--motion-ease-out) both;
+}
+
+.page-motion-calendar [class*="grid-cols-7"] > button {
+  transition:
+    transform 220ms var(--motion-ease-out),
+    background-color 220ms var(--motion-ease-out),
+    border-color 220ms var(--motion-ease-out),
+    box-shadow 260ms var(--motion-ease-out);
+}
+
+.page-motion-calendar [class*="grid-cols-7"] > button:hover {
+  transform: translateY(-2px) scale(1.006);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  z-index: 1;
+}
+
+.calendar-skeleton {
+  animation: softRise 420ms var(--motion-ease-out) both;
+}
+
+.calendar-skeleton [class*="bg-slate-"] {
+  animation: shimmer 1.6s ease-in-out infinite;
+  background-image: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+}
+
+.page-motion-ai .ai-composer-shell,
+.page-motion-ai .ai-card-accent,
+.page-motion-ai .ai-session-card,
+.page-motion-ai .ai-metric-bar {
+  transition:
+    transform 240ms var(--motion-ease-out),
+    box-shadow 280ms var(--motion-ease-out),
+    border-color 220ms var(--motion-ease-out),
+    background-color 220ms var(--motion-ease-out);
+}
+
+.page-motion-ai .ai-composer-shell:focus-within {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 16px 30px rgba(99, 102, 241, 0.12));
+}
+
+.page-motion-ai .ai-session-card:hover,
+.page-motion-ai .ai-card-accent:hover {
+  transform: translateY(-2px);
+}
+
+.inbox-virtual-list,
+.members-virtual-list {
+  contain: strict;
+  scrollbar-gutter: stable;
+}
+
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }

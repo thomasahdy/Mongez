@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedLayout from "./components/layout/ProtectedLayout";
+import PageSkeleton from "./components/loading/PageSkeleton";
 import { useAuthSessionQuery } from "./hooks/useAuthQueries";
 import { shouldContinueInitialOnboarding } from "./lib/onboardingStorage";
 import { AppProvider } from "./pages/AppContext";
@@ -87,6 +88,7 @@ function ProtectedShell({ isAuthenticated, authReady }) {
 }
 
 function AppContent() {
+  const location = useLocation();
   const [path, setPath] = useState([]);
   const { i18n } = useTranslation();
   const [language, setLanguage] = useState(() => (i18n.resolvedLanguage || i18n.language || "en").slice(0, 2));
@@ -116,8 +118,9 @@ function AppContent() {
   }, [i18n, language]);
 
   return (
-    <Suspense fallback={<FullScreenLoader />}>
-      <Routes>
+    <Suspense fallback={<PageSkeleton />}>
+      <div key={location.pathname} className="route-transition-shell">
+        <Routes location={location}>
         <Route
           path="/"
           element={
@@ -211,7 +214,8 @@ function AppContent() {
             />
           }
         />
-      </Routes>
+        </Routes>
+      </div>
     </Suspense>
   );
 }

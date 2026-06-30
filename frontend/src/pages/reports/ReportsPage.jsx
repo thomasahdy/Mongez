@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area, Legend,
-} from "recharts";
 import ReportsToolbar from "./ReportsToolbar";
 import AIInsightsPanel from "./AIInsightsPanel";
 import TaskVolumeChart from "./TaskVolumeChart";
@@ -22,13 +18,6 @@ const TOP_PERFORMERS = [
   { id: "tu", name: "Thomas User",  initials: "TH", color: "#00a8e8", tasks: 98 },
   { id: "mr", name: "Marcus Reed",  initials: "MR", color: "#e74c3c", tasks: 86 },
   { id: "ed", name: "Emma Davis",   initials: "ED", color: "#f39c12", tasks: 72 },
-];
-
-const PRIORITIES = [
-  { label: "Urgent", pct: 15, color: "#ef4444" },
-  { label: "High",   pct: 35, color: "#f59e0b" },
-  { label: "Normal", pct: 40, color: "#00a8e8" },
-  { label: "Low",    pct: 10, color: "#94a3b8" },
 ];
 
 const FLOW_DATA = [

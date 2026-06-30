@@ -3,6 +3,7 @@ import { Link, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { useVirtualList } from "../../hooks/useVirtualList";
 import { readStorageJson, readStorageValue, writeStorageJson, writeStorageValue } from "../../utils/browserStorage";
 import {
   useCalendarEventsQuery,
@@ -38,6 +39,24 @@ const LOCALIZED_DIGIT_MAP = {
   "۸": "8",
   "۹": "9",
 };
+
+function CalendarBoardSkeleton() {
+  return (
+    <div className="calendar-skeleton rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
+      <div className="grid grid-cols-7 gap-2">
+        {Array.from({ length: 35 }, (_, index) => (
+          <div key={index} className="min-h-[120px] rounded-2xl bg-slate-100 p-3">
+            <div className="h-6 w-8 rounded-full bg-slate-200" />
+            <div className="mt-5 space-y-2">
+              <div className="h-4 rounded-lg bg-slate-200" />
+              <div className="h-4 w-2/3 rounded-lg bg-slate-200" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function getSafeRedirectUrl(rawUrl) {
   try {
@@ -516,6 +535,7 @@ export default function CalendarPage() {
   const events = normalizedEvents.items;
   const invalidEventCount = normalizedEvents.invalidCount;
   const loading = calendarEventsQuery.isLoading || calendarEventsQuery.isFetching;
+  const initialCalendarLoading = calendarEventsQuery.isLoading && !calendarEventsQuery.data;
 
   const visibleDates = useMemo(() => {
     const dates = [];
@@ -549,6 +569,20 @@ export default function CalendarPage() {
     [eventsByDate, resolvedAppliedFilters.holidayCountry, visibleDates],
   );
   const nonWorkingDaySet = useMemo(() => new Set(nonWorkingEntries.map((entry) => entry.dateKey)), [nonWorkingEntries]);
+  const shouldVirtualizeSelectedEvents = selectedDayEventsExpanded && selectedDayEvents.length > 24;
+  const {
+    handleScroll: handleSelectedEventVirtualScroll,
+    measureViewport: measureSelectedEventViewport,
+    totalHeight: selectedEventVirtualHeight,
+    virtualItems: virtualSelectedEvents,
+  } = useVirtualList(selectedDayEvents, { itemHeight: 74, overscan: 6 });
+  const shouldVirtualizeNonWorkingEntries = nonWorkingEntries.length > 28;
+  const {
+    handleScroll: handleNonWorkingVirtualScroll,
+    measureViewport: measureNonWorkingViewport,
+    totalHeight: nonWorkingVirtualHeight,
+    virtualItems: virtualNonWorkingEntries,
+  } = useVirtualList(nonWorkingEntries, { itemHeight: 72, overscan: 6 });
 
   useEffect(() => {
     setPath?.([
@@ -791,7 +825,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-slate-50" dir={isRTL ? "rtl" : "ltr"}>
+    <div className="page-motion-calendar flex flex-1 flex-col overflow-hidden bg-slate-50" dir={isRTL ? "rtl" : "ltr"}>
       <div className="shrink-0 border-b border-slate-200 bg-white px-5">
         <div className={`flex items-center gap-0 overflow-x-auto ${isRTL ? "flex-row-reverse" : ""}`}>
           {viewTabs.map((tab) => {
@@ -980,9 +1014,15 @@ export default function CalendarPage() {
                   </div>
                 ) : null}
 
-                {calendarView === "month" ? renderMonthView() : null}
-                {calendarView === "week" ? renderWeekView() : null}
-                {calendarView === "day" ? renderDayView() : null}
+                {initialCalendarLoading ? (
+                  <CalendarBoardSkeleton />
+                ) : (
+                  <>
+                    {calendarView === "month" ? renderMonthView() : null}
+                    {calendarView === "week" ? renderWeekView() : null}
+                    {calendarView === "day" ? renderDayView() : null}
+                  </>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -1011,12 +1051,33 @@ export default function CalendarPage() {
                     <div className="rounded-[22px] border border-dashed border-slate-200 px-4 py-3 text-[12px] leading-5 text-slate-500">{t("calendar.labels.noEventsSelectedDay")}</div>
                   ) : null}
 
-                  {(selectedDayEventsExpanded ? selectedDayEvents : selectedDayEvents.slice(0, 4)).map((event) => (
-                    <article key={event.id} className={`rounded-[22px] px-3.5 py-3 ${eventClassName(event.type)}`}>
-                      <div className="text-[12px] font-semibold">{event.title}</div>
-                      {event.detail ? <div className="mt-1 text-[11px] opacity-80">{event.detail}</div> : null}
-                    </article>
-                  ))}
+                  {shouldVirtualizeSelectedEvents ? (
+                    <div
+                      ref={measureSelectedEventViewport}
+                      onScroll={handleSelectedEventVirtualScroll}
+                      className="relative max-h-80 overflow-y-auto pr-1"
+                    >
+                      <div className="relative" style={{ height: selectedEventVirtualHeight }}>
+                        {virtualSelectedEvents.map(({ item: event, offsetTop }) => (
+                          <article
+                            key={event.id}
+                            className={`absolute left-0 right-0 rounded-[22px] px-3.5 py-3 ${eventClassName(event.type)}`}
+                            style={{ transform: `translateY(${offsetTop}px)`, minHeight: 66 }}
+                          >
+                            <div className="text-[12px] font-semibold">{event.title}</div>
+                            {event.detail ? <div className="mt-1 text-[11px] opacity-80">{event.detail}</div> : null}
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    (selectedDayEventsExpanded ? selectedDayEvents : selectedDayEvents.slice(0, 4)).map((event) => (
+                      <article key={event.id} className={`rounded-[22px] px-3.5 py-3 ${eventClassName(event.type)}`}>
+                        <div className="text-[12px] font-semibold">{event.title}</div>
+                        {event.detail ? <div className="mt-1 text-[11px] opacity-80">{event.detail}</div> : null}
+                      </article>
+                    ))
+                  )}
 
                   {selectedDayEvents.length > 4 ? (
                     <button
@@ -1052,19 +1113,47 @@ export default function CalendarPage() {
                     </div>
                   ) : null}
 
-                  {nonWorkingEntries.map((entry) => (
-                    <div key={`${entry.dateKey}-${entry.label}`} className="rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <div className={`text-[12px] font-semibold text-slate-700 ${isRTL ? "text-right" : "text-left"}`}>
-                        {formatCalendarLongDayLabel(new Date(entry.dateKey), locale, calendarSystem)}
-                      </div>
-                      <div className="mt-1 text-[11px] text-slate-500">
-                        {t("calendar.labels.holidaySource", {
-                          label: entry.label === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.label,
-                          source: entry.source === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.source,
-                        })}
+                  {shouldVirtualizeNonWorkingEntries ? (
+                    <div
+                      ref={measureNonWorkingViewport}
+                      onScroll={handleNonWorkingVirtualScroll}
+                      className="relative max-h-80 overflow-y-auto pr-1"
+                    >
+                      <div className="relative" style={{ height: nonWorkingVirtualHeight }}>
+                        {virtualNonWorkingEntries.map(({ item: entry, offsetTop }) => (
+                          <div
+                            key={`${entry.dateKey}-${entry.label}`}
+                            className="absolute left-0 right-0 rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2.5"
+                            style={{ transform: `translateY(${offsetTop}px)`, minHeight: 64 }}
+                          >
+                            <div className={`text-[12px] font-semibold text-slate-700 ${isRTL ? "text-right" : "text-left"}`}>
+                              {formatCalendarLongDayLabel(new Date(entry.dateKey), locale, calendarSystem)}
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                              {t("calendar.labels.holidaySource", {
+                                label: entry.label === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.label,
+                                source: entry.source === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.source,
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    nonWorkingEntries.map((entry) => (
+                      <div key={`${entry.dateKey}-${entry.label}`} className="rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2.5">
+                        <div className={`text-[12px] font-semibold text-slate-700 ${isRTL ? "text-right" : "text-left"}`}>
+                          {formatCalendarLongDayLabel(new Date(entry.dateKey), locale, calendarSystem)}
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          {t("calendar.labels.holidaySource", {
+                            label: entry.label === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.label,
+                            source: entry.source === NON_WORKING_WEEKEND ? t("calendar.labels.weekend") : entry.source,
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </section>
 

@@ -536,7 +536,7 @@ function AiAssistantPage() {
 
   return (
     <div
-      className={`relative flex h-full w-full flex-1 overflow-hidden font-sans ${isRTL ? "flex-row-reverse" : ""}`}
+      className={`page-motion-ai relative flex h-full w-full flex-1 overflow-hidden font-sans ${isRTL ? "flex-row-reverse" : ""}`}
       style={{background:'var(--bg-depth-0)'}}
       dir={isRTL ? "rtl" : "ltr"}
     >

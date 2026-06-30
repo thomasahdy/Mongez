@@ -2,13 +2,13 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import Button from "../../components/ui/Button";
-import NotifIconBadge from "../../components/Inbox/NotifIconBadge";
 import NotificationItem from "../../components/Inbox/NotificationItem";
 import BulkActionBar from "./sections/BulkActionBar";
 import EmptyInbox from "./EmptyInbox";
 import InboxFilterTabs from "./sections/InboxFilterTabs";
 import { useAppContext } from "../../pages/AppContext";
 import useLocaleDirection from "../../hooks/useLocaleDirection";
+import { useVirtualList } from "../../hooks/useVirtualList";
 import {
   useNotifications,
   useMarkNotificationAsRead,
@@ -80,7 +80,7 @@ const mapBackendNotification = (n, t) => {
  * Supports task, workflow, space, and approval entity types.
  */
 const resolveNotificationUrl = (notif) => {
-  const { type, entityType, entityId, spaceId } = notif;
+  const { type, entityType, entityId } = notif;
   const et = (entityType || '').toLowerCase();
 
   // Task-related notifications → task detail page
@@ -175,12 +175,19 @@ export default function InboxPage({ setPath }) {
       { id: "comments", label: "Comments", count: mappedNotifications.filter(n => n.type === "COMMENT_MENTION").length },
       { id: "updates", label: "Updates", count: mappedNotifications.filter(n => n.type === "TASK_UPDATED" || n.type === "APPROVAL_RESOLVED").length },
     ];
-  }, [mappedNotifications, t]);
+  }, [mappedNotifications]);
 
   const allSelected = useMemo(
     () => selectedIds.size === filteredNotifications.length && filteredNotifications.length > 0,
     [selectedIds, filteredNotifications]
   );
+  const shouldVirtualizeNotifications = filteredNotifications.length > 40;
+  const {
+    handleScroll: handleNotificationVirtualScroll,
+    measureViewport: measureNotificationViewport,
+    totalHeight: notificationVirtualHeight,
+    virtualItems: virtualNotifications,
+  } = useVirtualList(filteredNotifications, { itemHeight: 108, overscan: 8 });
 
   const handleSelect = useCallback((id, checked) => {
     setSelectedIds((prev) => {
@@ -331,6 +338,32 @@ export default function InboxPage({ setPath }) {
             renderSkeletons()
           ) : filteredNotifications.length === 0 ? (
             <EmptyInbox />
+          ) : shouldVirtualizeNotifications ? (
+            <div
+              ref={measureNotificationViewport}
+              onScroll={handleNotificationVirtualScroll}
+              className="inbox-virtual-list relative max-h-[calc(100vh-245px)] overflow-y-auto pr-1"
+              role="list"
+              aria-label={t("inboxPage.notificationsAria")}
+            >
+              <div className="relative" style={{ height: notificationVirtualHeight }}>
+                {virtualNotifications.map(({ item: notif, offsetTop }) => (
+                  <div
+                    key={notif.id}
+                    className="absolute left-0 right-0 py-1"
+                    style={{ transform: `translateY(${offsetTop}px)`, minHeight: 108 }}
+                  >
+                    <NotificationItem
+                      notif={notif}
+                      selected={selectedIds.has(notif.id)}
+                      onSelect={(checked) => handleSelect(notif.id, checked)}
+                      onAction={handleAction}
+                      onClick={() => handleItemClick(notif.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col gap-2" role="list" aria-label={t("inboxPage.notificationsAria")}>
               {filteredNotifications.map((notif) => (
