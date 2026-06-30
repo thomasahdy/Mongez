@@ -1,4 +1,3 @@
-import React from 'react'
 
 /** Pill badge with variants */
 const Badge = ({ children, variant = "neutral", className = "" }) => {

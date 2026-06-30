@@ -1,4 +1,3 @@
-import React from 'react'
 
 const HighlightedText = ({ text, query }) => {
   if (!query.trim()) return <span>{text}</span>;

@@ -192,7 +192,10 @@ describe('SessionService', () => {
 
       const result = await service.getUserSessions('user-123');
 
-      expect(result).toEqual(mockSessions);
+      expect(result).toEqual([
+        { id: 's2', createdAt: new Date('2026-06-20'), ip: 'Private network' },
+        { id: 's1', createdAt: new Date('2026-06-19'), ip: 'Private network' },
+      ]);
       expect(prisma.userSession.findMany).toHaveBeenCalledWith({
         where: {
           userId: 'user-123',

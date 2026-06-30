@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  BadRequestException,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -54,6 +55,10 @@ export class UsersController {
   })
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(@Req() req: any, @UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('No avatar file provided');
+    }
+
     return this.usersService.uploadAvatar(req.user.userId, {
       buffer: file.buffer,
       mimeType: file.mimetype,

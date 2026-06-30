@@ -19,6 +19,10 @@ import { VirusScannerService } from '../../infrastructure/scanners/virus-scanner
 import { QUEUE_NAMES, JOB_NAMES } from '../../infrastructure/queue/queue.constants';
 import { paginate } from '../../shared/dto/pagination.dto';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import {
+  isExpiredStorageSignature,
+  isValidStorageSignature,
+} from '../../infrastructure/storage/storage-signature.util';
 
 /** Minimal shape of an uploaded file (works with or without @types/multer). */
 export interface UploadedFile {
@@ -168,19 +172,11 @@ export class FilesService {
 
   async downloadByKey(key: string, userId?: string, expires?: string, signature?: string) {
     if (expires && signature) {
-      const secret = this.config.get<string>('APP_SECRET', 'super-secret-key');
-      const stringToSign = `${key}:${expires}`;
-      const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(stringToSign)
-        .digest('hex');
-
-      if (signature !== expectedSignature) {
+      if (!isValidStorageSignature(this.config, key, expires, signature)) {
         throw new ForbiddenException('Invalid download signature');
       }
 
-      const now = Math.floor(Date.now() / 1000);
-      if (now > Number(expires)) {
+      if (isExpiredStorageSignature(expires)) {
         throw new ForbiddenException('Download link has expired');
       }
     } else {

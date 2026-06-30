@@ -1,10 +1,10 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { Outlet } from "react-router";
 import Sidebar from "./Sidebar";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const ProtectedLayout = ({ setLanguage, language }) => {
-  const { isRTL } = useLocaleDirection();
+  const { isRTL, dir } = useLocaleDirection();
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window === "undefined" ? true : window.innerWidth >= 1024,
   );
@@ -16,7 +16,7 @@ const ProtectedLayout = ({ setLanguage, language }) => {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 font-sans animate-fadeIn dark:bg-slate-900">
+    <div className="flex h-screen overflow-hidden bg-slate-50 font-sans animate-fadeIn dark:bg-slate-900" dir={dir}>
       {sidebarOpen ? (
         <div className="hidden shrink-0 lg:block">
           <Sidebar setLanguage={setLanguage} language={language} />

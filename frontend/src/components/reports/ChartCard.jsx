@@ -1,4 +1,3 @@
-import React from "react";
 import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const ChartCard = ({ title, children, headerRight, className = "" }) => {

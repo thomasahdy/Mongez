@@ -19,6 +19,8 @@ const notificationsPath = [
 ];
 
 const NotificationsPage = ({ setPath }) => {
+    const { dir, isRTL } = useLocaleDirection();
+
     useEffect(() => {
         setPath?.(notificationsPath);
     }, [setPath]);
@@ -78,12 +80,13 @@ const NotificationsPage = ({ setPath }) => {
             weekendNotifications,
         });
     };
+    const { t } = useTranslation();
 
     return (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden" dir={dir}>
             <SettingsSidebar activeId="notifications" />
 
-            <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900" aria-label="Notification settings">
+            <main className={`flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 ${isRTL ? "text-right" : "text-left"}`} aria-label={t("notificationsPage.aria", { defaultValue: "Notification settings" })}>
                 <div className="mx-auto max-w-6xl px-6 py-6 space-y-6">
                     {isLoading ? (
                         <NotificationSkeleton />
@@ -127,7 +130,7 @@ const NotificationsPage = ({ setPath }) => {
 
                             <div className="pt-4 border-t border-slate-150 dark:border-slate-800">
                                 <h3 className="text-md font-black tracking-tight text-slate-800 dark:text-slate-100 mb-4 uppercase text-xs tracking-widest text-slate-400">
-                                    Delivery Channels Linking
+                                    {t("notificationsPage.deliveryChannelsLinking", { defaultValue: "Delivery Channels Linking" })}
                                 </h3>
                                 <MessagingLinkingCard
                                     spaceId={activeSpaceId}

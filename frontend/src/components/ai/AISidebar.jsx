@@ -160,7 +160,7 @@ const AISidebar = ({ open, onClose }) => {
                 }
               }}
               placeholder={t("aiPreview.inputPlaceholder")}
-              className={`flex-1 border-none bg-transparent px-2.5 py-1.5 text-[13px] text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-200 ${isRTL ? "text-right" : "text-left"}`}
+              className={`flex-1 border-none bg-transparent px-2.5 py-1.5 text-[13px] text-slate-800 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-200 ${isRTL ? "text-right" : "text-left"}`}
               aria-label={t("aiPreview.askAria")}
             />
             <button

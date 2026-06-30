@@ -1,4 +1,3 @@
-import React from 'react'
 
 const SettingsSection = ({ title, icon, iconColor = "text-sky-500", danger = false, children }) => {
   return (

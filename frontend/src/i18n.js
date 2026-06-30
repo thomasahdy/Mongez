@@ -12,6 +12,12 @@ const preferredLanguage =
   storedLanguage ||
   (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ar") ? "ar" : "en");
 
+if (typeof document !== "undefined") {
+  const initialLanguage = String(preferredLanguage || "en").slice(0, 2);
+  document.documentElement.lang = initialLanguage;
+  document.documentElement.dir = initialLanguage === "ar" ? "rtl" : "ltr";
+}
+
 i18n.use(initReactI18next).init({
   resources: {
     en: {

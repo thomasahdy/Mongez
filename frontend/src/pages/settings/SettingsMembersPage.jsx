@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import SettingsSidebar from "./sections/SettingsSidebar";
 import { useAppContext } from "../AppContext";
@@ -12,6 +13,7 @@ import {
   useUpdateSpaceMemberRoleMutation,
 } from "../../hooks/useSettingsQueries";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { useVirtualList } from "../../hooks/useVirtualList";
 import { buildSettingsPath } from "./settingsPath";
 
 const ROLE_OPTIONS = ["MEMBER", "ADMIN"];
@@ -59,6 +61,7 @@ export default function SettingsMembersPage({ setPath }) {
   const { activeSpace, activeSpaceId, error, refreshApp, user } = useAppContext();
   const { t, i18n } = useTranslation();
   const { isRTL } = useLocaleDirection();
+  const navigate = useNavigate();
   const [inviteForm, setInviteForm] = useState({ email: "", role: "MEMBER" });
   const [pageError, setPageError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -109,6 +112,13 @@ export default function SettingsMembersPage({ setPath }) {
 
   const currentRole = String(getMemberRole(currentMembership)).toUpperCase();
   const canManageMembers = MANAGE_ROLES.has(currentRole);
+  const shouldVirtualizeMembers = spaceMembers.length > 35;
+  const {
+    handleScroll: handleMemberVirtualScroll,
+    measureViewport: measureMemberViewport,
+    totalHeight: memberVirtualHeight,
+    virtualItems: virtualMembers,
+  } = useVirtualList(spaceMembers, { itemHeight: 118, overscan: 6 });
 
   const queryError = membersQuery.isError
     ? membersQuery.error?.message || t("members.errors.membersFailed")
@@ -253,12 +263,81 @@ export default function SettingsMembersPage({ setPath }) {
     try {
       await leaveWorkspaceMutation.mutateAsync();
       await refreshApp?.();
-      window.location.href = "/spaces";
+      navigate("/spaces", { replace: true });
     } catch (requestError) {
       setPageError(requestError.message || t("members.errors.leaveFailed"));
     } finally {
       setBusyAction("");
     }
+  };
+
+  const renderMemberRow = (member) => {
+    const role = String(getMemberRole(member)).toUpperCase();
+    const isSelf = member?.user?.id === user?.id;
+    const isOwner = role === "OWNER";
+    const canEditMember = canManageMembers && !isSelf && (currentRole === "OWNER" || !isOwner);
+    const isBusy = busyAction === `role-${member?.user?.id}` || busyAction === `remove-${member?.user?.id}`;
+
+    return (
+      <div key={member.id || member.userId || getMemberEmail(member)} className="flex flex-col gap-4 px-5 py-4">
+        <div className={`flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between ${isRTL ? "lg:flex-row-reverse" : ""}`}>
+          <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-50 text-sm font-black text-sky-600 dark:bg-sky-500/10 dark:text-sky-300">
+              {formatMemberName(member).slice(0, 1).toUpperCase()}
+            </div>
+            <div>
+              <div className={`flex flex-wrap items-center gap-2 ${isRTL ? "flex-row-reverse justify-end" : ""}`}>
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{formatMemberName(member)}</p>
+                {isSelf ? (
+                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
+                    {t("members.labels.you")}
+                  </span>
+                ) : null}
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                  {formatMemberStatus(member)}
+                </span>
+              </div>
+              {getMemberEmail(member) ? (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{getMemberEmail(member)}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className={`flex flex-wrap items-center gap-3 ${isRTL ? "justify-end" : ""}`}>
+            {canManageMembers ? (
+              <select
+                value={role}
+                disabled={!canEditMember || isBusy}
+                onChange={(event) => handleRoleChange(member, event.target.value)}
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+              >
+                {ROLE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {formatRole(option)}
+                  </option>
+                ))}
+                {role === "OWNER" ? <option value="OWNER">{t("members.roles.OWNER")}</option> : null}
+              </select>
+            ) : (
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                {formatRole(role)}
+              </span>
+            )}
+
+            {canEditMember ? (
+              <button
+                type="button"
+                onClick={() => handleRemoveMember(member)}
+                disabled={isBusy}
+                className="rounded-2xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-500/30 dark:text-rose-300 dark:hover:bg-rose-500/10"
+              >
+                {busyAction === `remove-${member?.user?.id}` ? t("members.labels.removing") : t("members.labels.remove")}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -337,78 +416,44 @@ export default function SettingsMembersPage({ setPath }) {
               </div>
 
               {loading ? (
-                <div className="p-6 text-sm text-slate-500 dark:text-slate-400">{t("common.loading")}</div>
-              ) : spaceMembers.length ? (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {spaceMembers.map((member) => {
-                    const role = String(getMemberRole(member)).toUpperCase();
-                    const isSelf = member?.user?.id === user?.id;
-                    const isOwner = role === "OWNER";
-                    const canEditMember = canManageMembers && !isSelf && (currentRole === "OWNER" || !isOwner);
-                    const isBusy = busyAction === `role-${member?.user?.id}` || busyAction === `remove-${member?.user?.id}`;
-
-                    return (
-                      <div key={member.id || member.userId || getMemberEmail(member)} className="flex flex-col gap-4 px-5 py-4">
-                        <div className={`flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between ${isRTL ? "lg:flex-row-reverse" : ""}`}>
-                          <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
-                            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-50 text-sm font-black text-sky-600 dark:bg-sky-500/10 dark:text-sky-300">
-                              {formatMemberName(member).slice(0, 1).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className={`flex flex-wrap items-center gap-2 ${isRTL ? "flex-row-reverse justify-end" : ""}`}>
-                                <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{formatMemberName(member)}</p>
-                                {isSelf ? (
-                                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
-                                    {t("members.labels.you")}
-                                  </span>
-                                ) : null}
-                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                                  {formatMemberStatus(member)}
-                                </span>
-                              </div>
-                              {getMemberEmail(member) ? (
-                                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{getMemberEmail(member)}</p>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <div className={`flex flex-wrap items-center gap-3 ${isRTL ? "justify-end" : ""}`}>
-                            {canManageMembers ? (
-                              <select
-                                value={role}
-                                disabled={!canEditMember || isBusy}
-                                onChange={(event) => handleRoleChange(member, event.target.value)}
-                                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-                              >
-                                {ROLE_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>
-                                    {formatRole(option)}
-                                  </option>
-                                ))}
-                                {role === "OWNER" ? <option value="OWNER">{t("members.roles.OWNER")}</option> : null}
-                              </select>
-                            ) : (
-                              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                                {formatRole(role)}
-                              </span>
-                            )}
-
-                            {canEditMember ? (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveMember(member)}
-                                disabled={isBusy}
-                                className="rounded-2xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-500/30 dark:text-rose-300 dark:hover:bg-rose-500/10"
-                              >
-                                {busyAction === `remove-${member?.user?.id}` ? t("members.labels.removing") : t("members.labels.remove")}
-                              </button>
-                            ) : null}
-                          </div>
+                <div className="space-y-3 p-5" role="status" aria-label={t("common.loading")}>
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <div key={index} className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
+                      <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+                        <div className="h-11 w-11 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                        <div className="space-y-2">
+                          <div className="h-3 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                          <div className="h-3 w-44 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
                         </div>
                       </div>
-                    );
-                  })}
+                      <div className="h-9 w-24 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                    </div>
+                  ))}
                 </div>
+              ) : spaceMembers.length ? (
+                shouldVirtualizeMembers ? (
+                  <div
+                    ref={measureMemberViewport}
+                    onScroll={handleMemberVirtualScroll}
+                    className="members-virtual-list relative max-h-[min(680px,calc(100vh-330px))] overflow-y-auto"
+                  >
+                    <div className="relative" style={{ height: memberVirtualHeight }}>
+                      {virtualMembers.map(({ item: member, offsetTop }) => (
+                        <div
+                          key={member.id || member.userId || getMemberEmail(member)}
+                          className="absolute left-0 right-0 border-b border-slate-100 dark:border-slate-800"
+                          style={{ transform: `translateY(${offsetTop}px)`, minHeight: 118 }}
+                        >
+                          {renderMemberRow(member)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {spaceMembers.map((member) => renderMemberRow(member))}
+                  </div>
+                )
               ) : (
                 <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
                   {t("members.labels.noMembers")}
@@ -475,7 +520,14 @@ export default function SettingsMembersPage({ setPath }) {
                     {t("members.labels.inviteRestricted")}
                   </div>
                 ) : loadingInvitations ? (
-                  <div className="text-sm text-slate-500 dark:text-slate-400">{t("common.loading")}</div>
+                  <div className="space-y-3" role="status" aria-label={t("common.loading")}>
+                    {Array.from({ length: 3 }, (_, index) => (
+                      <div key={index} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                        <div className="h-3 w-40 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                        <div className="mt-3 h-3 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                      </div>
+                    ))}
+                  </div>
                 ) : invitations.length ? (
                   <div className="space-y-3">
                     {invitations.map((invite) => (

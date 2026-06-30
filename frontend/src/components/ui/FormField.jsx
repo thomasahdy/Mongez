@@ -1,4 +1,3 @@
-import React from 'react'
 
 const FormField = ({ label, id, as = "input", children, className = "", ...rest }) => {
   const shared =

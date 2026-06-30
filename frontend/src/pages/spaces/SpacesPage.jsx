@@ -8,11 +8,13 @@ import QuotaBanner from "./QuotaBanner";
 import CreateSpaceModal from "./CreateSpaceModal";
 import { useSpaces, useCreateSpace, useUpdateSpace, useDeleteSpace } from "../../hooks/api/useSpaces";
 import { useToast } from "../../context/ToastContext";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 const QUOTA = { total: 5 };
 
 export default function SpacesPage({ setPath }) {
   const { t } = useTranslation();
+  const { dir, isRTL } = useLocaleDirection();
   const navigate = useNavigate();
   const toast = useToast();
   const { data: spaces, isLoading, error } = useSpaces();
@@ -95,8 +97,8 @@ export default function SpacesPage({ setPath }) {
 
   return (
     <>
-      <div className="flex flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
-        <main className="flex-1 overflow-y-auto px-8 py-8" aria-label={t("spacesPage.pageAria")}>
+      <div className="flex flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-900" dir={dir}>
+        <main className={`flex-1 overflow-y-auto px-8 py-8 ${isRTL ? "text-right" : "text-left"}`} aria-label={t("spacesPage.pageAria")}>
           <div className="mx-auto max-w-[1100px]">
             <SpacesHeader onNewSpace={() => setShowCreateModal(true)} />
 

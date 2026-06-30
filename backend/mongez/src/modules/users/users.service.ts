@@ -37,7 +37,7 @@ export class UsersService {
       async () => {
         const user = await this.userRepo.findById(id);
         if (!user) throw new NotFoundException('User not found');
-        return user;
+        return this.withPublicAvatarUrl(user);
       },
       this.CACHE_TTL,
     );
@@ -45,13 +45,14 @@ export class UsersService {
 
   async getAll(page: number, limit: number) {
     const { data, total } = await this.userRepo.findAll(page, limit);
-    return paginate(data, total, page, limit);
+    const users = await Promise.all(data.map((user) => this.withPublicAvatarUrl(user)));
+    return paginate(users, total, page, limit);
   }
 
   async updateProfile(id: string, dto: UpdateProfileDto) {
     const user = await this.userRepo.updateProfile(id, dto);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, id);
-    return user;
+    return this.withPublicAvatarUrl(user);
   }
 
   async changePassword(id: string, dto: ChangePasswordDto): Promise<void> {
@@ -82,7 +83,7 @@ export class UsersService {
       await this.userRepo.revokeAllSessions(targetId);
     }
     await this.cache.invalidateEntity(this.CACHE_PREFIX, targetId);
-    return user;
+    return this.withPublicAvatarUrl(user);
   }
 
   async sendVerificationEmail(userId: string): Promise<void> {
@@ -96,7 +97,7 @@ export class UsersService {
     try {
       const user = await this.userRepo.verifyEmail(token);
       await this.cache.invalidateEntity(this.CACHE_PREFIX, user.id);
-      return user;
+      return this.withPublicAvatarUrl(user);
     } catch {
       throw new NotFoundException('Invalid or expired verification token');
     }
@@ -121,7 +122,7 @@ export class UsersService {
     const result = await this.storage.upload(key, file.buffer, file.mimeType);
     const user = await this.userRepo.updateAvatar(userId, result.key);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, userId);
-    return user;
+    return this.withPublicAvatarUrl(user);
   }
 
   /**
@@ -189,5 +190,20 @@ export class UsersService {
     const pref = await this.userRepo.updatePreferences(userId, dto);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, userId);
     return pref;
+  }
+
+  private async withPublicAvatarUrl<T extends { avatarUrl?: string | null }>(user: T): Promise<T> {
+    if (!user?.avatarUrl || !this.isStoredAvatarKey(user.avatarUrl)) {
+      return user;
+    }
+
+    return {
+      ...user,
+      avatarUrl: await this.storage.getSignedUrl(user.avatarUrl, 3600),
+    };
+  }
+
+  private isStoredAvatarKey(value: string): boolean {
+    return value.startsWith('avatars/');
   }
 }

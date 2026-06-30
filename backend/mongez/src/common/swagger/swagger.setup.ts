@@ -15,7 +15,7 @@ export function setupSwagger(app: INestApplication): void {
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
       'access-token',
     )
-    .addServer('http://localhost:3000', 'Local Development')
+    .addServer('/api/v1', 'Current API origin')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

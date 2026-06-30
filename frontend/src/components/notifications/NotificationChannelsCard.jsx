@@ -1,5 +1,4 @@
 import NotificationChannelsTable from "./NotificationChannelTable";
-import { useTranslation } from "react-i18next";
 
 const NotificationChannelsCard = ({ settings, onToggle, loading, }) => {
     if (loading) {

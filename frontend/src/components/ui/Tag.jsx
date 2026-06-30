@@ -1,4 +1,3 @@
-import React from 'react'
 
 const Tag = ({ children, variant = "int" }) => {
   const variants = {

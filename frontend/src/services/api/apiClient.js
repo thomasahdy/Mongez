@@ -142,7 +142,7 @@ apiClient.interceptors.response.use(
         const freshToken = await getCsrfToken(true); // Force re-fetch
         originalRequest.headers['X-CSRF-Token'] = freshToken;
         return apiClient(originalRequest);
-      } catch (csrfError) {
+      } catch {
         // If CSRF re-fetch fails, reject with original error
         return Promise.reject(error);
       }

@@ -2,12 +2,15 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedLayout from "./components/layout/ProtectedLayout";
+import PageSkeleton from "./components/loading/PageSkeleton";
 import { useAuthSessionQuery } from "./hooks/useAuthQueries";
 import { shouldContinueInitialOnboarding } from "./lib/onboardingStorage";
 import { AppProvider } from "./pages/AppContext";
 import Home from "./pages/home/Home";
 import { useTranslation } from "react-i18next";
 import AcceptInvitationPage from "./pages/AcceptInvitationPage.jsx/AcceptInvitationPage";
+import { useSelector } from "react-redux";
+import { useEffect } from "react";
 
 const LandingPage = lazy(() => import("./pages/landing/LandingPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
@@ -18,7 +21,6 @@ const OnboardingPage = lazy(() => import("./pages/onboarding/OnboardingPage"));
 const SpacesPage = lazy(() => import("./pages/spaces/SpacesPage"));
 const WhiteBoardPage = lazy(() => import("./pages/whiteboard/WhiteBoardPage"));
 const AiAssistantPage = lazy(() => import("./pages/aiChat/AiAssistantPage"));
-const BillingPage = lazy(() => import("./pages/dashboard/BillingPage"));
 const TaskDetailsPage = lazy(() => import("./pages/dashboard/TaskDetailsPage"));
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage"));
 const TableView = lazy(() => import("./pages/dashboard/TableView"));
@@ -88,6 +90,7 @@ function ProtectedShell({ isAuthenticated, authReady }) {
 }
 
 function AppContent() {
+  const location = useLocation();
   const [path, setPath] = useState([]);
   const { i18n } = useTranslation();
   const [language, setLanguage] = useState(() => (i18n.resolvedLanguage || i18n.language || "en").slice(0, 2));
@@ -117,8 +120,9 @@ function AppContent() {
   }, [i18n, language]);
 
   return (
-    <Suspense fallback={<FullScreenLoader />}>
-      <Routes>
+    <Suspense fallback={<PageSkeleton />}>
+      <div key={location.pathname} className="route-transition-shell">
+        <Routes location={location}>
         <Route
           path="/"
           element={
@@ -212,13 +216,25 @@ function AppContent() {
             />
           }
         />
-      </Routes>
+        </Routes>
+      </div>
     </Suspense>
   );
 }
 
 function App() {
   const { t } = useTranslation();
+
+  const mode = useSelector(
+    state => state.theme.mode
+);
+
+useEffect(() => {
+    document.documentElement.classList.toggle(
+        "dark",
+        mode === "dark"
+    );
+}, [mode]);
 
   return (
     <ErrorBoundary fallbackMessage={t("authUi.shellFailed")}>

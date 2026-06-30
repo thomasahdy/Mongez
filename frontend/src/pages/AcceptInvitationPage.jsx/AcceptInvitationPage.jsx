@@ -27,11 +27,6 @@ export default function AcceptInvitationPage({
 
   return (
     <>
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-      />
-
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5 py-10 font-sans dark:bg-slate-900">
         <div className="w-full max-w-[440px] animate-[fadeIn_0.4s_ease]">
           <AuthLogo />

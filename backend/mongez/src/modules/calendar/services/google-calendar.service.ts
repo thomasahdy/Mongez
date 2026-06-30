@@ -8,6 +8,8 @@ import { google } from 'googleapis';
 import { v4 as uuidv4 } from 'uuid';
 import { CalendarEventSource, CalendarEventVisibility } from '@prisma/client';
 
+type GoogleOAuth2Client = InstanceType<typeof google.auth.OAuth2>;
+
 @Injectable()
 export class GoogleCalendarService {
   private readonly logger = new Logger(GoogleCalendarService.name);
@@ -20,7 +22,7 @@ export class GoogleCalendarService {
     private readonly prisma: PrismaService,
   ) {}
 
-  private getOAuth2Client(redirectUri?: string) {
+  private getOAuth2Client(redirectUri?: string): GoogleOAuth2Client {
     const clientId = this.config.get<string>('auth.google.clientId') || process.env.GOOGLE_CLIENT_ID;
     const clientSecret = this.config.get<string>('auth.google.clientSecret') || process.env.GOOGLE_CLIENT_SECRET;
     const callbackUrl = redirectUri || this.config.get<string>('auth.google.callbackUrl') || 'http://localhost:3000/api/calendar/google/callback';
@@ -28,7 +30,7 @@ export class GoogleCalendarService {
     return new google.auth.OAuth2(clientId, clientSecret, callbackUrl);
   }
 
-  async getAuthenticatedClient(userId: string, spaceId: string) {
+  async getAuthenticatedClient(userId: string, spaceId: string): Promise<GoogleOAuth2Client> {
     const sync = await this.repo.getGoogleSync(userId, spaceId);
     if (!sync || !sync.accessTokenEncrypted || !sync.refreshTokenEncrypted) {
       throw new Error('Google Calendar integration is not configured for this user and space.');

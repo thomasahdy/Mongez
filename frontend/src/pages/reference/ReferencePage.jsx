@@ -8,13 +8,13 @@ export function ReferencePage({ html, page, onReady }) {
       return;
     }
 
-    rootRef.current.innerHTML = html;
-    onReady?.(rootRef.current);
+    const rootElement = rootRef.current;
+
+    rootElement.innerHTML = html;
+    onReady?.(rootElement);
 
     return () => {
-      if (rootRef.current) {
-        rootRef.current.innerHTML = "";
-      }
+      rootElement.innerHTML = "";
     };
   }, [html, onReady, page]);
 

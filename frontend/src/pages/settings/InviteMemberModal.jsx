@@ -1,11 +1,12 @@
-import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 import { inviteMemberSchema } from "../../schemas/validationSchemas";
+import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 
 export default function InviteMemberModal({ onSubmit, onClose }) {
   const { t } = useTranslation();
+  const { dir, isRTL } = useLocaleDirection();
   const {
     register,
     handleSubmit,
@@ -34,8 +35,9 @@ export default function InviteMemberModal({ onSubmit, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="invite-title"
+      dir={dir}
     >
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+      <div className={`w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 ${isRTL ? "text-right" : "text-left"}`}>
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-400 to-indigo-500" />
 
         <div className="flex items-center justify-between border-b border-slate-100 px-6 pt-6 pb-4 dark:border-slate-900">
@@ -97,7 +99,7 @@ export default function InviteMemberModal({ onSubmit, onClose }) {
             )}
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-900">
+          <div className={`flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-900 ${isRTL ? "flex-row-reverse" : ""}`}>
             <button
               type="button"
               onClick={onClose}

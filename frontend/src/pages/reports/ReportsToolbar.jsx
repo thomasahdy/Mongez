@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../../components/ui/Button";
 import { useSpaces } from "../../hooks/api/useSpaces";

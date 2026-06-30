@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StorageProvider } from '../storage-provider.interface';
 import { StorageUploadResult } from '../storage.service';
+import { buildPublicStorageUrl } from '../storage-url.util';
+import { createSignedStoragePath } from '../storage-signature.util';
 
 @Injectable()
 export class S3StorageProvider implements StorageProvider {
@@ -27,8 +29,10 @@ export class S3StorageProvider implements StorageProvider {
   }
 
   async getSignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
-    const appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
-    return `${appUrl}/files/key/${encodeURIComponent(key)}/download?expires=${expiresInSeconds}`;
+    return buildPublicStorageUrl(
+      this.config,
+      createSignedStoragePath(this.config, key, expiresInSeconds),
+    );
   }
 
   async exists(key: string): Promise<boolean> {

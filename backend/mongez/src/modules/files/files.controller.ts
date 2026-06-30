@@ -79,7 +79,8 @@ export class FilesController {
       signature,
     );
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    const disposition = mimeType.startsWith('image/') ? 'inline' : 'attachment';
+    res.setHeader('Content-Disposition', `${disposition}; filename="${fileName}"`);
     res.send(buffer);
   }
 

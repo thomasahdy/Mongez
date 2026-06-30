@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
 import FormField from "../../../components/AcceptInvitation/FormField";

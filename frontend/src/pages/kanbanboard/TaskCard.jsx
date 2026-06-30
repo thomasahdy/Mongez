@@ -1,4 +1,3 @@
-import React from "react";
 import { useNavigate } from "react-router";
 import useLocaleDirection from "../../hooks/useLocaleDirection";
 import MicroProgress from "../../components/ui/MicroProgress";

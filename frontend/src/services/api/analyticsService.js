@@ -20,9 +20,9 @@ export const getDashboardActivity = async (spaceId) => {
   return response.data?.data?.items || response.data?.logs || [];
 };
 
-export const getDashboardTaskCompletion = async (spaceId, period) => {
+export const getDashboardTaskCompletion = async (spaceId, period = "month") => {
   const response = await apiClient.get("/analytics/tasks", {
-    params: { spaceId, period: "month" },
+    params: { spaceId, period },
   });
   return response.data?.weeklyCompletion || [];
 };

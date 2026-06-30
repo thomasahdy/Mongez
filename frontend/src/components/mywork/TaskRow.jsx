@@ -1,4 +1,3 @@
-import React from "react";
 import useLocaleDirection from "../../hooks/useLocaleDirection";
 
 const TaskRow = ({ task, leftBorder, dueColor, completed, onComplete }) => {

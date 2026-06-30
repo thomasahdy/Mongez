@@ -1,4 +1,3 @@
-import React from "react";
 import { useTranslation } from "react-i18next";
 import OwnerBadge from "../../components/ui/OwnerBadge";
 import StatItem from "../../components/ui/StatItem";

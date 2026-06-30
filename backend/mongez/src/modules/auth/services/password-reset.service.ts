@@ -4,6 +4,7 @@ import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { PasswordService } from './password.service';
 import { AuditAction } from '../constants/audit-actions.constant';
 import * as crypto from 'crypto';
+import { canLogSensitiveAuthLinks } from '../utils/sensitive-auth-log.util';
 
 @Injectable()
 export class PasswordResetService {
@@ -89,9 +90,12 @@ export class PasswordResetService {
     });
 
     // TODO: Send email with reset link
-    // In production, this would send an email with the token
-    console.log(`Password reset token for ${email}: ${token}`);
-    console.log(`Reset link: ${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${token}`);
+    if (canLogSensitiveAuthLinks(this.configService)) {
+      console.log(`Password reset token for ${email}: ${token}`);
+      console.log(
+        `Reset link: ${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${token}`,
+      );
+    }
   }
 
   /**

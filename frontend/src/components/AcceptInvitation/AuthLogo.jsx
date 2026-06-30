@@ -1,4 +1,3 @@
-import React from "react";
 import BrandLogo from "../branding/BrandLogo";
 
 const AuthLogo = ({ href = "/" }) => {

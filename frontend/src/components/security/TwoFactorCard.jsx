@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { get2FAStatus } from "../../services/api/securityService";
 import EnableTwoFactorModal from "./EnableTwoFactorModal";
@@ -15,7 +15,7 @@ const [error, setError] = useState("");
 const [showEnableModal, setShowEnableModal] = useState(false);
 const [showDisableModal, setShowDisableModal] = useState(false);
 
-const loadStatus = async () => {
+const loadStatus = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -27,11 +27,11 @@ const loadStatus = async () => {
     } finally {
         setLoading(false);
     }
-};
+}, [t]);
 
 useEffect(() => {
     loadStatus();
-}, [t]);
+}, [loadStatus]);
 
 const handleToggle2FA = async () => {
     if (enabled) {

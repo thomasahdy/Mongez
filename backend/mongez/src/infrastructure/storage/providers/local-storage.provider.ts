@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import * as crypto from 'crypto';
 import { StorageProvider } from '../storage-provider.interface';
 import { StorageUploadResult } from '../storage.service';
+import { buildPublicStorageUrl } from '../storage-url.util';
+import { createSignedStoragePath } from '../storage-signature.util';
 
 @Injectable()
 export class LocalStorageProvider implements StorageProvider {
@@ -39,17 +40,10 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async getSignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
-    const appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
-    const secret = this.config.get<string>('APP_SECRET', 'super-secret-key');
-    const expires = Math.floor(Date.now() / 1000) + expiresInSeconds;
-    
-    const stringToSign = `${key}:${expires}`;
-    const signature = crypto
-      .createHmac('sha256', secret)
-      .update(stringToSign)
-      .digest('hex');
-      
-    return `${appUrl}/files/key/${encodeURIComponent(key)}/download?expires=${expires}&signature=${signature}`;
+    return buildPublicStorageUrl(
+      this.config,
+      createSignedStoragePath(this.config, key, expiresInSeconds),
+    );
   }
 
   async exists(key: string): Promise<boolean> {

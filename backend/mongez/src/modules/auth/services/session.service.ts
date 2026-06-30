@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { redactPrivateIp } from '../../../common/security/ip-redaction.util';
 
 @Injectable()
 export class SessionService {
@@ -112,7 +113,7 @@ export class SessionService {
    * Get all active sessions for a user
    */
   async getUserSessions(userId: string) {
-    return this.prisma.userSession.findMany({
+    const sessions = await this.prisma.userSession.findMany({
       where: {
         userId,
         expiresAt: {
@@ -130,6 +131,11 @@ export class SessionService {
         userAgent: true,
       },
     });
+
+    return sessions.map((session) => ({
+      ...session,
+      ip: redactPrivateIp(session.ip),
+    }));
   }
 
   /**

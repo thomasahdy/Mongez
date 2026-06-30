@@ -1,4 +1,3 @@
-import React from "react";
 import { useTranslation } from "react-i18next";
 import ChartCard from "../../components/reports/ChartCard";
 import Button from "../../components/ui/Button";

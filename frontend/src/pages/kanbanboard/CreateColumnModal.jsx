@@ -1,11 +1,10 @@
-import React from 'react'
 import { useTranslation } from "react-i18next";
 import { createColumnSchema } from '../../schemas/boardValidationSchemas';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import useLocaleDirection from '../../hooks/useLocaleDirection';
 
-const CreateColumnModal = ({boardId, onSubmit, onClose}) => {
+const CreateColumnModal = ({ onSubmit, onClose }) => {
     const { t } = useTranslation();
     const { dir } = useLocaleDirection();
 

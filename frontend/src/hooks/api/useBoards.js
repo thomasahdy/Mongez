@@ -67,12 +67,12 @@ export function useUpdateBoard() {
 
       return { previousBoard };
     },
-    onError: (err, variables, context) => {
+    onError: (_error, _variables, context) => {
       if (context?.previousBoard) {
         queryClient.setQueryData(['boards', context.previousBoard.id], context.previousBoard);
       }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boards'] });
     },
   });

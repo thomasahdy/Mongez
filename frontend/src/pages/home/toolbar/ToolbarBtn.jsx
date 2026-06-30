@@ -1,4 +1,3 @@
-import React from 'react'
 
 const ToolbarBtn = ({ icon, title, children }) => {
   return (

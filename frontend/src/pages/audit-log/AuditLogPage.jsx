@@ -130,7 +130,7 @@ const AuditLogPage = () => {
         return () => {
             isMounted = false
         }
-    }, [filters, pagination.page, pagination.pageSize])
+    }, [filters, pagination.page, pagination.pageSize, t])
 
     const handleFilterChange = (field, value) => {
         setPagination((current) => ({

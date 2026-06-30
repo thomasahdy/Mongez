@@ -1,13 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import analyticsService from '../../services/api/analyticsService';
 
-export const useDashboardStats = (spaceId, period = "month")=>{
-    return useQuery({
-        queryKey:['SpaceAnalytics', spaceId, 'stats', period],
-        queryFn: ()=> analyticsService.getDashboardStats(spaceId, period),
-        enabled: !!spaceId,
-        staleTime: 1000 * 60 * 5,
-    })
+export const useDashboardStats = (spaceId, period = "month") => {
+  return useQuery({
+    queryKey: ['SpaceAnalytics', spaceId, 'stats', period],
+    queryFn: () => analyticsService.getDashboardStats(spaceId, period),
+    enabled: !!spaceId,
+    staleTime: 1000 * 60 * 5,
+  })
 }
 
 export const useCompletion = (spaceId, period = "month") => {

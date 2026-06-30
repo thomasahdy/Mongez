@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from "react-i18next";
 import Button from '../ui/Button';
 
@@ -9,6 +9,7 @@ const AvatarUpload = ({ initials = "TH", src, onFileSelect, onRemove }) => {
   const handleChange = useCallback((e) => {
     const file = e.target.files?.[0];
     if (file) onFileSelect?.(file);
+    e.target.value = "";
   }, [onFileSelect]);
 
   return (
@@ -16,7 +17,7 @@ const AvatarUpload = ({ initials = "TH", src, onFileSelect, onRemove }) => {
       <button
         type="button"
         onClick={() => fileRef.current?.click()}
-        className="relative w-20 h-20 rounded-full shrink-0 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
+        className="relative w-20 h-20 rounded-full shrink-0 overflow-hidden shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
         aria-label={t("settingsProfilePage.uploadAvatarPhoto")}
       >
         {src ? (
