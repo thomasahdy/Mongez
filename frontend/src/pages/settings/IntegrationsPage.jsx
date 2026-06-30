@@ -48,6 +48,20 @@ const SUPPORTED_PROVIDERS = [
   },
 ];
 
+function getSafeRedirectUrl(rawUrl) {
+  try {
+    const parsedUrl = new URL(rawUrl, window.location.origin);
+
+    if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+      return "";
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    return "";
+  }
+}
+
 function consumeIntegrationQueryState() {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -393,15 +407,27 @@ export default function IntegrationsPage({ setPath }) {
 
     try {
       const result = await connectCalendarMutation.mutateAsync(activeSpaceId);
-      if (!result?.url) {
+      const safeUrl = getSafeRedirectUrl(result?.url);
+
+      if (!safeUrl) {
         throw new Error(t("integrations.errors.calendarUrlMissing"));
       }
 
-      const popup = window.open(result.url, "mongez-google-calendar", "popup=yes,width=640,height=760");
+      const popup = window.open(safeUrl, "mongez-google-calendar", "popup=yes,width=640,height=760");
 
       if (!popup) {
-        window.location.href = result.url;
+        window.location.assign(safeUrl);
         return;
+      }
+
+      try {
+        popup.opener = null;
+      } catch {
+        // Some browsers do not allow assigning opener on cross-origin popups.
+      }
+
+      if (popupWatcherRef.current) {
+        window.clearInterval(popupWatcherRef.current);
       }
 
       setSuccessMessage(t("integrations.success.calendarWindowOpened"));

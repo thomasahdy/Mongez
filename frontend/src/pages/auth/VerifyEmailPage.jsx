@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import BrandLogo from "../../components/branding/BrandLogo";
 import {
   useSendVerificationEmailMutation,
@@ -9,6 +9,15 @@ import {
   useVerifyEmailTokenQuery,
 } from "../../hooks/useAuthQueries";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+
+function readSearchToken(paramName) {
+  try {
+    const token = new URLSearchParams(window.location.search).get(paramName) || "";
+    return token.trim().slice(0, 2048);
+  } catch {
+    return "";
+  }
+}
 
 function TokenPreview({ token, fallback }) {
   const preview = token ? `${token.slice(0, 3)} ${token.slice(3, 6)} ${token.slice(6, 9)}`.trim() : fallback;
@@ -31,7 +40,7 @@ export default function VerifyEmailPage() {
   const { t } = useTranslation();
   const { isRTL } = useLocaleDirection();
   const navigate = useNavigate();
-  const token = useMemo(() => new URLSearchParams(window.location.search).get("token") || "", []);
+  const token = useMemo(() => readSearchToken("token"), []);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);

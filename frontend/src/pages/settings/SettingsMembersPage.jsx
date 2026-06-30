@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import SettingsSidebar from "./sections/SettingsSidebar";
 import { useAppContext } from "../AppContext";
@@ -59,6 +60,7 @@ export default function SettingsMembersPage({ setPath }) {
   const { activeSpace, activeSpaceId, error, refreshApp, user } = useAppContext();
   const { t, i18n } = useTranslation();
   const { isRTL } = useLocaleDirection();
+  const navigate = useNavigate();
   const [inviteForm, setInviteForm] = useState({ email: "", role: "MEMBER" });
   const [pageError, setPageError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -253,7 +255,7 @@ export default function SettingsMembersPage({ setPath }) {
     try {
       await leaveWorkspaceMutation.mutateAsync();
       await refreshApp?.();
-      window.location.href = "/spaces";
+      navigate("/spaces", { replace: true });
     } catch (requestError) {
       setPageError(requestError.message || t("members.errors.leaveFailed"));
     } finally {

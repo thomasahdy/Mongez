@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import BrandLogo from "../../components/branding/BrandLogo";
 import {
   useForgotPasswordMutation,
@@ -9,6 +9,15 @@ import {
   useResetTokenVerificationQuery,
 } from "../../hooks/useAuthQueries";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+
+function readSearchToken(paramName) {
+  try {
+    const token = new URLSearchParams(window.location.search).get(paramName) || "";
+    return token.trim().slice(0, 2048);
+  } catch {
+    return "";
+  }
+}
 
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
@@ -65,7 +74,7 @@ export default function ResetPasswordPage() {
   const { t } = useTranslation();
   const { isRTL } = useLocaleDirection();
   const navigate = useNavigate();
-  const token = useMemo(() => new URLSearchParams(window.location.search).get("token") || "", []);
+  const token = useMemo(() => readSearchToken("token"), []);
   const mode = token ? "reset" : "request";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

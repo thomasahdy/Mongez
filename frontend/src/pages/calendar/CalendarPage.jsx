@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../AppContext";
@@ -38,6 +38,20 @@ const LOCALIZED_DIGIT_MAP = {
   "۸": "8",
   "۹": "9",
 };
+
+function getSafeRedirectUrl(rawUrl) {
+  try {
+    const parsedUrl = new URL(rawUrl, window.location.origin);
+
+    if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+      return "";
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    return "";
+  }
+}
 
 function readFilters(activeSpaceId, activeBoardId) {
   const parsed = readStorageJson(STORAGE_KEY, {});
@@ -418,15 +432,35 @@ export default function CalendarPage() {
   const preferencesQuery = useCalendarPreferencesQuery();
   const googleStatusQuery = useGoogleCalendarStatusQuery(activeSpaceId);
   const [isSyncing, setIsSyncing] = useState(false);
+  const googlePopupIntervalRef = useRef(null);
 
   const handleConnectGoogle = async () => {
     try {
       const { url } = await calendarService.connectGoogleCalendar(activeSpaceId);
-      if (url) {
-        const popup = window.open(url, "_blank", "width=600,height=600");
-        const interval = setInterval(() => {
+      const safeUrl = getSafeRedirectUrl(url);
+
+      if (safeUrl) {
+        const popup = window.open(safeUrl, "_blank", "width=600,height=600");
+
+        if (!popup) {
+          window.location.assign(safeUrl);
+          return;
+        }
+
+        try {
+          popup.opener = null;
+        } catch {
+          // Some browsers do not allow assigning opener on cross-origin popups.
+        }
+
+        if (googlePopupIntervalRef.current) {
+          window.clearInterval(googlePopupIntervalRef.current);
+        }
+
+        googlePopupIntervalRef.current = window.setInterval(() => {
           if (!popup || popup.closed) {
-            clearInterval(interval);
+            window.clearInterval(googlePopupIntervalRef.current);
+            googlePopupIntervalRef.current = null;
             googleStatusQuery.refetch();
             calendarEventsQuery.refetch();
           }
@@ -536,6 +570,14 @@ export default function CalendarPage() {
   useEffect(() => {
     writeStorageValue(CALENDAR_SYSTEM_STORAGE_KEY, calendarSystem);
   }, [calendarSystem]);
+
+  useEffect(() => {
+    return () => {
+      if (googlePopupIntervalRef.current) {
+        window.clearInterval(googlePopupIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleNavigate = (direction) => {
     const nextAnchorDate =

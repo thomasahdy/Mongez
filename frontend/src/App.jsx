@@ -18,7 +18,6 @@ const OnboardingPage = lazy(() => import("./pages/onboarding/OnboardingPage"));
 const SpacesPage = lazy(() => import("./pages/spaces/SpacesPage"));
 const WhiteBoardPage = lazy(() => import("./pages/whiteboard/WhiteBoardPage"));
 const AiAssistantPage = lazy(() => import("./pages/aiChat/AiAssistantPage"));
-const BillingPage = lazy(() => import("./pages/dashboard/BillingPage"));
 const TaskDetailsPage = lazy(() => import("./pages/dashboard/TaskDetailsPage"));
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage"));
 const TableView = lazy(() => import("./pages/dashboard/TableView"));
