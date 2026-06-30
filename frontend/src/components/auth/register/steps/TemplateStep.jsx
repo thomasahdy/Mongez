@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { FaArrowLeft, FaArrowRight, FaChartBar, FaClipboardList } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import AuthButton from "../../shared/AuthButton";
+import AuthErrorMessage from "../../shared/AuthErrorMessage";
 import { useLocaleDirection } from "../../../../hooks/useLocaleDirection";
 
 const templates = [
@@ -27,11 +29,25 @@ const templates = [
 const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) => {
   const { t } = useTranslation();
   const { isRTL } = useLocaleDirection();
+  const [error, setError] = useState("");
   const templateCopy = t("registerUi.template.items", { returnObjects: true });
   const mergedTemplates = templates.map((template, index) => ({
     ...template,
     ...templateCopy[index],
   }));
+
+  const handleSelect = (id) => {
+    setError("");
+    onSelectTemplate(id);
+  };
+
+  const handleContinue = () => {
+    if (!selectedTemplate) {
+      setError(t("registerUi.template.validations.selectionRequired"));
+      return;
+    }
+    onNext();
+  };
 
   return (
     <div className="animate-fadeIn">
@@ -52,7 +68,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
             <button
               key={template.id}
               type="button"
-              onClick={() => onSelectTemplate(template.id)}
+              onClick={() => handleSelect(template.id)}
               className={`relative cursor-pointer rounded-lg border-[1.5px] p-4 transition-all duration-200 hover:scale-[1.02] ${
                 selected
                   ? "border-primary bg-primary-light shadow-sm ring-1 ring-primary/20"
@@ -84,6 +100,8 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
         })}
       </div>
 
+      <AuthErrorMessage className="mb-4">{error}</AuthErrorMessage>
+
       <div className={`flex gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
         <AuthButton variant="outline" onClick={onBack} className={isRTL ? "flex-row-reverse" : ""}>
           {isRTL ? (
@@ -98,7 +116,7 @@ const TemplateStep = ({ selectedTemplate, onSelectTemplate, onNext, onBack }) =>
             </>
           )}
         </AuthButton>
-        <AuthButton onClick={onNext} className={isRTL ? "flex-row-reverse" : ""}>
+        <AuthButton onClick={handleContinue} className={isRTL ? "flex-row-reverse" : ""}>
           {isRTL ? (
             <>
               {t("registerUi.template.continue")}

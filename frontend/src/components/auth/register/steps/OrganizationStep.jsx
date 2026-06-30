@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import AuthButton from "../../shared/AuthButton";
+import AuthErrorMessage from "../../shared/AuthErrorMessage";
 import AuthInput from "../../shared/AuthInput";
 import { useLocaleDirection } from "../../../../hooks/useLocaleDirection";
 
@@ -14,7 +16,9 @@ const industryValues = [
   "Other",
 ];
 
-const countryValues = ["Egypt", "Saudi Arabia", "UAE", "Jordan", "Other"];
+// Values sent to the API must be ISO-3166 country codes (backend
+// CompleteOnboardingDto example uses "EG", not "Egypt").
+const countryValues = ["EG", "SA", "AE", "JO", "OTHER"];
 
 const selectClasses =
   "w-full cursor-pointer rounded-lg border-[1.5px] border-border bg-white px-3.5 py-[11px] text-[13px] text-start transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10";
@@ -22,9 +26,19 @@ const selectClasses =
 const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
   const { t } = useTranslation();
   const { isRTL } = useLocaleDirection();
+  const [error, setError] = useState("");
   const industryLabels = t("registerUi.organization.industries", { returnObjects: true });
   const countryLabels = t("registerUi.organization.countries", { returnObjects: true });
   const sizeOptions = t("registerUi.organization.sizes", { returnObjects: true });
+
+  const handleContinue = () => {
+    if (!values.name.trim()) {
+      setError(t("registerUi.organization.validations.nameRequired"));
+      return;
+    }
+    setError("");
+    onNext();
+  };
 
   return (
     <div className="animate-fadeIn">
@@ -105,6 +119,8 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
           </select>
         </div>
 
+        <AuthErrorMessage>{error}</AuthErrorMessage>
+
         <div className={`flex gap-3 pt-1 ${isRTL ? "flex-row-reverse" : ""}`}>
           <AuthButton variant="outline" onClick={onBack} className={isRTL ? "flex-row-reverse" : ""}>
             {isRTL ? (
@@ -119,7 +135,7 @@ const OrganizationStep = ({ values, onChange, onNext, onBack }) => {
               </>
             )}
           </AuthButton>
-          <AuthButton onClick={onNext} className={isRTL ? "flex-row-reverse" : ""}>
+          <AuthButton onClick={handleContinue} className={isRTL ? "flex-row-reverse" : ""}>
             {isRTL ? (
               <>
                 {t("registerUi.organization.continue")}

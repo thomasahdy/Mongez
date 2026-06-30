@@ -5,7 +5,7 @@ import AuthErrorMessage from "../../shared/AuthErrorMessage";
 import AuthInput from "../../shared/AuthInput";
 import { useLocaleDirection } from "../../../../hooks/useLocaleDirection";
 
-const roleValues = ["Member", "Manager", "Admin"];
+const roleValues = ["MEMBER", "ADMIN", "VIEWER"];
 
 const InviteStep = ({ invites, onChange, onBack, onSubmit, loading, submitError, onSkip }) => {
   const { t } = useTranslation();
