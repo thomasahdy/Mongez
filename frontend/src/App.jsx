@@ -9,6 +9,8 @@ import { AppProvider } from "./pages/AppContext";
 import Home from "./pages/home/Home";
 import { useTranslation } from "react-i18next";
 import AcceptInvitationPage from "./pages/AcceptInvitationPage.jsx/AcceptInvitationPage";
+import { useSelector } from "react-redux";
+import { useEffect } from "react";
 
 const LandingPage = lazy(() => import("./pages/landing/LandingPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
@@ -222,6 +224,17 @@ function AppContent() {
 
 function App() {
   const { t } = useTranslation();
+
+  const mode = useSelector(
+    state => state.theme.mode
+);
+
+useEffect(() => {
+    document.documentElement.classList.toggle(
+        "dark",
+        mode === "dark"
+    );
+}, [mode]);
 
   return (
     <ErrorBoundary fallbackMessage={t("authUi.shellFailed")}>
