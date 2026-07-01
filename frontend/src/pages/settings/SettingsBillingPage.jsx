@@ -11,21 +11,21 @@ import { buildSettingsPath } from "./settingsPath";
 const PLAN_PREVIEWS = [
   {
     id: "free",
-    name: "Free",
+    tier: "FREE",
     tone: "from-emerald-500 to-sky-500",
     pros: ["Core task and board management", "Basic workspace collaboration", "Starter usage visibility"],
   },
   {
-    id: "plus",
-    name: "Plus",
+    id: "pro",
+    tier: "PRO",
     tone: "from-sky-500 to-indigo-500",
-    pros: ["Higher workspace and automation limits", "AI-assisted planning and summaries", "Priority collaboration features"],
+    pros: ["AI-assisted planning and summaries", "Advanced reporting and risk detection", "Best fit for growing teams"],
   },
   {
-    id: "pro",
-    name: "Pro",
+    id: "enterprise",
+    tier: "ENTERPRISE",
     tone: "from-violet-500 to-rose-500",
-    pros: ["Advanced governance and approvals", "Expanded AI, reporting, and audit insights", "Best fit for growing teams"],
+    pros: ["Expanded governance and approvals", "Higher AI, storage, and workspace limits", "Priority controls for larger organizations"],
   },
 ];
 
@@ -69,9 +69,18 @@ function BillingContent({ setPath: propSetPath }) {
     if (typeof value === "number") {
       return new Intl.NumberFormat(locale).format(value);
     }
+    if (typeof value === "boolean") {
+      return value ? t("common.yes", { defaultValue: "Yes" }) : t("common.no", { defaultValue: "No" });
+    }
     return String(value);
   };
   const formatLabel = (group, key) => t(`billing.${group}.${key}`, { defaultValue: key });
+  const formatPlanName = (plan) => {
+    const rawPlanName = plan?.name || plan?.id || "";
+    return t(`billing.planNames.${rawPlanName}`, {
+      defaultValue: rawPlanName || t("billing.unknownPlan"),
+    });
+  };
 
   if (loading) {
     return (
@@ -145,7 +154,7 @@ function BillingContent({ setPath: propSetPath }) {
             <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${plan.tone}`} />
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-black text-slate-900 dark:text-slate-50">
-                {t(`billing.planPreview.${plan.id}.name`, { defaultValue: plan.name })}
+                {t(`billing.planPreview.${plan.id}.name`, { defaultValue: plan.tier })}
               </h2>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                 {t("billing.planPreview.plan", { defaultValue: "Plan" })}
@@ -174,7 +183,7 @@ function BillingContent({ setPath: propSetPath }) {
           <section className="rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-505">{t("billing.currentPlan")}</div>
             <h2 className="mt-2 text-2xl font-black text-slate-900 dark:text-slate-50">
-              {billingInfo.hasPlanData ? billingInfo.currentPlan?.name || t("billing.unknownPlan") : t("billing.planUnavailable")}
+              {billingInfo.hasPlanData ? formatPlanName(billingInfo.currentPlan) : t("billing.planUnavailable")}
             </h2>
             <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
               <span className="font-semibold text-slate-700 dark:text-slate-300">
@@ -284,11 +293,12 @@ function BillingContent({ setPath: propSetPath }) {
 
 export default function SettingsBillingPage({ setPath }) {
   const { dir } = useLocaleDirection();
+  const { t } = useTranslation();
 
   return (
     <div className="settings-layout" dir={dir}>
       <SettingsSidebar activeId="billing" />
-      <main className="settings-content-area" style={{ padding: 0 }} aria-label="Billing settings">
+      <main className="settings-content-area" style={{ padding: 0 }} aria-label={t("billing.aria")}>
         <BillingContent setPath={setPath} />
       </main>
     </div>

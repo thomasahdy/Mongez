@@ -9,7 +9,7 @@ import { useCumulativeFlow } from "../../hooks/api/useAnalytics";
 
 const CumulativeFlowChart = ({ spaceId, period }) => {
   const { t } = useTranslation();
-  const { data: flowData = [], isLoading } = useCumulativeFlow(spaceId, period);
+  const { data: flowData = [] } = useCumulativeFlow(spaceId, period);
 
   return (
     <ChartCard title={t("reportsPage.cumulativeFlow")}>

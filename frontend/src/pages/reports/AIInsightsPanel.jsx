@@ -6,7 +6,7 @@ import { useAiInsights } from "../../hooks/api/useAnalytics";
 const AIInsightsPanel = ({ spaceId, period }) => {
   const { t } = useTranslation();
   const { dir } = useLocaleDirection();
-  const { data: insights = [], isLoading, error } = useAiInsights(spaceId, period);
+  const { data: insights = [] } = useAiInsights(spaceId, period);
 
   if (!insights.length) return null;
 

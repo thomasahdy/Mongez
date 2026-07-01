@@ -182,6 +182,10 @@ html[dir="rtl"] input[inputmode="numeric"] {
   text-align: left;
 }
 
+html[dir="rtl"] .text-right {
+  text-align: right !important;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -2618,6 +2622,11 @@ html[dir="rtl"] .pro-badge {
     border-bottom: 1px solid var(--border);
     padding: 14px;
     gap: 16px;
+  }
+
+  html[dir="rtl"] .settings-sidebar {
+    border-left: none;
+    border-bottom: 1px solid var(--border);
   }
 
   .settings-content-area {

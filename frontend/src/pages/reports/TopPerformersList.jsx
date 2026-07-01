@@ -7,7 +7,7 @@ import { useTopPerformers } from "../../hooks/api/useAnalytics";
 
 const TopPerformersList = ({ spaceId, period }) => {
   const { t } = useTranslation();
-  const { data: performers = [], isLoading } = useTopPerformers(spaceId, period);
+  const { data: performers = [] } = useTopPerformers(spaceId, period);
 
   return (
     <ChartCard title={t("reportsPage.topPerformers")}>
