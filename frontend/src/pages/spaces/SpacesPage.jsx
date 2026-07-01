@@ -9,6 +9,8 @@ import CreateSpaceModal from "./CreateSpaceModal";
 import { useSpaces, useCreateSpace, useUpdateSpace, useDeleteSpace } from "../../hooks/api/useSpaces";
 import { useToast } from "../../context/ToastContext";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { getErrorMessage } from "../../utils/errorMessage";
+import { readActiveSpaceId, removeActiveSpaceId, writeActiveSpaceId } from "../../utils/appStorageKeys";
 
 const QUOTA = { total: 5 };
 
@@ -60,7 +62,7 @@ export default function SpacesPage({ setPath }) {
       await createMutation.mutateAsync(data);
       setShowCreateModal(false);
     } catch (requestError) {
-      toast.error(requestError.response?.data?.message || requestError.message || t("spacesPage.createSpaceFailed"));
+      toast.error(getErrorMessage(requestError, t("spacesPage.createSpaceFailed")));
     }
   };
 
@@ -69,7 +71,7 @@ export default function SpacesPage({ setPath }) {
       await updateMutation.mutateAsync({ spaceId: editingSpace.id, data });
       setEditingSpace(null);
     } catch (requestError) {
-      toast.error(requestError.response?.data?.message || requestError.message || t("spacesPage.updateSpaceFailed"));
+      toast.error(getErrorMessage(requestError, t("spacesPage.updateSpaceFailed")));
     }
   };
 
@@ -79,19 +81,19 @@ export default function SpacesPage({ setPath }) {
 
     deleteMutation.mutate(spaceId, {
       onSuccess: () => {
-        const currentActive = localStorage.getItem("activeSpaceId");
+        const currentActive = readActiveSpaceId();
         if (currentActive === spaceId) {
-          localStorage.removeItem("activeSpaceId");
+          removeActiveSpaceId();
         }
       },
       onError: (requestError) => {
-        toast.error(requestError.response?.data?.message || requestError.message || t("spacesPage.deleteWorkspaceFailed"));
+        toast.error(getErrorMessage(requestError, t("spacesPage.deleteWorkspaceFailed")));
       },
     });
   };
 
   const handleInviteMembers = (spaceId) => {
-    localStorage.setItem("activeSpaceId", spaceId);
+    writeActiveSpaceId(spaceId);
     navigate("/settings/members");
   };
 

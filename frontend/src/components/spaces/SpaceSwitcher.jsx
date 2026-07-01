@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useSpaces, useSetActiveSpace } from "../../hooks/api/useSpaces";
 import SpaceSwitcherSkeleton from "./SpaceSwitcherSkeleton";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { readActiveSpaceId, writeActiveSpaceId } from "../../utils/appStorageKeys";
 
 export default function SpaceSwitcher() {
   const { t } = useTranslation();
@@ -18,14 +19,14 @@ export default function SpaceSwitcher() {
   useEffect(() => {
     if (data) {
       const spacesList = data.spaces || [];
-      const savedActiveId = localStorage.getItem("activeSpaceId");
+      const savedActiveId = readActiveSpaceId();
       const apiActiveId = data.activeSpaceId;
       const activeId = savedActiveId || apiActiveId || spacesList[0]?.id;
       const active = spacesList.find((space) => space.id === activeId) || spacesList[0];
       setActiveSpaceState(active);
 
       if (active && active.id !== savedActiveId) {
-        localStorage.setItem("activeSpaceId", active.id);
+        writeActiveSpaceId(active.id);
       }
     }
   }, [data]);

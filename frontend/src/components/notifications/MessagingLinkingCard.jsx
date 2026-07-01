@@ -9,6 +9,7 @@ import {
   confirmWhatsAppOtp,
   unlinkWhatsAppContact,
 } from "../../services/api/notificationService";
+import { getErrorMessage } from "../../utils/errorMessage";
 
 const MessagingLinkingCard = ({
   spaceId,
@@ -43,7 +44,7 @@ const MessagingLinkingCard = ({
         setTgSuccess(t("notificationsPage.messagingLinking.noNewChats"));
       }
     } catch (error) {
-      setTgError(error.response?.data?.message || error.message || t("notificationsPage.messagingLinking.telegramScanFailed"));
+      setTgError(getErrorMessage(error, t("notificationsPage.messagingLinking.telegramScanFailed")));
     } finally {
       setTgScanning(false);
     }
@@ -57,7 +58,7 @@ const MessagingLinkingCard = ({
       setTgSuccess(t("notificationsPage.messagingLinking.telegramLinked"));
       onRefetch();
     } catch (error) {
-      setTgError(error.response?.data?.message || error.message || t("notificationsPage.messagingLinking.telegramPairFailed"));
+      setTgError(getErrorMessage(error, t("notificationsPage.messagingLinking.telegramPairFailed")));
     }
   };
 
@@ -79,7 +80,7 @@ const MessagingLinkingCard = ({
       setTgManualUsername("");
       onRefetch();
     } catch (error) {
-      setTgError(error.response?.data?.message || error.message || t("notificationsPage.messagingLinking.telegramPairFailed"));
+      setTgError(getErrorMessage(error, t("notificationsPage.messagingLinking.telegramPairFailed")));
     }
   };
 
@@ -91,7 +92,7 @@ const MessagingLinkingCard = ({
       setTgSuccess(t("notificationsPage.messagingLinking.telegramDisconnected"));
       onRefetch();
     } catch (error) {
-      setTgError(error.response?.data?.message || error.message || t("notificationsPage.messagingLinking.telegramDisconnectFailed"));
+      setTgError(getErrorMessage(error, t("notificationsPage.messagingLinking.telegramDisconnectFailed")));
     }
   };
 
@@ -109,7 +110,7 @@ const MessagingLinkingCard = ({
       setWaOtpRequested(true);
       setWaSuccess(t("notificationsPage.messagingLinking.whatsappCodeSent"));
     } catch (error) {
-      setWaError(error.response?.data?.message || error.message || t("notificationsPage.messagingLinking.whatsappSendFailed"));
+      setWaError(getErrorMessage(error, t("notificationsPage.messagingLinking.whatsappSendFailed")));
     } finally {
       setWaLoading(false);
     }
@@ -132,7 +133,7 @@ const MessagingLinkingCard = ({
       setWaSuccess(t("notificationsPage.messagingLinking.whatsappLinked"));
       onRefetch();
     } catch (error) {
-      setWaError(error.response?.data?.message || error.message || t("notificationsPage.messagingLinking.whatsappVerifyFailed"));
+      setWaError(getErrorMessage(error, t("notificationsPage.messagingLinking.whatsappVerifyFailed")));
     } finally {
       setWaLoading(false);
     }
@@ -146,7 +147,7 @@ const MessagingLinkingCard = ({
       setWaSuccess(t("notificationsPage.messagingLinking.whatsappDisconnected"));
       onRefetch();
     } catch (error) {
-      setWaError(error.response?.data?.message || error.message || t("notificationsPage.messagingLinking.whatsappDisconnectFailed"));
+      setWaError(getErrorMessage(error, t("notificationsPage.messagingLinking.whatsappDisconnectFailed")));
     }
   };
 

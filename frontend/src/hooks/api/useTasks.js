@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import tasksService from '../../services/api/tasksService';
+import { invalidateTaskCaches } from '../../utils/queryInvalidation';
 
 /**
  * Hook: useTasks
@@ -40,15 +41,9 @@ export function useCreateTask() {
     mutationFn: ({ board, taskData }) => tasksService.createBoardTask(board, taskData),
     
     onSuccess: (newTask) => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['board', 'table'] });
-      queryClient.invalidateQueries({ queryKey: ['board', 'tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['board', 'timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['task', 'details'] });
-      queryClient.invalidateQueries({ queryKey: ['calendar', 'events'] });
-      if (newTask?.boardId) {
-        queryClient.invalidateQueries({ queryKey: ['boards', newTask.boardId] });
-      }
+      invalidateTaskCaches(queryClient, {
+        extraQueryKeys: newTask?.boardId ? [['boards', newTask.boardId]] : [],
+      });
     },
   });
 }
@@ -79,12 +74,7 @@ export function useUpdateTask() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['board', 'table'] });
-      queryClient.invalidateQueries({ queryKey: ['board', 'tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['board', 'timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['task', 'details'] });
-      queryClient.invalidateQueries({ queryKey: ['calendar', 'events'] });
+      invalidateTaskCaches(queryClient);
     },
   });
 }
@@ -135,13 +125,7 @@ export function useMoveTask() {
       }
     },
     onSuccess: (_data, _variables, context) => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['board', 'table'] });
-      queryClient.invalidateQueries({ queryKey: ['board', 'tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['board', 'timeline'] });
-      queryClient.invalidateQueries({ queryKey: ['task', 'details'] });
-      queryClient.invalidateQueries({ queryKey: ['calendar', 'events'] });
-      queryClient.invalidateQueries({ queryKey: context.queryKey });
+      invalidateTaskCaches(queryClient, { extraQueryKeys: [context?.queryKey] });
     },
   });
 }
