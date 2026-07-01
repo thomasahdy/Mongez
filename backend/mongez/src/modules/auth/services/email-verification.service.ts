@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { AuditAction } from '../constants/audit-actions.constant';
@@ -8,6 +8,7 @@ import { canLogSensitiveAuthLinks } from '../utils/sensitive-auth-log.util';
 @Injectable()
 export class EmailVerificationService {
   private readonly TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly logger = new Logger(EmailVerificationService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -66,8 +67,8 @@ export class EmailVerificationService {
 
     // TODO: Send verification email
     if (canLogSensitiveAuthLinks(this.configService)) {
-      console.log(`Email verification token for ${user.email}: ${token}`);
-      console.log(
+      this.logger.log(`Email verification token for ${user.email}: ${token}`);
+      this.logger.log(
         `Verification link: ${this.configService.get<string>('FRONTEND_URL')}/verify-email?token=${token}`,
       );
     }

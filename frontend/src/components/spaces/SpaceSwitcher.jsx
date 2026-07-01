@@ -4,6 +4,7 @@ import { useSpaces, useSetActiveSpace } from "../../hooks/api/useSpaces";
 import SpaceSwitcherSkeleton from "./SpaceSwitcherSkeleton";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import { useAppContext } from "../../pages/AppContext";
+import { readActiveSpaceId, writeActiveSpaceId } from "../../utils/appStorageKeys";
 
 export default function SpaceSwitcher() {
   const { t } = useTranslation();
@@ -23,13 +24,16 @@ export default function SpaceSwitcher() {
       const apiActiveId = data.activeSpaceId;
       const activeId = savedActiveId || apiActiveId || spacesList[0]?.id;
       const active = spacesList.find((space) => space.id === activeId) || spacesList[0];
-      setActiveSpace(active.id);
+      
+      if (active && active.id !== activeSpace?.id) {
+        setActiveSpace(active.id);
+      }
 
       if (active && active.id !== savedActiveId) {
         writeActiveSpaceId(active.id);
       }
     }
-  }, [data]);
+  }, [data, setActiveSpace, activeSpace?.id]);
 
   useEffect(() => {
     function handleClickOutside(event) {

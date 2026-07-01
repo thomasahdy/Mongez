@@ -122,6 +122,25 @@ export class IntegrationsService {
     }
   }
 
+  async listDriveFiles(userId: string, query?: string) {
+    const driveClient = await this.getDriveClient(userId);
+    let q = "mimeType != 'application/vnd.google-apps.folder' and trashed = false";
+    if (query) {
+      q += ` and name contains '${query.replace(/'/g, "\\'")}'`;
+    }
+
+    try {
+      const res = await driveClient.files.list({
+        q,
+        fields: 'files(id, name, mimeType, size, webViewLink, iconLink)',
+        pageSize: 50,
+      });
+      return res.data.files || [];
+    } catch (err: any) {
+      throw new BadRequestException(`Failed to retrieve files from Google Drive: ${err.message}`);
+    }
+  }
+
   async attachDriveFile(taskId: string, userId: string, dto: AttachDriveFileDto) {
     const driveClient = await this.getDriveClient(userId);
     

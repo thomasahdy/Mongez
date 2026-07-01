@@ -116,3 +116,54 @@ export function getPriorityClass(priority) {
 
   return "text-slate-400";
 }
+
+/**
+ * Groups timeline events by date for GitHub-style timeline display
+ * @param {Array} events - Array of timeline events with createdAt property
+ * @param {string} locale - Locale for date formatting
+ * @returns {Array} Array of grouped events with date headers
+ */
+export function groupTimelineEventsByDate(events, locale = "en-US") {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const groups = [];
+  const grouped = new Map();
+
+  events.forEach((event) => {
+    const eventDate = new Date(event.createdAt);
+    const dateKey = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate()).getTime();
+
+    if (!grouped.has(dateKey)) {
+      let dateLabel;
+      const daysDiff = Math.floor((today.getTime() - dateKey) / (1000 * 60 * 60 * 24));
+
+      if (daysDiff === 0) {
+        dateLabel = "Today";
+      } else if (daysDiff === 1) {
+        dateLabel = "Yesterday";
+      } else if (daysDiff < 7) {
+        dateLabel = eventDate.toLocaleDateString(locale, { weekday: "long" });
+      } else {
+        dateLabel = eventDate.toLocaleDateString(locale, { month: "short", day: "numeric", year: eventDate.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
+      }
+
+      grouped.set(dateKey, {
+        dateKey,
+        dateLabel,
+        timeString: eventDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: false }),
+        events: []
+      });
+    }
+
+    grouped.get(dateKey).events.push({
+      ...event,
+      timeString: eventDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: false })
+    });
+  });
+
+  // Convert to array and sort by date descending (newest first)
+  return Array.from(grouped.values()).sort((a, b) => b.dateKey - a.dateKey);
+}

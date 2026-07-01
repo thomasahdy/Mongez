@@ -59,6 +59,7 @@ describe('TasksService', () => {
 
     cache = {
       delPattern: jest.fn().mockResolvedValue(undefined),
+      invalidateEntity: jest.fn().mockResolvedValue(undefined),
     } as any;
 
     notif = { queueNotification: jest.fn() } as any;

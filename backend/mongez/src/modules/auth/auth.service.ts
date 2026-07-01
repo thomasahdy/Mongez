@@ -65,6 +65,15 @@ export class AuthService {
     const user = User.create(dto.email, hashedPassword, name);
     await this.userRepo.save(user);
 
+    // Create a default FREE user subscription
+    await this.prisma.subscription.create({
+      data: {
+        userId: user.id,
+        tier: 'FREE',
+        startsAt: new Date(),
+      },
+    });
+
     // Generate tokens
     const accessToken = this.jwtService.generateAccessToken(user.id, user.email);
     const refreshToken = this.jwtService.generateRefreshToken(user.id);
@@ -115,13 +124,13 @@ export class AuthService {
 
     // Verify password
     if (!user.passwordHash) {
-      await this.handleFailedLogin(user.id, ip, userAgent, user.failedAttempts);
+      await this.handleFailedLogin(user.id, ip, userAgent);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const passwordValid = await this.passwordService.compare(dto.password, user.passwordHash);
     if (!passwordValid) {
-      await this.handleFailedLogin(user.id, ip, userAgent, user.failedAttempts);
+      await this.handleFailedLogin(user.id, ip, userAgent);
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -238,6 +247,15 @@ export class AuthService {
       await this.userLogRepo.create({
         userId: userEntity.id,
         action: AuditAction.USER_REGISTERED_OAUTH,
+      });
+
+      // Create a default FREE user subscription
+      await this.prisma.subscription.create({
+        data: {
+          userId: userEntity.id,
+          tier: 'FREE',
+          startsAt: new Date(),
+        },
       });
 
       userId = userEntity.id;
@@ -519,10 +537,7 @@ export class AuthService {
     }
   }
 
-  /**
-   * Handle failed login — log it, lock account if threshold reached
-   */
-  private async handleFailedLogin(userId: string, ip?: string, userAgent?: string, currentAttempts = 0): Promise<void> {
+  private async handleFailedLogin(userId: string, ip?: string, userAgent?: string): Promise<void> {
     await this.userLogRepo.create({
       userId,
       action: AuditAction.LOGIN_FAIL,
@@ -530,22 +545,23 @@ export class AuthService {
       userAgent,
     });
 
-    const newFailedCount = currentAttempts + 1;
+    // Atomic increment of failedAttempts via Prisma
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        failedAttempts: {
+          increment: 1,
+        },
+      },
+    });
 
-    if (newFailedCount >= this.MAX_FAILED_ATTEMPTS) {
+    if (updatedUser.failedAttempts >= this.MAX_FAILED_ATTEMPTS) {
       // Lock the account directly via Prisma
       await this.prisma.user.update({
         where: { id: userId },
         data: {
-          failedAttempts: newFailedCount,
           lockedUntil: new Date(Date.now() + this.LOCK_DURATION_MS),
         },
-      });
-    } else {
-      // Just increment failed attempts
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { failedAttempts: newFailedCount },
       });
     }
   }

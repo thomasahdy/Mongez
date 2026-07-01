@@ -76,6 +76,7 @@ export class PrismaService implements OnModuleInit {
   get aiEvalResult() { return this.prisma.aIEvalResult; }
   get aiConversationTurn() { return this.prisma.aIConversationTurn; }
   get aiMemoryProfile() { return this.prisma.aIMemoryProfile; }
+  get aiChatSession() { return this.prisma.aIChatSession; }
 
   // ─── Notifications & Audit ─────────────────────────────────
   get notification() { return this.prisma.notification; }

@@ -38,7 +38,26 @@ export function useCreateTask() {
 
   return useMutation({
     // mutationFn accepts a single object, which we destructure into board and taskData
-    mutationFn: ({ board, taskData }) => tasksService.createBoardTask(board, taskData),
+    mutationFn: async ({ board, taskData }) => {
+      const { attachments, driveFileIds, ...restTaskData } = taskData;
+      const newTask = await tasksService.createBoardTask(board, restTaskData);
+
+      // Upload local attachments if any
+      if (attachments && attachments.length > 0) {
+        for (const file of attachments) {
+          await tasksService.uploadTaskAttachment(newTask.id, file);
+        }
+      }
+
+      // Attach Google Drive files if any
+      if (driveFileIds && driveFileIds.length > 0) {
+        for (const driveFileId of driveFileIds) {
+          await tasksService.attachDriveFile(newTask.id, driveFileId);
+        }
+      }
+
+      return newTask;
+    },
     
     onSuccess: (newTask) => {
       invalidateTaskCaches(queryClient, {

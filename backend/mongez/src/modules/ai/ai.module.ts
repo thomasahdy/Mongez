@@ -9,6 +9,7 @@ import { AIClientService } from './ai-client.service';
 import { AIDataProviderService } from './ai-data-provider.service';
 import { AIRequestRepository } from './repositories/ai-request.repository';
 import { AIActionRepository } from './repositories/ai-action.repository';
+import { AIChatSessionRepository } from './repositories/ai-chat-session.repository';
 import { AiRateLimitGuard } from './guards/ai-rate-limit.guard';
 import { ServiceApiKeyGuard } from './guards/service-api-key.guard';
 
@@ -55,6 +56,7 @@ import { QUEUE_NAMES } from '../../infrastructure/queue/queue.constants';
     AIDataProviderService,
     AIRequestRepository,
     AIActionRepository,
+    AIChatSessionRepository,
     AiRateLimitGuard,
     ServiceApiKeyGuard,
 

@@ -1,8 +1,11 @@
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ExecutionContext } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createStorageSignature } from '../../../infrastructure/storage/storage-signature.util';
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
+  let configService: ConfigService;
 
   // Helper: build a mock ExecutionContext from a request object
   const buildContext = (request: Partial<any>): ExecutionContext =>
@@ -13,16 +16,26 @@ describe('JwtAuthGuard', () => {
     } as any);
 
   beforeEach(() => {
-    guard = new JwtAuthGuard();
+    configService = {
+      get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'auth.jwt.accessTokenSecret') return 'super-secret-key';
+        return null;
+      }),
+    } as any;
+    guard = new JwtAuthGuard(configService);
   });
 
   // ─── Signed-URL bypass ───────────────────────────────────────
 
   describe('signed-URL bypass', () => {
     it('UT-GRD-001: should bypass JWT check for /files/key/ routes with signature query param', () => {
+      const key = 'abc123';
+      const expires = Math.floor(Date.now() / 1000) + 3600;
+      const signature = createStorageSignature(configService, key, expires);
+
       const ctx = buildContext({
-        path: '/files/key/abc123',
-        query: { signature: 'sig-token' },
+        path: `/files/key/${key}/download`,
+        query: { expires: String(expires), signature },
       });
 
       // This path bypasses super.canActivate() and returns true directly

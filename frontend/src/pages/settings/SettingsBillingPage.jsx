@@ -238,10 +238,10 @@ function BillingContent({ setPath: propSetPath }) {
           <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-550">{t("billing.planLimits")}</div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries(billingInfo.currentPlan?.limits || {})
-              .filter(([key]) => key !== "features" && key !== "quotas")
+              .filter(([key]) => key !== "features" && key !== "quotas" && key !== "maxSpaces")
               .map(([key, value]) => (
                 <div key={key} className="rounded-2xl bg-slate-50 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-slate-800/60">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-505">{formatLabel("limitLabels", key)}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-550">{formatLabel("limitLabels", key)}</div>
                   <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{formatValue(value)}</div>
                 </div>
               ))}
@@ -253,7 +253,7 @@ function BillingContent({ setPath: propSetPath }) {
                 <div className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{formatValue(value)}</div>
               </div>
             ))}
-            {!Object.keys(billingInfo.currentPlan?.limits || {}).filter((key) => key !== "features" && key !== "quotas").length &&
+            {!Object.keys(billingInfo.currentPlan?.limits || {}).filter((key) => key !== "features" && key !== "quotas" && key !== "maxSpaces").length &&
               !Object.keys(billingInfo.currentPlan?.limits?.quotas || {}).length && (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 sm:col-span-2 lg:col-span-4 dark:border-slate-800 dark:bg-slate-900/20 dark:text-slate-400">
                   {t("billing.noLimits")}

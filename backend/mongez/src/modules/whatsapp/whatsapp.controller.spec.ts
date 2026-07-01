@@ -238,6 +238,12 @@ describe('WhatsAppController', () => {
 
   describe('status', () => {
     it('should return configuration details and verification status of current user contact', async () => {
+      service.resolveAccount.mockResolvedValue({
+        displayName: 'Mongez Space Bot',
+        phoneNumberId: 'phone-1',
+        source: 'DB',
+        isActive: true,
+      } as any);
       repo.findActiveAccountBySpace.mockResolvedValue({
         isActive: true,
         displayName: 'Mongez Space Bot',
@@ -252,12 +258,15 @@ describe('WhatsAppController', () => {
 
       const result = await controller.status('space-1', req);
 
+      expect(service.resolveAccount).toHaveBeenCalledWith('space-1');
       expect(repo.findActiveAccountBySpace).toHaveBeenCalledWith('space-1');
       expect(repo.findContact).toHaveBeenCalledWith('user-1', 'space-1');
       expect(result).toEqual({
         configured: true,
         isActive: true,
         displayName: 'Mongez Space Bot',
+        phoneNumber: 'phone-1',
+        source: 'DB',
         contact: {
           phoneNumber: '+1234567890',
           optedIn: true,

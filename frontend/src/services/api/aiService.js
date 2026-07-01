@@ -186,6 +186,31 @@ export const submitAiFeedback = async (traceId, rating, note = "") => {
   return response.data;
 };
 
+export const fetchAiChatSessions = async () => {
+  const response = await apiClient.get("/ai/sessions");
+  return response.data;
+};
+
+export const fetchAiChatSession = async (id) => {
+  const response = await apiClient.get(`/ai/sessions/${id}`);
+  return response.data;
+};
+
+export const createAiChatSession = async (body) => {
+  const response = await apiClient.post("/ai/sessions", body);
+  return response.data;
+};
+
+export const updateAiChatSession = async ({ id, ...body }) => {
+  const response = await apiClient.patch(`/ai/sessions/${id}`, body);
+  return response.data;
+};
+
+export const deleteAiChatSession = async (id) => {
+  const response = await apiClient.delete(`/ai/sessions/${id}`);
+  return response.data;
+};
+
 const aiService = {
   extractTextFromPayload,
   sendAiChat,
@@ -198,6 +223,11 @@ const aiService = {
   approveAiAction,
   rejectAiAction,
   submitAiFeedback,
+  fetchAiChatSessions,
+  fetchAiChatSession,
+  createAiChatSession,
+  updateAiChatSession,
+  deleteAiChatSession,
 };
 
 export default aiService;

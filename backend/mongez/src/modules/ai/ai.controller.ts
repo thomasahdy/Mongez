@@ -2,6 +2,8 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -211,5 +213,51 @@ export class AIController {
   ) {
     const userId = (req as any).user?.userId;
     return this.memoryProfileService.updateMemoryProfileDirect(userId, dto);
+  }
+
+  // ─── Chat Sessions ─────────────────────────────────────────────────
+
+  /** GET /ai/sessions — List all chat sessions for user */
+  @Get('sessions')
+  async listSessions(@Req() req: Request) {
+    const userId = (req as any).user?.userId;
+    return this.aiService.listChatSessions(userId);
+  }
+
+  /** GET /ai/sessions/:id — Get details of a chat session */
+  @Get('sessions/:id')
+  async getSession(@Param('id') id: string, @Req() req: Request) {
+    const userId = (req as any).user?.userId;
+    return this.aiService.getChatSession(id, userId);
+  }
+
+  /** POST /ai/sessions — Create a new chat session */
+  @Post('sessions')
+  @HttpCode(HttpStatus.CREATED)
+  async createSession(
+    @Body() body: { id?: string; title: string; context?: any; messages: any[] },
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId;
+    return this.aiService.createChatSession(userId, body);
+  }
+
+  /** PATCH /ai/sessions/:id — Update a chat session's messages/context/title */
+  @Patch('sessions/:id')
+  async updateSession(
+    @Param('id') id: string,
+    @Body() body: { title?: string; context?: any; messages?: any[] },
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId;
+    return this.aiService.updateChatSession(id, userId, body);
+  }
+
+  /** DELETE /ai/sessions/:id — Delete a chat session */
+  @Delete('sessions/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteSession(@Param('id') id: string, @Req() req: Request) {
+    const userId = (req as any).user?.userId;
+    await this.aiService.deleteChatSession(id, userId);
   }
 }

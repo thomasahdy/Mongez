@@ -61,4 +61,19 @@ export class ActivityService {
       take: limit,
     });
   }
+
+  async getTaskActivity(taskId: string, page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+
+    return this.prisma.activity.findMany({
+      where: { taskId },
+      include: {
+        user: { select: { id: true, name: true, avatarUrl: true } },
+        task: { select: { id: true, identifier: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    });
+  }
 }

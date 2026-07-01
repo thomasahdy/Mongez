@@ -15,7 +15,7 @@ from app.rag.retriever import DenseRetriever
 from app.prompts.loader import PromptLoader
 from app import dependencies
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+# ── Logging (Reload Triggered) ────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.DEBUG if os.getenv("DEBUG", "false").lower() == "true" else logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s %(message)s",

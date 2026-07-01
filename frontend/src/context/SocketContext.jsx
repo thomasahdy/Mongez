@@ -24,6 +24,7 @@ export const SocketProvider = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState({});
   const [typingUsers, setTypingUsers] = useState({});
   const socketRef = useRef(null);
+  const typingTimeoutsRef = useRef({});
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -229,6 +230,13 @@ export const SocketProvider = ({ children }) => {
 
     socketInstance.on("task:typing-status", (data) => {
       console.log("Realtime Task Typing Status:", data);
+      
+      const key = `${data.taskId}:${data.userId}`;
+      if (typingTimeoutsRef.current[key]) {
+        clearTimeout(typingTimeoutsRef.current[key]);
+        delete typingTimeoutsRef.current[key];
+      }
+
       setTypingUsers((prev) => {
         const next = { ...prev };
         if (data.isTyping) {
@@ -236,8 +244,8 @@ export const SocketProvider = ({ children }) => {
           if (!next[data.taskId].some((u) => u.userId === data.userId)) {
             next[data.taskId].push({ userId: data.userId, name: data.name || "Someone" });
           }
-          // Auto-expire typing indicator after 5s of no update
-          setTimeout(() => {
+          
+          typingTimeoutsRef.current[key] = setTimeout(() => {
             setTypingUsers((current) => {
               if (!current[data.taskId]) return current;
               const nextCurrent = { ...current };
@@ -247,6 +255,7 @@ export const SocketProvider = ({ children }) => {
               }
               return nextCurrent;
             });
+            delete typingTimeoutsRef.current[key];
           }, 5000);
         } else {
           if (next[data.taskId]) {
@@ -265,6 +274,11 @@ export const SocketProvider = ({ children }) => {
 
     return () => {
       clearInterval(heartbeatInterval);
+      
+      // Clear typing timeouts
+      Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
+      typingTimeoutsRef.current = {};
+
       socketInstance.disconnect();
       if (socketRef.current === socketInstance) {
         socketRef.current = null;

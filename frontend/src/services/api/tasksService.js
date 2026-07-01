@@ -263,6 +263,32 @@ export const deleteTaskFile = async (fileId) => {
   await apiClient.delete(`/files/${fileId}`);
 };
 
+export const listGoogleDriveFiles = async (searchQuery = "") => {
+  const response = await apiClient.get("/integrations/google/drive/files", {
+    params: searchQuery ? { q: searchQuery } : {},
+  });
+  return toArrayPayload(response.data);
+};
+
+export const getTaskDriveFiles = async (taskId) => {
+  const response = await apiClient.get(`/integrations/google/drive/tasks/${taskId}/files`);
+  return toArrayPayload(response.data);
+};
+
+export const attachDriveFile = async (taskId, driveFileId) => {
+  const response = await apiClient.post(`/integrations/google/drive/tasks/${taskId}/files`, { driveFileId });
+  return response.data;
+};
+
+export const deleteDriveFile = async (id) => {
+  await apiClient.delete(`/integrations/google/drive/files/${id}`);
+};
+
+export const getTaskActivity = async (id, params = {}) => {
+  const response = await apiClient.get(`/tasks/${id}/activity`, { params });
+  return toArrayPayload(response.data);
+};
+
 const tasksService = {
   createTask,
   getBoardTasks,
@@ -284,6 +310,11 @@ const tasksService = {
   uploadTaskAttachment,
   getMyWorkTasks,
   deleteTaskFile,
+  listGoogleDriveFiles,
+  getTaskDriveFiles,
+  attachDriveFile,
+  deleteDriveFile,
+  getTaskActivity,
 };
 
 export default tasksService;

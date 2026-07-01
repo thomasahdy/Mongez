@@ -176,6 +176,7 @@ model User {
   reviewedAIActions AIProposedAction[] @relation("AIActionReviewer")
   workflowInstances WorkflowInstance[] @relation("WorkflowRequester")
   aiConversationTurns AIConversationTurn[]
+  aiChatSessions    AIChatSession[]
   executedAIActions AIProposedAction[] @relation("AIActionExecutor")
   preference     UserPreference?
   integrations   Integration[]
@@ -1078,6 +1079,22 @@ model AIConversationTurn {
 
   @@index([userId, spaceId, createdAt])
   @@map("ai_conversation_turns")
+}
+
+model AIChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  context   Json?
+  messages  Json     // JSON array of structured message items
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("ai_chat_sessions")
 }
 
 model AIEvalResult {

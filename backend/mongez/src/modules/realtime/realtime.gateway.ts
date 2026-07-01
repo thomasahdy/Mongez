@@ -287,10 +287,17 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       select: { userId: true },
     });
 
+    if (members.length === 0) {
+      client.emit('space:presence-list', {});
+      return;
+    }
+
+    const keys = members.map((m) => `user:${m.userId}:status`);
+    const statuses = await this.cacheService.mget<string>(keys);
+
     const statusMap: Record<string, string> = {};
-    for (const m of members) {
-      const status = await this.cacheService.get<string>(`user:${m.userId}:status`);
-      statusMap[m.userId] = status || 'OFFLINE';
+    for (let i = 0; i < members.length; i++) {
+      statusMap[members[i].userId] = statuses[i] || 'OFFLINE';
     }
 
     client.emit('space:presence-list', statusMap);
@@ -505,6 +512,41 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     return profile;
   }
 
+  private async getUserProfiles(userIds: string[]) {
+    if (userIds.length === 0) return [];
+
+    const cacheKeys = userIds.map(id => `user:profile:${id}`);
+    const cachedProfiles = await this.cacheService.mget<{ id: string; name: string; avatarUrl: string | null }>(cacheKeys);
+
+    const profilesMap = new Map<string, { id: string; name: string; avatarUrl: string | null }>();
+    const missingIds: string[] = [];
+
+    for (let i = 0; i < userIds.length; i++) {
+      const id = userIds[i];
+      const cached = cachedProfiles[i];
+      if (cached) {
+        profilesMap.set(id, cached);
+      } else {
+        missingIds.push(id);
+      }
+    }
+
+    if (missingIds.length > 0) {
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: missingIds } },
+        select: { id: true, name: true, avatarUrl: true },
+      });
+
+      for (const user of users) {
+        const cacheKey = `user:profile:${user.id}`;
+        profilesMap.set(user.id, user);
+        await this.cacheService.set(cacheKey, user, 3600);
+      }
+    }
+
+    return userIds.map(id => profilesMap.get(id) || null).filter((p): p is NonNullable<typeof p> => p !== null);
+  }
+
   private async broadcastBoardPresence(boardId: string) {
     const presenceKey = `presence:board:${boardId}`;
     const statesKey = `presence:board:${boardId}:states`;
@@ -523,21 +565,22 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     // Get user states
     const states = await this.cacheService.hgetall(statesKey);
 
-    // Fetch user profiles and build presence list
-    const presenceList = (
-      await Promise.all(
-        userIds.map(async (id) => {
-          const profile = await this.getUserProfile(id);
-          if (!profile) return null;
-          return {
-            userId: id,
-            name: profile.name,
-            avatarUrl: profile.avatarUrl,
-            state: states[id] || 'VIEWING',
-          };
-        }),
-      )
-    ).filter((item): item is NonNullable<typeof item> => item !== null);
+    // Fetch user profiles in batch
+    const profiles = await this.getUserProfiles(userIds);
+    const profilesMap = new Map(profiles.map(p => [p.id, p]));
+
+    const presenceList = userIds
+      .map((id) => {
+        const profile = profilesMap.get(id);
+        if (!profile) return null;
+        return {
+          userId: id,
+          name: profile.name,
+          avatarUrl: profile.avatarUrl,
+          state: states[id] || 'VIEWING',
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
 
     this.realtimeService.emitToBoard(boardId, 'board:presence', presenceList);
   }
@@ -560,21 +603,22 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     // Get user states
     const states = await this.cacheService.hgetall(statesKey);
 
-    // Fetch user profiles and build presence list
-    const presenceList = (
-      await Promise.all(
-        userIds.map(async (id) => {
-          const profile = await this.getUserProfile(id);
-          if (!profile) return null;
-          return {
-            userId: id,
-            name: profile.name,
-            avatarUrl: profile.avatarUrl,
-            state: states[id] || 'VIEWING',
-          };
-        }),
-      )
-    ).filter((item): item is NonNullable<typeof item> => item !== null);
+    // Fetch user profiles in batch
+    const profiles = await this.getUserProfiles(userIds);
+    const profilesMap = new Map(profiles.map(p => [p.id, p]));
+
+    const presenceList = userIds
+      .map((id) => {
+        const profile = profilesMap.get(id);
+        if (!profile) return null;
+        return {
+          userId: id,
+          name: profile.name,
+          avatarUrl: profile.avatarUrl,
+          state: states[id] || 'VIEWING',
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
 
     this.server.to(`task:${taskId}`).emit('task:presence', presenceList);
   }

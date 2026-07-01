@@ -177,10 +177,18 @@ export class CacheService {
     }
   }
 
-  async mget(keys: string[]): Promise<(string | null)[]> {
+  async mget<T = string>(keys: string[]): Promise<(T | null)[]> {
     try {
       if (keys.length === 0) return [];
-      return await this.redis.mget(keys);
+      const results = await this.redis.mget(keys);
+      return results.map((val) => {
+        if (val === null) return null;
+        try {
+          return JSON.parse(val) as T;
+        } catch {
+          return val as unknown as T;
+        }
+      });
     } catch (err: any) {
       this.logger.error(`Cache MGET error: ${err.message}`);
       throw err;

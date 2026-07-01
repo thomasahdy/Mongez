@@ -3,6 +3,7 @@ import { AIService } from './ai.service';
 import { AIGatewayService } from './ai-gateway.service';
 import { AIRequestRepository } from './repositories/ai-request.repository';
 import { AIActionRepository } from './repositories/ai-action.repository';
+import { AIChatSessionRepository } from './repositories/ai-chat-session.repository';
 import { CacheService } from '../../infrastructure/cache/cache.service';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 
@@ -11,6 +12,7 @@ describe('AIService', () => {
   let aiGateway: jest.Mocked<AIGatewayService>;
   let requestRepo: jest.Mocked<AIRequestRepository>;
   let actionRepo: jest.Mocked<AIActionRepository>;
+  let chatSessionRepo: jest.Mocked<AIChatSessionRepository>;
   let cache: jest.Mocked<CacheService>;
   let prisma: jest.Mocked<PrismaService>;
 
@@ -40,6 +42,14 @@ describe('AIService', () => {
       findPending: jest.fn(),
       findById: jest.fn(),
       reject: jest.fn(),
+    } as any;
+
+    chatSessionRepo = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      findByUser: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     } as any;
 
     cache = {
@@ -78,7 +88,7 @@ describe('AIService', () => {
     // Set up default behavior for actionRepo
     actionRepo.findById.mockResolvedValue({ id: 'action-1', spaceId: 'space-1' } as any);
 
-    service = new AIService(aiGateway, requestRepo, actionRepo, cache, prisma);
+    service = new AIService(aiGateway, requestRepo, actionRepo, cache, prisma, chatSessionRepo);
   });
 
   // ─── chat / chatStream ───────────────────────────────────────
@@ -278,6 +288,72 @@ describe('AIService', () => {
       expect(result).toHaveProperty('risks');
       expect(result).toHaveProperty('recentDecisions');
       expect(result).toHaveProperty('meetingIntelligence');
+    });
+  });
+
+  // ─── AIChatSession CRUD ──────────────────────────────────────────
+
+  describe('AIChatSession CRUD', () => {
+    const sessionId = 'session-1';
+    const mockSession = { id: sessionId, userId, title: 'Session Title', messages: [] };
+
+    describe('listChatSessions()', () => {
+      it('should return all chat sessions for user', async () => {
+        chatSessionRepo.findByUser.mockResolvedValue([mockSession] as any);
+        const result = await service.listChatSessions(userId);
+        expect(chatSessionRepo.findByUser).toHaveBeenCalledWith(userId);
+        expect(result).toEqual([mockSession]);
+      });
+    });
+
+    describe('getChatSession()', () => {
+      it('should return session if found and user owns it', async () => {
+        chatSessionRepo.findById.mockResolvedValue(mockSession as any);
+        const result = await service.getChatSession(sessionId, userId);
+        expect(chatSessionRepo.findById).toHaveBeenCalledWith(sessionId);
+        expect(result).toEqual(mockSession);
+      });
+
+      it('should throw NotFoundException if session not found', async () => {
+        chatSessionRepo.findById.mockResolvedValue(null);
+        await expect(service.getChatSession(sessionId, userId)).rejects.toThrow(NotFoundException);
+      });
+
+      it('should throw ForbiddenException if user does not own session', async () => {
+        chatSessionRepo.findById.mockResolvedValue({ ...mockSession, userId: 'other-user' } as any);
+        await expect(service.getChatSession(sessionId, userId)).rejects.toThrow(ForbiddenException);
+      });
+    });
+
+    describe('createChatSession()', () => {
+      it('should create a chat session', async () => {
+        const createData = { title: 'New Title', messages: [] };
+        chatSessionRepo.create.mockResolvedValue(mockSession as any);
+        const result = await service.createChatSession(userId, createData);
+        expect(chatSessionRepo.create).toHaveBeenCalledWith(userId, createData);
+        expect(result).toEqual(mockSession);
+      });
+    });
+
+    describe('updateChatSession()', () => {
+      it('should update session if ownership is verified', async () => {
+        const updateData = { title: 'Updated' };
+        chatSessionRepo.findById.mockResolvedValue(mockSession as any);
+        chatSessionRepo.update.mockResolvedValue({ ...mockSession, ...updateData } as any);
+        const result = await service.updateChatSession(sessionId, userId, updateData);
+        expect(chatSessionRepo.update).toHaveBeenCalledWith(sessionId, userId, updateData);
+        expect(result.title).toBe('Updated');
+      });
+    });
+
+    describe('deleteChatSession()', () => {
+      it('should delete session if ownership is verified', async () => {
+        chatSessionRepo.findById.mockResolvedValue(mockSession as any);
+        chatSessionRepo.delete.mockResolvedValue(mockSession as any);
+        const result = await service.deleteChatSession(sessionId, userId);
+        expect(chatSessionRepo.delete).toHaveBeenCalledWith(sessionId, userId);
+        expect(result).toEqual(mockSession);
+      });
     });
   });
 });

@@ -281,9 +281,9 @@ export class AnalyticsService {
     const latestActivities = await this.prisma.$queryRaw<any[]>`
       SELECT "userId", MAX(timestamp) as last_active_at
       FROM user_activity
-      WHERE "spaceId" = ${spaceId} AND "userId" IN (${this.prisma.$queryRawUnsafe(userIds.map(id => `'${id}'`).join(','))})
+      WHERE "spaceId" = ${spaceId} AND "userId" = ANY(${userIds})
       GROUP BY "userId"
-    `.catch(() => []); // Fallback if raw query fails due to parsing
+    `.catch(() => []);
 
     const activityMap = new Map(latestActivities.map(a => [a.userId, a.last_active_at]));
 

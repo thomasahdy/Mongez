@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nest
 import { AIGatewayService } from './ai-gateway.service';
 import { AIRequestRepository } from './repositories/ai-request.repository';
 import { AIActionRepository } from './repositories/ai-action.repository';
+import { AIChatSessionRepository } from './repositories/ai-chat-session.repository';
 import { CacheService } from '../../infrastructure/cache/cache.service';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { ChatDto } from './dto/chat.dto';
@@ -21,6 +22,7 @@ export class AIService {
     private readonly actionRepo: AIActionRepository,
     private readonly cache: CacheService,
     private readonly prisma: PrismaService,
+    private readonly chatSessionRepo: AIChatSessionRepository,
   ) {}
 
   async checkSpaceMembership(userId: string, spaceId: string): Promise<void> {
@@ -414,6 +416,35 @@ export class AIService {
 
   async getHistory(userId: string, page = 1, limit = 20) {
     return this.requestRepo.findByUser(userId, page, limit);
+  }
+
+  async listChatSessions(userId: string) {
+    return this.chatSessionRepo.findByUser(userId);
+  }
+
+  async getChatSession(id: string, userId: string) {
+    const session = await this.chatSessionRepo.findById(id);
+    if (!session) {
+      throw new NotFoundException(`Chat session ${id} not found`);
+    }
+    if (session.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this chat session.');
+    }
+    return session;
+  }
+
+  async createChatSession(userId: string, data: { id?: string; title: string; context?: any; messages: any[] }) {
+    return this.chatSessionRepo.create(userId, data);
+  }
+
+  async updateChatSession(id: string, userId: string, data: { title?: string; context?: any; messages?: any[] }) {
+    await this.getChatSession(id, userId);
+    return this.chatSessionRepo.update(id, userId, data);
+  }
+
+  async deleteChatSession(id: string, userId: string) {
+    await this.getChatSession(id, userId);
+    return this.chatSessionRepo.delete(id, userId);
   }
 
   async invalidateCacheForSpace(spaceId: string) {

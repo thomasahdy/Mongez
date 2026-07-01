@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { CacheService } from '../../infrastructure/cache/cache.service';
@@ -26,6 +27,7 @@ import { paginate } from '../../shared/dto/pagination.dto';
 export class SpacesService {
   private readonly CACHE_PREFIX = 'space';
   private readonly CACHE_TTL = 180;
+  private readonly logger = new Logger(SpacesService.name);
 
   constructor(
     private readonly spaceRepo: SpaceRepository,
@@ -61,19 +63,18 @@ export class SpacesService {
   async create(dto: CreateSpaceDto, userId: string) {
     // Enforce subscription limit
     const subscription = await this.prisma.subscription.findFirst({ where: { userId } });
-    if (subscription) {
-      const plan = await this.prisma.subscriptionPlan.findFirst({
-        where: { name: subscription.tier },
+    const tier = subscription?.tier || 'FREE';
+    const plan = await this.prisma.subscriptionPlan.findFirst({
+      where: { name: tier },
+    });
+    if (plan) {
+      const ownedCount = await this.prisma.membership.count({
+        where: { userId, role: { name: 'OWNER' } },
       });
-      if (plan) {
-        const ownedCount = await this.prisma.membership.count({
-          where: { userId, role: { name: 'OWNER' } },
-        });
-        if (plan.maxSpaces !== -1 && ownedCount >= plan.maxSpaces) {
-          throw new ForbiddenException(
-            `Your plan allows a maximum of ${plan.maxSpaces} spaces. Please upgrade.`,
-          );
-        }
+      if (plan.maxSpaces !== -1 && ownedCount >= plan.maxSpaces) {
+        throw new ForbiddenException(
+          `Your plan allows a maximum of ${plan.maxSpaces} spaces. Please upgrade.`,
+        );
       }
     }
 
@@ -85,12 +86,14 @@ export class SpacesService {
   async update(id: string, dto: UpdateSpaceDto) {
     const space = await this.spaceRepo.update(id, dto);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, id);
+    await this.invalidateDependentCaches(id);
     return space;
   }
 
   async delete(id: string) {
     await this.spaceRepo.delete(id);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, id);
+    await this.invalidateDependentCaches(id);
   }
 
   async getStats(spaceId: string) {
@@ -123,7 +126,7 @@ export class SpacesService {
 
   async changeRole(spaceId: string, targetUserId: string, dto: UpdateMemberRoleDto, requesterId: string) {
     if (targetUserId === requesterId && dto.role !== 'OWNER') {
-      // Prevent owner from demoting themselves (should transfer ownership first)
+      throw new ForbiddenException('Owners cannot demote themselves. Please transfer ownership first.');
     }
     const result = await this.memberRepo.changeRole(targetUserId, spaceId, dto.role);
     await this.cache.del(`membership:${targetUserId}:${spaceId}`).catch(() => {});
@@ -227,5 +230,19 @@ export class SpacesService {
       correlationId: this.traceContext.correlationId,
     });
     return { message: 'Workspace export started in the background. You will receive a notification when it is complete.' };
+  }
+
+  private async invalidateDependentCaches(spaceId: string) {
+    try {
+      const boards = await this.prisma.board.findMany({
+        where: { department: { spaceId } },
+        select: { id: true },
+      });
+      for (const board of boards) {
+        await this.cache.invalidateEntity('board', board.id);
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to invalidate dependent caches for space ${spaceId}: ${err.message}`);
+    }
   }
 }

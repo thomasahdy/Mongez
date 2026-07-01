@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { PasswordService } from './password.service';
@@ -9,6 +9,7 @@ import { canLogSensitiveAuthLinks } from '../utils/sensitive-auth-log.util';
 @Injectable()
 export class PasswordResetService {
   private readonly TOKEN_EXPIRY = 60 * 60 * 1000; // 1 hour
+  private readonly logger = new Logger(PasswordResetService.name);
   private readonly MAX_ATTEMPTS = 3;
   private readonly LOCK_DURATION = 15 * 60 * 1000; // 15 minutes
 
@@ -91,8 +92,8 @@ export class PasswordResetService {
 
     // TODO: Send email with reset link
     if (canLogSensitiveAuthLinks(this.configService)) {
-      console.log(`Password reset token for ${email}: ${token}`);
-      console.log(
+      this.logger.log(`Password reset token for ${email}: ${token}`);
+      this.logger.log(
         `Reset link: ${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${token}`,
       );
     }

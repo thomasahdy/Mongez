@@ -18,6 +18,7 @@ describe('AnalyticsService', () => {
       },
       workflowInstance: {
         count: jest.fn(),
+        groupBy: jest.fn(),
       },
       workflowAction: {
         groupBy: jest.fn(),
@@ -28,6 +29,9 @@ describe('AnalyticsService', () => {
       },
       user: {
         findMany: jest.fn(),
+      },
+      taskAssignment: {
+        groupBy: jest.fn(),
       },
       aiProposedAction: {
         count: jest.fn(),
@@ -123,18 +127,30 @@ describe('AnalyticsService', () => {
 
   describe('getTaskMetrics()', () => {
     it('should fetch weekly task metrics and overdue count from views', async () => {
-      const mockWeekly = [{ week: '2026-06-20', count: 5 }];
-      const mockOverdue = [{ assigneeId: 'user-1', overdue_count: 2 }];
+      prisma.task.findMany.mockResolvedValue([
+        { status: 'TODO', createdAt: new Date('2026-06-20T10:00:00Z') },
+        { status: 'DONE', createdAt: new Date('2026-06-20T11:00:00Z') },
+      ]);
 
-      prisma.$queryRaw
-        .mockResolvedValueOnce(mockWeekly)
-        .mockResolvedValueOnce(mockOverdue);
+      prisma.taskAssignment.groupBy.mockResolvedValue([
+        { userId: 'user-1', _count: { _all: 2 } }
+      ] as any);
 
-      const period = { from: new Date(), to: new Date() };
+      const period = { from: new Date('2026-06-01T00:00:00Z'), to: new Date('2026-06-30T00:00:00Z') };
       const result = await service.getTaskMetrics('space-1', period);
 
-      expect(result.weeklyCompletion).toEqual(mockWeekly);
-      expect(result.topOverdueAssignees).toEqual(mockOverdue);
+      expect(result.weeklyCompletion).toEqual([
+        {
+          label: '2026-06-20',
+          created: 2,
+          completed: 1,
+          week: '2026-06-20',
+          month: '2026-06-20'
+        }
+      ]);
+      expect(result.topOverdueAssignees).toEqual([
+        { assigneeId: 'user-1', overdue_count: 2 }
+      ]);
     });
   });
 
@@ -166,13 +182,17 @@ describe('AnalyticsService', () => {
         { userId: 'user-2', user: { name: 'Jane Doe', email: 'jane@example.com', avatarUrl: null } },
       ] as any);
 
-      // User 1 has recent activity
-      prisma.userActivity.findFirst
-        .mockResolvedValueOnce({ timestamp: new Date() } as any) // user-1
-        .mockResolvedValueOnce(null); // user-2 (no activity)
+      // User 1 has recent activity via queryRaw
+      prisma.$queryRaw.mockResolvedValue([
+        { userId: 'user-1', last_active_at: new Date() }
+      ]);
 
-      prisma.workflowAction.count.mockResolvedValue(5);
-      prisma.workflowInstance.count.mockResolvedValue(2);
+      prisma.workflowAction.groupBy.mockResolvedValue([
+        { actorId: 'user-1', _count: { _all: 5 } }
+      ] as any);
+      prisma.workflowInstance.groupBy.mockResolvedValue([
+        { requesterId: 'user-1', _count: { _all: 2 } }
+      ] as any);
 
       const insights = await service.getAdoptionInsights('space-1');
 

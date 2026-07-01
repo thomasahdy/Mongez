@@ -323,6 +323,23 @@ describe('SpacesService', () => {
     });
   });
 
+  describe('changeRole()', () => {
+    it('should throw ForbiddenException if owner tries to demote themselves', async () => {
+      await expect(
+        service.changeRole('space-1', 'user-1', { role: 'MEMBER' }, 'user-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should change role for other user', async () => {
+      memberRepo.changeRole.mockResolvedValue({ userId: 'user-2', role: 'ADMIN' } as any);
+
+      const result = await service.changeRole('space-1', 'user-2', { role: 'ADMIN' }, 'user-1');
+
+      expect(memberRepo.changeRole).toHaveBeenCalledWith('user-2', 'space-1', 'ADMIN');
+      expect(result.role).toBe('ADMIN');
+    });
+  });
+
   // ─── Departments ─────────────────────────────────────────────
 
   describe('getDepartments()', () => {

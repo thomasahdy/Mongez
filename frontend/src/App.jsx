@@ -120,7 +120,8 @@ function AppContent() {
 
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <div key={location.pathname} className="route-transition-shell">
+      <ErrorBoundary key={location.pathname}>
+        <div className="route-transition-shell">
         <Routes location={location}>
         <Route
           path="/"
@@ -217,6 +218,7 @@ function AppContent() {
         />
         </Routes>
       </div>
+      </ErrorBoundary>
     </Suspense>
   );
 }

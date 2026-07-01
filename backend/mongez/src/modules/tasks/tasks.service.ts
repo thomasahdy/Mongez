@@ -97,6 +97,9 @@ export class TasksService {
     // Publish Domain Event
     this.eventBus.publish(new TaskCreatedEvent(task));
     
+    // Invalidate board cache
+    await this.cache.invalidateEntity('board', task.boardId);
+
     this.invalidateAiCache(spaceId);
     return task;
   }
@@ -120,6 +123,9 @@ export class TasksService {
     // Publish Domain Event
     this.eventBus.publish(new TaskUpdatedEvent(id, dto, task.boardId, userId));
 
+    // Invalidate board cache
+    await this.cache.invalidateEntity('board', task.boardId);
+
     if (spaceId) {
       this.invalidateAiCache(spaceId);
     }
@@ -131,6 +137,9 @@ export class TasksService {
 
     // Publish Domain Event
     this.eventBus.publish(new TaskMovedEvent(id, dto.columnId, dto.position, task.boardId, userId));
+
+    // Invalidate board cache
+    await this.cache.invalidateEntity('board', task.boardId);
 
     if (spaceId) {
       this.invalidateAiCache(spaceId);
@@ -146,6 +155,9 @@ export class TasksService {
 
     // Publish Domain Event
     this.eventBus.publish(new TaskArchivedEvent(id, task.boardId, userId));
+
+    // Invalidate board cache
+    await this.cache.invalidateEntity('board', task.boardId);
 
     if (spaceId) {
       this.invalidateAiCache(spaceId);

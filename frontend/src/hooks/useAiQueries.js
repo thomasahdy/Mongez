@@ -72,3 +72,43 @@ export function useAiActionReviewMutation(spaceId) {
     },
   });
 }
+
+export function useAiChatSessionsQuery() {
+  return useQuery({
+    queryKey: ["ai", "sessions"],
+    queryFn: () => aiService.fetchAiChatSessions(),
+  });
+}
+
+export function useCreateAiChatSessionMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload) => aiService.createAiChatSession(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ai", "sessions"] });
+    },
+  });
+}
+
+export function useUpdateAiChatSessionMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload) => aiService.updateAiChatSession(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ai", "sessions"] });
+    },
+  });
+}
+
+export function useDeleteAiChatSessionMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id) => aiService.deleteAiChatSession(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ai", "sessions"] });
+    },
+  });
+}

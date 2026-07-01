@@ -84,6 +84,7 @@ describe('Spaces Repositories', () => {
     it('UT-SPACE-REPO-002: should list all spaces for a user', async () => {
       prisma.space.findMany.mockResolvedValue([{ id: 'space-1' }] as any);
       prisma.space.count.mockResolvedValue(1);
+      prisma.department.findMany.mockResolvedValue([] as any);
 
       const result = await spaceRepo.findAllForUser('user-1', 1, 10);
 

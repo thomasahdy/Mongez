@@ -35,16 +35,7 @@ export class IntegrationsController {
     res.redirect(url);
   }
 
-  @Get('google/callback')
-  async googleCallback(
-    @Query('code') code: string,
-    @Query('state') userId: string,
-    @Res() res: Response,
-  ) {
-    await this.integrationsService.connectGoogleDrive(userId, code);
-    const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/settings/integrations?connected=google`);
-  }
+
 
   @Get('status')
   @UseGuards(JwtAuthGuard)
@@ -61,7 +52,14 @@ export class IntegrationsController {
     await this.integrationsService.disconnect(userId);
   }
 
-  @Post('../tasks/:taskId/drive-files')
+  @Get('google/drive/files')
+  @UseGuards(JwtAuthGuard)
+  async listDriveFiles(@Req() req: any, @Query('q') query?: string) {
+    const userId = req.user.userId;
+    return this.integrationsService.listDriveFiles(userId, query);
+  }
+
+  @Post('google/drive/tasks/:taskId/files')
   @UseGuards(JwtAuthGuard, TaskAccessGuard)
   async attachDriveFile(
     @Param('taskId') taskId: string,
@@ -72,13 +70,13 @@ export class IntegrationsController {
     return this.integrationsService.attachDriveFile(taskId, userId, dto);
   }
 
-  @Get('../tasks/:taskId/drive-files')
+  @Get('google/drive/tasks/:taskId/files')
   @UseGuards(JwtAuthGuard, TaskAccessGuard)
   async listAttachments(@Param('taskId') taskId: string) {
     return this.integrationsService.listAttachments(taskId);
   }
 
-  @Delete('../drive-files/:id')
+  @Delete('google/drive/files/:id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeAttachment(@Param('id') id: string, @Req() req: any) {

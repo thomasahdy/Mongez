@@ -72,6 +72,9 @@ describe('AuthService', () => {
         findUnique: jest.fn(),
         delete: jest.fn(),
       },
+      subscription: {
+        create: jest.fn().mockResolvedValue({}),
+      },
       $transaction: jest.fn(),
     } as any;
 
@@ -361,6 +364,7 @@ describe('AuthService', () => {
         ...mockUser,
         passwordHash: null,
       } as any);
+      prisma.user.update.mockResolvedValue({ failedAttempts: 1 } as any);
 
       await expect(service.login(loginDto)).rejects.toThrow(
         'Invalid credentials',
@@ -374,6 +378,7 @@ describe('AuthService', () => {
         failedAttempts: 2,
       } as any);
       passwordService.compare.mockResolvedValue(false);
+      prisma.user.update.mockResolvedValue({ failedAttempts: 3 } as any);
 
       await expect(service.login(loginDto)).rejects.toThrow(
         'Invalid credentials',
@@ -381,7 +386,7 @@ describe('AuthService', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-123' },
-        data: { failedAttempts: 3 },
+        data: { failedAttempts: { increment: 1 } },
       });
     });
 
@@ -391,19 +396,23 @@ describe('AuthService', () => {
         failedAttempts: 4,
       } as any);
       passwordService.compare.mockResolvedValue(false);
+      prisma.user.update.mockResolvedValue({ failedAttempts: 5 } as any);
 
       await expect(service.login(loginDto)).rejects.toThrow(
         'Invalid credentials',
       );
 
-      expect(prisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            failedAttempts: 5,
-            lockedUntil: expect.any(Date),
-          }),
+      expect(prisma.user.update).toHaveBeenNthCalledWith(1, {
+        where: { id: 'user-123' },
+        data: { failedAttempts: { increment: 1 } },
+      });
+
+      expect(prisma.user.update).toHaveBeenNthCalledWith(2, expect.objectContaining({
+        where: { id: 'user-123' },
+        data: expect.objectContaining({
+          lockedUntil: expect.any(Date),
         }),
-      );
+      }));
     });
 
     it('UT-AUTH-LOGIN-012: should set lockedUntil to 30 minutes in the future', async () => {
@@ -416,10 +425,11 @@ describe('AuthService', () => {
         failedAttempts: 4,
       } as any);
       passwordService.compare.mockResolvedValue(false);
+      prisma.user.update.mockResolvedValue({ failedAttempts: 5 } as any);
 
       await expect(service.login(loginDto)).rejects.toThrow();
 
-      const updateCall = prisma.user.update.mock.calls[0][0];
+      const updateCall = prisma.user.update.mock.calls[1][0];
       const lockedUntil = updateCall.data.lockedUntil as Date;
       expect(lockedUntil.getTime()).toBe(now.getTime() + 30 * 60 * 1000);
 
@@ -429,6 +439,7 @@ describe('AuthService', () => {
     it('UT-AUTH-LOGIN-013: should log failed login attempt with IP', async () => {
       userRepo.findByEmailWithPassword.mockResolvedValue(mockUser as any);
       passwordService.compare.mockResolvedValue(false);
+      prisma.user.update.mockResolvedValue({ failedAttempts: 1 } as any);
 
       await expect(
         service.login(loginDto, '10.0.0.1', 'curl/7.68'),

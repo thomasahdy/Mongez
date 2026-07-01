@@ -34,17 +34,34 @@ export class SpaceRepository {
       this.prisma.space.count({ where }),
     ]);
 
-    const data = await Promise.all(spaces.map(async (space) => {
-      const boardCount = await this.prisma.board.count({
-        where: { department: { spaceId: space.id }, isArchived: false }
-      });
-      return {
-        ...space,
-        _count: {
-          ...space._count,
-          boards: boardCount,
-        }
-      };
+    const spaceIds = spaces.map((s) => s.id);
+    const departmentBoardCounts = spaceIds.length
+      ? await this.prisma.department.findMany({
+          where: { spaceId: { in: spaceIds } },
+          select: {
+            spaceId: true,
+            _count: {
+              select: {
+                boards: {
+                  where: { isArchived: false },
+                },
+              },
+            },
+          },
+        })
+      : [];
+
+    const spaceBoardCounts: Record<string, number> = {};
+    for (const d of departmentBoardCounts) {
+      spaceBoardCounts[d.spaceId] = (spaceBoardCounts[d.spaceId] || 0) + d._count.boards;
+    }
+
+    const data = spaces.map((space) => ({
+      ...space,
+      _count: {
+        ...space._count,
+        boards: spaceBoardCounts[space.id] || 0,
+      },
     }));
 
     return { data, total };
@@ -145,7 +162,9 @@ export class DepartmentRepository {
     });
 
     return depts.map(dept => {
-      const tasksCount = dept.boards.reduce((sum, board) => sum + (board._count?.tasks ?? 0), 0);
+      const tasksCount = dept.boards
+        ? dept.boards.reduce((sum, board) => sum + (board._count?.tasks ?? 0), 0)
+        : 0;
       return {
         ...dept,
         _count: {

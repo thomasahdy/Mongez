@@ -36,6 +36,7 @@ describe('RealtimeGateway', () => {
       },
       user: {
         findUnique: jest.fn(),
+        findMany: jest.fn(),
       },
     } as any;
 
@@ -49,6 +50,7 @@ describe('RealtimeGateway', () => {
     cacheService = {
       get: jest.fn(),
       set: jest.fn(),
+      mget: jest.fn().mockResolvedValue([]),
       zadd: jest.fn(),
       zrem: jest.fn(),
       zremrangebyscore: jest.fn(),
@@ -151,6 +153,7 @@ describe('RealtimeGateway', () => {
       cacheService.zrange.mockResolvedValue(['user-1']);
       cacheService.hgetall.mockResolvedValue({ 'user-1': 'VIEWING' });
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', name: 'Alice', avatarUrl: 'url' } as any);
+      prisma.user.findMany.mockResolvedValue([{ id: 'user-1', name: 'Alice', avatarUrl: 'url' }] as any);
 
       await gateway.joinBoard(mockSocket, 'board-1');
 
@@ -194,6 +197,7 @@ describe('RealtimeGateway', () => {
       cacheService.zrange.mockResolvedValue(['user-1']);
       cacheService.hgetall.mockResolvedValue({ 'user-1': 'VIEWING' });
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', name: 'Alice', avatarUrl: 'url' } as any);
+      prisma.user.findMany.mockResolvedValue([{ id: 'user-1', name: 'Alice', avatarUrl: 'url' }] as any);
 
       await gateway.joinTask(mockSocket, 'task-1');
 
@@ -211,6 +215,7 @@ describe('RealtimeGateway', () => {
       cacheService.zrange.mockResolvedValue(['user-1']);
       cacheService.hgetall.mockResolvedValue({ 'user-1': 'TYPING' });
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', name: 'Alice', avatarUrl: 'url' } as any);
+      prisma.user.findMany.mockResolvedValue([{ id: 'user-1', name: 'Alice', avatarUrl: 'url' }] as any);
 
       await gateway.taskTyping(mockSocket, { taskId: 'task-1', isTyping: true });
 

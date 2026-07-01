@@ -21,10 +21,12 @@ const mockOAuth2Client = {
 
 const mockDriveFilesGet = jest.fn();
 const mockDriveFilesWatch = jest.fn();
+const mockDriveFilesList = jest.fn();
 const mockDrive = {
   files: {
     get: mockDriveFilesGet,
     watch: mockDriveFilesWatch,
+    list: mockDriveFilesList,
   },
 };
 
@@ -406,6 +408,38 @@ describe('IntegrationsService', () => {
 
       expect(integrationRepo.incrementAttachmentVersion).toHaveBeenCalledWith('attach-1');
       expect(notificationsQueue.add).toHaveBeenCalled();
+    });
+  });
+
+  describe('listDriveFiles()', () => {
+    it('should list Google Drive files for user', async () => {
+      integrationRepo.findByUser.mockResolvedValue({
+        accessToken: service.encrypt('enc-access'),
+        refreshToken: service.encrypt('enc-refresh'),
+        expiresAt: new Date(Date.now() + 3600 * 1000),
+      } as any);
+
+      const mockFiles = [{ id: 'file-1', name: 'Document.pdf', mimeType: 'application/pdf' }];
+      mockDriveFilesList.mockResolvedValue({ data: { files: mockFiles } });
+
+      const result = await service.listDriveFiles('user-1', 'Document');
+
+      expect(mockDriveFilesList).toHaveBeenCalledWith(expect.objectContaining({
+        q: expect.stringContaining("name contains 'Document'"),
+      }));
+      expect(result).toEqual(mockFiles);
+    });
+
+    it('should throw BadRequestException if Drive API throws error', async () => {
+      integrationRepo.findByUser.mockResolvedValue({
+        accessToken: service.encrypt('enc-access'),
+        refreshToken: service.encrypt('enc-refresh'),
+        expiresAt: new Date(Date.now() + 3600 * 1000),
+      } as any);
+
+      mockDriveFilesList.mockRejectedValue(new Error('API Error'));
+
+      await expect(service.listDriveFiles('user-1')).rejects.toThrow(BadRequestException);
     });
   });
 });

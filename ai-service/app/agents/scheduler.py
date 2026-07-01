@@ -113,8 +113,8 @@ def _log_tool_telemetry(trace_id: str, tool_name: str, args: dict, duration_ms: 
     logger.info("ToolExecutionMetric: %s", json.dumps(metric))
     try:
         import os
-        os.makedirs("logs", exist_ok=True)
-        with open("logs/tool_telemetry.jsonl", "a", encoding="utf-8") as f:
+        os.makedirs("../logs", exist_ok=True)
+        with open("../logs/tool_telemetry.jsonl", "a", encoding="utf-8") as f:
             f.write(json.dumps(metric, ensure_ascii=False) + "\n")
     except Exception as log_exc:
         logger.warning("Failed to write tool telemetry to file: %s", log_exc)

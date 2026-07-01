@@ -9,6 +9,10 @@ import {
   useAiReportMutation,
   useAiRiskMutation,
   useAiStreamingMutation,
+  useAiChatSessionsQuery,
+  useCreateAiChatSessionMutation,
+  useUpdateAiChatSessionMutation,
+  useDeleteAiChatSessionMutation,
 } from "../../hooks/useAiQueries";
 import { readStorageJson, writeStorageJson } from "../../utils/browserStorage";
 import { useBoardTasksQuery } from "../../hooks/useTaskListQueries";
@@ -24,6 +28,7 @@ import {
   makeId,
   MAX_COMPOSER_LENGTH,
   STORAGE_KEYS,
+  truncateText,
 } from "./aiAssistantUtils";
 
 function AiAssistantPage() {
@@ -69,7 +74,12 @@ function AiAssistantPage() {
     };
   });
   const [relativeNow, setRelativeNow] = useState(() => Date.now());
-  const [recentSessions, setRecentSessions] = useState(() => readStorageJson(userSessionsKey, []));
+  const chatSessionsQuery = useAiChatSessionsQuery();
+  const createSessionMutation = useCreateAiChatSessionMutation();
+  const updateSessionMutation = useUpdateAiChatSessionMutation();
+  const deleteSessionMutation = useDeleteAiChatSessionMutation();
+
+  const recentSessions = chatSessionsQuery.data || [];
   const [currentSessionId, setCurrentSessionId] = useState(() => makeId("session"));
   const [messages, setMessages] = useState(() => [welcomeMessage]);
   const [pageError, setPageError] = useState("");
@@ -167,9 +177,6 @@ function AiAssistantPage() {
     writeStorageJson(userContextKey, effectiveContextValues);
   }, [effectiveContextValues, userContextKey]);
 
-  useEffect(() => {
-    writeStorageJson(userSessionsKey, recentSessions);
-  }, [recentSessions, userSessionsKey]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -207,16 +214,24 @@ function AiAssistantPage() {
   const persistCurrentSession = (nextMessages) => {
     const realMessages = nextMessages.filter((message) => message.kind !== "welcome");
     if (realMessages.length === 0) return;
-    const snapshot = createSessionSnapshot({
-      sessionId: currentSessionId,
-      messages: nextMessages,
-      context: effectiveContextValues,
-      t,
-    });
-    setRecentSessions((currentSessions) => {
-      const withoutCurrent = currentSessions.filter((session) => session.id !== currentSessionId);
-      return [snapshot, ...withoutCurrent].slice(0, 8);
-    });
+
+    const exists = recentSessions.some((session) => session.id === currentSessionId);
+    if (exists) {
+      updateSessionMutation.mutate({
+        id: currentSessionId,
+        messages: nextMessages,
+        context: effectiveContextValues,
+      });
+    } else {
+      const firstUserMessage = nextMessages.find((message) => message.role === "user" && message.kind === "text");
+      const title = truncateText(firstUserMessage?.text || t("aiAssistant.untitledConversation"));
+      createSessionMutation.mutate({
+        id: currentSessionId,
+        title,
+        messages: nextMessages,
+        context: effectiveContextValues,
+      });
+    }
   };
 
   const setContextValue = (field, value) => {

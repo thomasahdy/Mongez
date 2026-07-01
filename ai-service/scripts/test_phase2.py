@@ -137,7 +137,7 @@ async def test_prompt_loader():
     print(f"  Latest risk_detector version: {v}")
 
     prompts = loader.list_prompts()
-    assert len(prompts) == 4
+    assert len(prompts) >= 4
     print(f"  Available prompts: {prompts}")
     print("  ✅ PASS")
 

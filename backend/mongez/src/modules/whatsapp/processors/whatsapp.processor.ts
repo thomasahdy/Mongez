@@ -124,7 +124,7 @@ export class WhatsAppProcessor extends WorkerHost {
         toPhone,
         'task_notification',
         undefined,
-        [taskName, boardName, dueDate, assignerName]
+        [boardName, taskName, dueDate, assignerName]
       );
 
       if (result.status !== 'SENT') {

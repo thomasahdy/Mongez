@@ -8,12 +8,14 @@ export function useTaskDetailsQuery(taskId) {
   return useQuery({
     queryKey: ["task", "details", taskId],
     queryFn: async () => {
-      // Fetch task details, comments, files, and time logs in parallel to eliminate waterfall
-      const [task, comments, files, timeLogs] = await Promise.all([
+      // Fetch task details, comments, files, driveFiles, time logs, and activities in parallel to eliminate waterfall
+      const [task, comments, files, driveFiles, timeLogs, activities] = await Promise.all([
         tasksService.getTask(taskId),
         tasksService.getComments(taskId).catch(() => ({ items: [] })),
         tasksService.getTaskFiles(taskId).catch(() => []),
+        tasksService.getTaskDriveFiles(taskId).catch(() => []),
         tasksService.getTimeLogs(taskId).catch(() => []),
+        tasksService.getTaskActivity(taskId).catch(() => []),
       ]);
 
       // Fetch AI risk analysis with spaceId and boardId resolved from task
@@ -27,7 +29,9 @@ export function useTaskDetailsQuery(taskId) {
         task,
         comments: toArrayPayload(comments, ["items", "data", "comments"]),
         files,
+        driveFiles,
         timeLogs,
+        activities,
         risk,
       };
     },
@@ -75,6 +79,28 @@ export function useTaskDeleteMutation(taskId) {
     mutationFn: () => tasksService.deleteTask(taskId),
     onSuccess: () => {
       invalidateTaskCaches(queryClient, { taskId });
+    },
+  });
+}
+
+export function useTaskAttachDriveFileMutation(taskId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (driveFileId) => tasksService.attachDriveFile(taskId, driveFileId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["task", "details", taskId] });
+    },
+  });
+}
+
+export function useTaskDeleteDriveFileMutation(taskId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id) => tasksService.deleteDriveFile(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["task", "details", taskId] });
     },
   });
 }

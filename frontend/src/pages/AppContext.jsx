@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import boardsService from "../services/api/boardsService";
 import membersService from "../services/api/membersService";
@@ -44,6 +44,17 @@ export function AppProvider({ children }) {
   const [spaceMembers, setSpaceMembers] = useState([]);
   const [departmentsBySpace, setDepartmentsBySpace] = useState({});
   const [boardsByDepartment, setBoardsByDepartment] = useState({});
+
+  const boardsByDepartmentRef = useRef(boardsByDepartment);
+  const departmentsBySpaceRef = useRef(departmentsBySpace);
+
+  useEffect(() => {
+    boardsByDepartmentRef.current = boardsByDepartment;
+  }, [boardsByDepartment]);
+
+  useEffect(() => {
+    departmentsBySpaceRef.current = departmentsBySpace;
+  }, [departmentsBySpace]);
   const [activeSpaceId, setActiveSpaceId] = useState(() => readActiveSpaceId());
   const [activeBoardId, setActiveBoardId] = useState(() => readStorage(ACTIVE_BOARD_STORAGE_KEY) || "");
   const [loading, setLoading] = useState(true);
@@ -72,14 +83,15 @@ export function AppProvider({ children }) {
 
   const ensureSpaceData = useCallback(
     async (spaceId) => {
-      if (!spaceId || departmentsBySpace[spaceId]) {
-        const cachedDepartments = departmentsBySpace[spaceId] || [];
+      const depts = departmentsBySpaceRef.current[spaceId];
+      if (!spaceId || depts) {
+        const cachedDepartments = depts || [];
         return {
           departments: cachedDepartments,
           boardsByDepartment: Object.fromEntries(
             cachedDepartments.map((department) => [
               department.id,
-              boardsByDepartment[department.id] || [],
+              boardsByDepartmentRef.current[department.id] || [],
             ]),
           ),
         };
@@ -108,7 +120,7 @@ export function AppProvider({ children }) {
         boardsByDepartment: nextBoardsByDepartment,
       };
     },
-    [boardsByDepartment, departmentsBySpace],
+    [],
   );
 
   const refreshApp = useCallback(async () => {

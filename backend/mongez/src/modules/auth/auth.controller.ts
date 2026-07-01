@@ -14,6 +14,7 @@ import { AuthExceptionFilter } from './filters/auth-exception.filter';
 import { CsrfService } from './services/csrf.service';
 import { PasswordResetService } from './services/password-reset.service';
 import { EmailVerificationService } from './services/email-verification.service';
+import { IntegrationsService } from '../integrations/integrations.service';
 
 @Controller('auth')
 @UseGuards(ThrottlerGuard, SecurityHeadersGuard)
@@ -24,6 +25,7 @@ export class AuthController {
     private readonly csrfService: CsrfService,
     private readonly passwordResetService: PasswordResetService,
     private readonly emailVerificationService: EmailVerificationService,
+    private readonly integrationsService: IntegrationsService,
   ) {}
 
   @Get('csrf-token')
@@ -160,6 +162,16 @@ export class AuthController {
   @UseGuards(GoogleOAuthGuard)
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
     try {
+      const state = req.query.state as string;
+      const code = req.query.code as string;
+      const scope = req.query.scope as string;
+
+      if (state && scope?.includes('drive')) {
+        await this.integrationsService.connectGoogleDrive(state, code);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        return res.redirect(`${frontendUrl}/settings/integrations?connected=google`);
+      }
+
       const authResult = req.user as any;
 
       // Set HTTP-only refresh token cookie

@@ -21,6 +21,7 @@ import { AuthController } from './auth.controller';
 import { RoleSeedService } from './seed/role-seed.service';
 import { CsrfGuard } from './guards/csrf.guard';
 import { StorageModule } from '../../infrastructure/storage/storage.module';
+import { IntegrationsModule } from '../integrations/integrations.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { StorageModule } from '../../infrastructure/storage/storage.module';
       },
     }),
     StorageModule,
+    IntegrationsModule,
   ],
   controllers: [AuthController],
   providers: [

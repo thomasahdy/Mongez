@@ -60,4 +60,9 @@ def get_settings() -> Settings:
     Using lru_cache means the .env file is read once per process lifetime.
     In tests, call get_settings.cache_clear() to reset between test cases.
     """
-    return Settings()  # type: ignore[call-arg]
+    settings = Settings()  # type: ignore[call-arg]
+    import os
+    is_production = os.getenv("NODE_ENV") == "production" or os.getenv("ENV") == "production" or os.getenv("APP_ENV") == "production"
+    if is_production and (settings.service_api_key == "dev-key" or settings.nestjs_service_api_key == "dev-key"):
+        raise ValueError("service_api_key and nestjs_service_api_key cannot be the default 'dev-key' in production mode.")
+    return settings

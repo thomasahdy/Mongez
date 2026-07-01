@@ -23,6 +23,10 @@ export class SanitizePipe implements PipeTransform {
   }
 
   private sanitize(value: unknown): unknown {
+    if (Buffer.isBuffer(value)) {
+      return value;
+    }
+
     if (typeof value === 'string') {
       return this.sanitizeString(value);
     }
