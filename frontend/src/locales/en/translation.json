@@ -25,5 +25,16 @@
   "logout": "Log Out",
   "manage spaces": "Manage Spaces",
   "Department": "Department",
-  "Board": "Board"
+  "Board": "Board",
+  "toasts": {
+    "notifications": "Notifications",
+    "dismiss": "Dismiss notification",
+    "authRequired": "Please sign in to access this page.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "unexpectedError": "An unexpected error occurred.",
+    "backgroundRefreshFailed": "Background refresh failed: {{message}}",
+    "notificationReceived": "{{title}}: {{body}}",
+    "notificationFallbackTitle": "New notification",
+    "notificationFallbackBody": "Open Inbox to view the latest update."
+  }
 }

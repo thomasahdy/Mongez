@@ -30,6 +30,7 @@ import {
   STATUSES,
   timeAgo,
 } from "./taskDetailsUtils";
+import { resolveAvatarUrl } from "../../utils/avatarUrl";
 
 function TaskDetailsPage() {
   const { taskId } = useParams();
@@ -768,9 +769,9 @@ function TaskDetailsPage() {
                 <span className={`flex items-center gap-2 truncate ${isRTL ? "flex-row-reverse" : ""}`}>
                   {task.assignee ? (
                     <img
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(task.assignee.name)}&background=00a8e8&color=fff`}
+                      src={resolveAvatarUrl(task.assignee.avatarUrl) || `https://ui-avatars.com/api/?name=${encodeURIComponent(task.assignee.name)}&background=00a8e8&color=fff`}
                       alt={task.assignee.name}
-                      className="w-4 h-4 rounded-full shrink-0"
+                      className="w-4 h-4 rounded-full shrink-0 object-cover"
                     />
                   ) : (
                     <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[9px] text-slate-400 shrink-0">
@@ -816,6 +817,7 @@ function TaskDetailsPage() {
                       {filteredMembers.map(m => {
                         const id = getMemberId(m);
                         const name = getMemberName(m);
+                        const avatarUrl = resolveAvatarUrl(m.user?.avatarUrl || m.avatarUrl);
                         return (
                           <button
                             key={id}
@@ -831,7 +833,7 @@ function TaskDetailsPage() {
                             }}
                             className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300 cursor-pointer ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
                           >
-                            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00a8e8&color=fff`} className="w-4 h-4 rounded-full shrink-0" alt="avatar" />
+                            <img src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00a8e8&color=fff`} className="w-4 h-4 rounded-full shrink-0 object-cover" alt="avatar" />
                             <span className="truncate flex-1">{name}</span>
                             {task.assignee?.id === id && <i className="fa-solid fa-check text-[10px] text-primary"></i>}
                           </button>
@@ -1390,6 +1392,7 @@ function TaskDetailsPage() {
               {task.watchers && task.watchers.length > 0 ? (
                 task.watchers.map((w, idx) => {
                   const name = getMemberName(w.user);
+                  const avatarUrl = resolveAvatarUrl(w.user?.avatarUrl || w.avatarUrl);
                   return (
                     <div
                       key={idx}
@@ -1397,9 +1400,9 @@ function TaskDetailsPage() {
                       title={name}
                     >
                       <img
-                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`}
+                        src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`}
                         alt="avatar"
-                        className="w-4.5 h-4.5 rounded-full shrink-0"
+                        className="w-4.5 h-4.5 rounded-full shrink-0 object-cover"
                       />
                       <span className="truncate max-w-[80px]">{name}</span>
                     </div>

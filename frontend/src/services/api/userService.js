@@ -21,8 +21,19 @@ export const updateUserPreferences = async (preferencesData) => {
 };
 
 export const uploadAvatar = async (file) => {
+  if (!file || file.size <= 0) {
+    throw new Error("Selected avatar image is empty.");
+  }
+
+  const fileName = file.name || "avatar.png";
+  const fileType = file.type || "application/octet-stream";
+  const avatarBlob =
+    typeof file.arrayBuffer === "function"
+      ? new Blob([await file.arrayBuffer()], { type: fileType })
+      : file;
+
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", avatarBlob, fileName);
 
   const response = await apiClient.post("/users/me/avatar", formData);
   return response.data;

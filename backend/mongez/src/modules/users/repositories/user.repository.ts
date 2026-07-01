@@ -41,7 +41,7 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { id }, select: { passwordHash: true } });
   }
 
-  async updateProfile(id: string, data: UpdateProfileDto) {
+  async updateProfile(id: string, data: Omit<UpdateProfileDto, 'avatarUrl'> & { avatarUrl?: string | null }) {
     return this.prisma.user.update({ where: { id }, data, select: SELECT_SAFE_USER });
   }
 

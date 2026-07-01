@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "../services/api/tokenService";
 import { showToastBridge } from "./ToastContext";
+import i18n from "../i18n";
 
 const SocketContext = createContext({
   socket: null,
@@ -128,7 +129,16 @@ export const SocketProvider = ({ children }) => {
       console.log("Realtime Notification:", notif);
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count", notif.spaceId || ""] });
-      showToastBridge(`${notif.title}: ${notif.body}`, "info");
+      showToastBridge(
+        {
+          key: "toasts.notificationReceived",
+          values: {
+            title: notif.title || i18n.t("toasts.notificationFallbackTitle"),
+            body: notif.body || i18n.t("toasts.notificationFallbackBody"),
+          },
+        },
+        "info",
+      );
 
       // Show native OS notification if permission is granted
       if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {

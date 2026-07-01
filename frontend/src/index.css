@@ -675,6 +675,7 @@ html[dir="rtl"] .notification-dot {
   font-size: 11px;
   font-weight: 700;
   text-decoration: none;
+  overflow: hidden;
 }
 
 .view-tabs {

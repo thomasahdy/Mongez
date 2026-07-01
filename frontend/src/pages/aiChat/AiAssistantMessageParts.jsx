@@ -525,15 +525,23 @@ export function ChatBubble({
 }
 
 export function ToastContainer({ toasts, onClose }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isRTL = i18n.dir(i18n.language) === "rtl";
 
   return (
-    <div className={`pointer-events-none fixed bottom-5 z-55 flex max-w-sm flex-col gap-2.5 ${isRTL ? "left-5" : "right-5"}`}>
+    <div
+      aria-live="polite"
+      aria-label={t("toasts.notifications")}
+      className={`pointer-events-none fixed bottom-5 z-55 flex max-w-sm flex-col gap-2.5 ${isRTL ? "left-5" : "right-5"}`}
+      dir={isRTL ? "rtl" : "ltr"}
+    >
       {toasts.map((toast) => (
         <div
           key={toast.id}
+          role="alert"
           className={`pointer-events-auto flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md animate-slideIn ${
+            isRTL ? "flex-row-reverse text-right" : ""
+          } ${
             toast.type === "success"
               ? "border-emerald-100 bg-emerald-55/90 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/90"
               : toast.type === "error"
@@ -549,14 +557,15 @@ export function ToastContainer({ toasts, onClose }) {
                 ? "fa-circle-check text-emerald-500"
                 : toast.type === "error"
                   ? "fa-circle-xmark text-rose-500"
-                  : "fa-circle-info text-sky-550"
+              : "fa-circle-info text-sky-550"
             }`}
           />
-          <span className="text-[12px] font-bold leading-5">{toast.message}</span>
+          <span className="flex-1 text-[12px] font-bold leading-5" dir="auto">{toast.message}</span>
           <button
             type="button"
             onClick={() => onClose(toast.id)}
             className={`${isRTL ? "mr-auto" : "ml-auto"} flex h-5 w-5 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-900/5 hover:text-slate-650`}
+            aria-label={t("toasts.dismiss")}
           >
             <i className="fa-solid fa-xmark text-[10px]" />
           </button>

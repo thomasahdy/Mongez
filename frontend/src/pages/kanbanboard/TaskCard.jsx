@@ -40,7 +40,12 @@ const TaskCard = ({ task }) => {
   );
 
   const avatars = assignee
-    ? [{ id: assignee.id, name: assignee.name }]
+    ? [{
+        id: assignee.id,
+        name: assignee.name,
+        initials: (assignee.name || "U").slice(0, 2).toUpperCase(),
+        avatarUrl: assignee.avatarUrl,
+      }]
     : [];
 
   const commentCount = _count?.comments ?? commentsCount ?? 0;

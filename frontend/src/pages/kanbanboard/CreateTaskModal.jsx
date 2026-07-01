@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { createTaskValidationSchema } from '../../schemas/taskValidationSchema';
 import { useMembers } from '../../hooks/api/useMembers';
 import useLocaleDirection from '../../hooks/useLocaleDirection';
+import { resolveAvatarUrl } from '../../utils/avatarUrl';
 
 const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, onClose, defaultValues = {} }) => {
   const { t } = useTranslation();
@@ -224,6 +225,7 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
               {members.map((member) => {
                 const id = member.user?.id || member.id;
                 const name = member.user?.name || member.name || "Member";
+                const avatarUrl = resolveAvatarUrl(member.user?.avatarUrl || member.avatarUrl);
                 const isSelected = selectedAssignees.includes(id);
                 return (
                   <button
@@ -236,6 +238,9 @@ const CreateTaskModal = ({ boardId, columnId, spaceId, spacePrefix, onSubmit, on
                         : "bg-white text-slate-600 border-slate-200 hover:border-slate-350 dark:bg-slate-950 dark:text-slate-300 dark:border-slate-800"
                     }`}
                   >
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={name} className="h-4 w-4 rounded-full object-cover" />
+                    ) : null}
                     {name}
                   </button>
                 );

@@ -2493,6 +2493,7 @@ appPagesAr.notificationsPage.messagingLinking = {
   whatsappCodeSent: "تم إرسال رمز OTP إلى رقم واتساب الخاص بك.",
   whatsappLinked: "تم ربط واتساب بنجاح!",
   whatsappDisconnected: "تم تعطيل إشعارات واتساب.",
+  disconnectWhatsApp: "فصل واتساب",
   whatsappSendFailed: "فشل إرسال الرمز",
   whatsappVerifyFailed: "فشل التحقق من الرمز",
   whatsappDisconnectFailed: "فشل فصل واتساب",

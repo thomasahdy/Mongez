@@ -172,6 +172,38 @@ export function AppProvider({ children }) {
     );
   }, [activeSpaceId, ensureSpaceData]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    setSpaceMembers((current) =>
+      current.map((member) => {
+        const memberUserId = member?.user?.id || member?.userId || member?.id;
+        if (memberUserId !== user.id) {
+          return member;
+        }
+
+        if (member.user) {
+          return {
+            ...member,
+            user: {
+              ...member.user,
+              name: user.name ?? member.user.name,
+              avatarUrl: user.avatarUrl ?? member.user.avatarUrl,
+            },
+          };
+        }
+
+        return {
+          ...member,
+          name: user.name ?? member.name,
+          avatarUrl: user.avatarUrl ?? member.avatarUrl,
+        };
+      }),
+    );
+  }, [user?.avatarUrl, user?.id, user?.name]);
+
   const activeSpace = useMemo(
     () => spaces.find((space) => space.id === activeSpaceId) || null,
     [spaces, activeSpaceId],

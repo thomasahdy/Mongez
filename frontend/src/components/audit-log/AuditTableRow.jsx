@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import useLocaleDirection from "../../hooks/useLocaleDirection"
+import { resolveAvatarUrl } from "../../utils/avatarUrl"
 
 const AVATAR_COLORS = ["00a8e8", "10b981", "f59e0b", "ef4444", "6366f1", "0ea5e9"]
 
@@ -108,9 +109,13 @@ const getActorName = (log, unknownUserLabel) => {
 }
 
 const getActorImage = (log, actorName) => {
-    return (
+    const avatarUrl = resolveAvatarUrl(
         log?.user?.avatarUrl ??
-        log?.user?.avatar ??
+        log?.user?.avatar
+    )
+
+    return (
+        avatarUrl ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(actorName)}&background=${getAvatarColor(actorName)}&color=fff`
     )
 }

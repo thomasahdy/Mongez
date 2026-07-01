@@ -16,6 +16,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { readFile, unlink } from 'fs/promises';
+import { join } from 'path';
+import { tmpdir } from 'os';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -53,17 +57,50 @@ export class UsersController {
       properties: { file: { type: 'string', format: 'binary' } },
     },
   })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({ destination: join(tmpdir(), 'mongez-avatar-uploads') }),
+  }))
   async uploadAvatar(@Req() req: any, @UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('No avatar file provided');
     }
 
+    const buffer = await this.getUploadedFileBuffer(file);
+    if (!buffer.length) {
+      throw new BadRequestException(
+        `Avatar upload reached backend with empty content (name: ${file.originalname || 'unknown'}, size: ${file.size ?? 'unknown'}, type: ${file.mimetype || 'unknown'})`,
+      );
+    }
+
     return this.usersService.uploadAvatar(req.user.userId, {
-      buffer: file.buffer,
+      buffer,
       mimeType: file.mimetype,
       originalName: file.originalname,
     });
+  }
+
+  private async getUploadedFileBuffer(file: any): Promise<Buffer> {
+    if (Buffer.isBuffer(file?.buffer) && file.buffer.length > 0) {
+      return file.buffer;
+    }
+
+    if (file?.path) {
+      try {
+        return await readFile(file.path);
+      } finally {
+        await unlink(file.path).catch(() => undefined);
+      }
+    }
+
+    if (file?.stream?.readable) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of file.stream) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    }
+
+    return Buffer.alloc(0);
   }
 
   @Patch('me/password')

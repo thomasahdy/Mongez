@@ -12,6 +12,7 @@ import { User } from './domain/user.entity';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { Prisma } from '@prisma/client';
 import { AuditAction } from './constants/audit-actions.constant';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 
 export interface AuthResult {
   accessToken: string;
@@ -36,6 +37,7 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly prisma: PrismaService,
     private readonly sessionService: SessionService,
+    private readonly storage: StorageService,
   ) {}
 
   /**
@@ -315,7 +317,8 @@ export class AuthService {
    * Get user profile
    */
   async getProfile(userId: string): Promise<UserReadModel | null> {
-    return this.userRepo.findById(userId);
+    const user = await this.userRepo.findById(userId);
+    return this.withPublicAvatarUrl(user);
   }
 
   /**
@@ -545,5 +548,16 @@ export class AuthService {
         data: { failedAttempts: newFailedCount },
       });
     }
+  }
+
+  private async withPublicAvatarUrl<T extends { avatarUrl?: string | null } | null>(user: T): Promise<T> {
+    if (!user?.avatarUrl || !user.avatarUrl.startsWith('avatars/')) {
+      return user;
+    }
+
+    return {
+      ...user,
+      avatarUrl: await this.storage.getSignedUrl(user.avatarUrl, 3600),
+    };
   }
 }

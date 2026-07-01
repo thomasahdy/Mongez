@@ -1,10 +1,12 @@
 import { useCallback, useRef } from 'react'
 import { useTranslation } from "react-i18next";
 import Button from '../ui/Button';
+import { resolveAvatarUrl } from '../../utils/avatarUrl';
 
 const AvatarUpload = ({ initials = "TH", src, onFileSelect, onRemove }) => {
   const { t } = useTranslation();
   const fileRef = useRef(null);
+  const avatarSrc = resolveAvatarUrl(src);
 
   const handleChange = useCallback((e) => {
     const file = e.target.files?.[0];
@@ -20,8 +22,8 @@ const AvatarUpload = ({ initials = "TH", src, onFileSelect, onRemove }) => {
         className="relative w-20 h-20 rounded-full shrink-0 overflow-hidden shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
         aria-label={t("settingsProfilePage.uploadAvatarPhoto")}
       >
-        {src ? (
-          <img src={src} alt={t("settingsProfilePage.profileAvatar")} className="w-full h-full object-cover" />
+        {avatarSrc ? (
+          <img src={avatarSrc} alt={t("settingsProfilePage.profileAvatar")} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-sky-500 to-indigo-500 text-white text-[28px] font-bold select-none">
             {initials}

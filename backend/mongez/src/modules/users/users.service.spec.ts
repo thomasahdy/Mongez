@@ -92,6 +92,17 @@ describe('UsersService', () => {
       expect(userRepo.updateProfile).toHaveBeenCalledWith('user-1', updateData);
       expect(cache.invalidateEntity).toHaveBeenCalledWith('user', 'user-1');
     });
+
+    it('should normalize empty avatarUrl to null when removing avatar', async () => {
+      const updatedUser = { id: 'user-1', avatarUrl: null };
+      userRepo.updateProfile.mockResolvedValue(updatedUser);
+
+      const result = await service.updateProfile('user-1', { avatarUrl: '' });
+
+      expect(result).toEqual(updatedUser);
+      expect(userRepo.updateProfile).toHaveBeenCalledWith('user-1', { avatarUrl: null });
+      expect(cache.invalidateEntity).toHaveBeenCalledWith('user', 'user-1');
+    });
   });
 
   // ─── changePassword() ────────────────────────────────────────
@@ -210,6 +221,16 @@ describe('UsersService', () => {
   // ─── uploadAvatar() ──────────────────────────────────────────
 
   describe('uploadAvatar()', () => {
+    it('UT-USER-AVATAR-000: should throw BadRequestException if file content is missing', async () => {
+      await expect(
+        service.uploadAvatar('user-1', {
+          buffer: Buffer.alloc(0),
+          mimeType: 'image/jpeg',
+          originalName: 'avatar.jpg',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('UT-USER-AVATAR-001: should throw BadRequestException if file is not an image MIME type', async () => {
       await expect(
         service.uploadAvatar('user-1', {

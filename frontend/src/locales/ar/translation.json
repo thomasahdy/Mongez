@@ -1,11 +1,11 @@
 {
   "welcome": "أهلاً بك",
-  "login": "دخول",
+  "login": "تسجيل الدخول",
   "mongez": "منجز",
-  "My Work": "شغلي",
+  "My Work": "عملي",
   "Inbox": "الوارد",
-  "Dashboard": "الرئيسية",
-  "Search": "ابحث",
+  "Dashboard": "لوحة التحكم",
+  "Search": "البحث",
   "AI Assistant": "مساعد الذكاء الاصطناعي",
   "AI Agents": "وكلاء الذكاء الاصطناعي",
   "Calendar": "التقويم",
@@ -14,7 +14,7 @@
   "Reports": "التقارير",
   "Approvals": "الموافقات",
   "Workflows": "سير العمل",
-  "Billing": "الفواتير",
+  "Billing": "الفوترة",
   "Notifications": "الإشعارات",
   "Owner": "المالك",
   "New": "جديد",
@@ -22,8 +22,19 @@
   "views": "طرق العرض",
   "spaces": "المساحات",
   "settings": "الإعدادات",
-  "logout": "خروج",
+  "logout": "تسجيل الخروج",
   "manage spaces": "إدارة المساحات",
   "Department": "القسم",
-  "Board": "اللوحة"
+  "Board": "اللوحة",
+  "toasts": {
+    "notifications": "الإشعارات",
+    "dismiss": "إغلاق الإشعار",
+    "authRequired": "يرجى تسجيل الدخول للوصول إلى هذه الصفحة.",
+    "sessionExpired": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
+    "unexpectedError": "حدث خطأ غير متوقع.",
+    "backgroundRefreshFailed": "فشل تحديث البيانات في الخلفية: {{message}}",
+    "notificationReceived": "{{title}}: {{body}}",
+    "notificationFallbackTitle": "إشعار جديد",
+    "notificationFallbackBody": "افتح الوارد لعرض آخر تحديث."
+  }
 }

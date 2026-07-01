@@ -171,6 +171,8 @@ export class FilesService {
   }
 
   async downloadByKey(key: string, userId?: string, expires?: string, signature?: string) {
+    const isAvatarKey = key.startsWith('avatars/');
+
     if (expires && signature) {
       if (!isValidStorageSignature(this.config, key, expires, signature)) {
         throw new ForbiddenException('Invalid download signature');
@@ -184,22 +186,30 @@ export class FilesService {
         throw new ForbiddenException('Authentication required to access this file');
       }
 
-      const record = await this.fileRepo.findByStorageKey(key);
-      if (!record) throw new NotFoundException('File not found');
-      if (!record.attachment) throw new NotFoundException('Attachment not found');
+      if (!isAvatarKey) {
+        const record = await this.fileRepo.findByStorageKey(key);
+        if (!record) throw new NotFoundException('File not found');
+        if (!record.attachment) throw new NotFoundException('Attachment not found');
 
-      const membership = await this.prisma.membership.findFirst({
-        where: { userId, spaceId: record.attachment.spaceId },
-      });
-      if (!membership) {
-        throw new ForbiddenException('You do not have access to this file');
+        const membership = await this.prisma.membership.findFirst({
+          where: { userId, spaceId: record.attachment.spaceId },
+        });
+        if (!membership) {
+          throw new ForbiddenException('You do not have access to this file');
+        }
       }
     }
 
-    const buffer = await this.storage.download(key);
-    const record = await this.fileRepo.findByStorageKey(key);
-    const fileName = record?.attachment?.fileName || 'download';
-    const mimeType = record?.attachment?.mimeType || 'application/octet-stream';
+    let buffer: Buffer;
+    try {
+      buffer = await this.storage.download(key);
+    } catch {
+      throw new NotFoundException('File not found in storage');
+    }
+
+    const record = isAvatarKey ? null : await this.fileRepo.findByStorageKey(key);
+    const fileName = record?.attachment?.fileName || key.split('/').pop() || 'download';
+    const mimeType = record?.attachment?.mimeType || this.inferMimeType(fileName);
 
     return {
       buffer,
@@ -252,6 +262,16 @@ export class FilesService {
     if (!ext) {
       throw new BadRequestException('File must have an extension');
     }
+  }
+
+  private inferMimeType(fileName: string): string {
+    const ext = extname(fileName).toLowerCase();
+    if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+    if (ext === '.png') return 'image/png';
+    if (ext === '.gif') return 'image/gif';
+    if (ext === '.webp') return 'image/webp';
+    if (ext === '.svg') return 'image/svg+xml';
+    return 'application/octet-stream';
   }
 
   private serializeAttachment(attachment: any) {

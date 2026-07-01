@@ -19,10 +19,10 @@ const StickyFooter = ({
       role="group"
       aria-label={t("stickyFooter.groupAria")}
     >
-      <Button variant="outline" size="md" onClick={onDiscard} className="min-w-[80px]" disabled={discardDisabled}>
+      <Button type="button" variant="outline" size="md" onClick={onDiscard} className="min-w-[80px]" disabled={discardDisabled}>
         {t("stickyFooter.discard")}
       </Button>
-      <Button variant="primary" size="md" onClick={onSave} disabled={saveDisabled}>
+      <Button type="button" variant="primary" size="md" onClick={onSave} disabled={saveDisabled}>
         <i className="fa-solid fa-floppy-disk" aria-hidden="true" />
         {saveLabel || t("common.save")}
         {hasChanges && !saveDisabled ? (

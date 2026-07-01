@@ -14,6 +14,7 @@ import {
 } from "../../hooks/useSettingsQueries";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import { useVirtualList } from "../../hooks/useVirtualList";
+import { resolveAvatarUrl } from "../../utils/avatarUrl";
 import { buildSettingsPath } from "./settingsPath";
 
 const ROLE_OPTIONS = ["MEMBER", "ADMIN"];
@@ -277,14 +278,23 @@ export default function SettingsMembersPage({ setPath }) {
     const isOwner = role === "OWNER";
     const canEditMember = canManageMembers && !isSelf && (currentRole === "OWNER" || !isOwner);
     const isBusy = busyAction === `role-${member?.user?.id}` || busyAction === `remove-${member?.user?.id}`;
+    const memberAvatarUrl = resolveAvatarUrl(member?.user?.avatarUrl || member?.avatarUrl);
 
     return (
       <div key={member.id || member.userId || getMemberEmail(member)} className="flex flex-col gap-4 px-5 py-4">
         <div className={`flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between ${isRTL ? "lg:flex-row-reverse" : ""}`}>
           <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-50 text-sm font-black text-sky-600 dark:bg-sky-500/10 dark:text-sky-300">
-              {formatMemberName(member).slice(0, 1).toUpperCase()}
-            </div>
+            {memberAvatarUrl ? (
+              <img
+                src={memberAvatarUrl}
+                alt={formatMemberName(member)}
+                className="h-11 w-11 rounded-2xl object-cover"
+              />
+            ) : (
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-50 text-sm font-black text-sky-600 dark:bg-sky-500/10 dark:text-sky-300">
+                {formatMemberName(member).slice(0, 1).toUpperCase()}
+              </div>
+            )}
             <div>
               <div className={`flex flex-wrap items-center gap-2 ${isRTL ? "flex-row-reverse justify-end" : ""}`}>
                 <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{formatMemberName(member)}</p>

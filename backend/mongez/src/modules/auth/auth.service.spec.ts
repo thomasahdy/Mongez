@@ -13,6 +13,7 @@ import { PasswordService } from './services/password.service';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { SessionService } from './services/session.service';
 import { User } from './domain/user.entity';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -23,6 +24,7 @@ describe('AuthService', () => {
   let passwordService: jest.Mocked<PasswordService>;
   let prisma: any;
   let sessionService: jest.Mocked<SessionService>;
+  let storageService: jest.Mocked<StorageService>;
 
   beforeEach(() => {
     userRepo = {
@@ -79,6 +81,10 @@ describe('AuthService', () => {
       revokeAllSessions: jest.fn(),
     } as any;
 
+    storageService = {
+      getSignedUrl: jest.fn((key: string) => Promise.resolve(`/api/v1/files/key/${encodeURIComponent(key)}/download?signature=test`)),
+    } as any;
+
     service = new AuthService(
       userRepo,
       userLogRepo,
@@ -87,6 +93,7 @@ describe('AuthService', () => {
       passwordService,
       prisma,
       sessionService,
+      storageService,
     );
   });
 
@@ -818,6 +825,22 @@ describe('AuthService', () => {
       const result = await service.getProfile('user-123');
 
       expect(result).toEqual(mockProfile);
+    });
+
+    it('UT-AUTH-PROFILE-003: should return public URL for stored avatar keys', async () => {
+      const mockProfile = {
+        id: 'user-123',
+        email: 'test@example.com',
+        name: 'Test',
+        avatarUrl: 'avatars/user-123/avatar.png',
+      };
+      userRepo.findById.mockResolvedValue(mockProfile as any);
+      storageService.getSignedUrl.mockResolvedValue('/api/v1/files/key/avatars%2Fuser-123%2Favatar.png/download?signature=test');
+
+      const result = await service.getProfile('user-123');
+
+      expect(storageService.getSignedUrl).toHaveBeenCalledWith('avatars/user-123/avatar.png', 3600);
+      expect(result?.avatarUrl).toBe('/api/v1/files/key/avatars%2Fuser-123%2Favatar.png/download?signature=test');
     });
 
     it('UT-AUTH-PROFILE-002: should return null for non-existent user', async () => {

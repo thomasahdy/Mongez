@@ -47,7 +47,13 @@ apiClient.interceptors.request.use(
     }
 
     if (config.data instanceof FormData) {
-      delete config.headers["Content-Type"];
+      if (typeof config.headers?.delete === "function") {
+        config.headers.setContentType?.(undefined);
+        config.headers.delete(["Content-Type", "content-type"]);
+      } else {
+        delete config.headers["Content-Type"];
+        delete config.headers["content-type"];
+      }
     }
 
     const method = config.method?.toLowerCase();
@@ -93,7 +99,7 @@ apiClient.interceptors.response.use(
         clearTokens();
 
         if (!isPublicRoute && !shouldSkipRefresh) {
-          showToastBridge('Please sign in to access this page.', 'error');
+          showToastBridge({ key: "toasts.authRequired" }, "error");
           window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -122,7 +128,7 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         clearTokens();
         if (!isPublicRoute && !shouldSkipRefresh) {
-          showToastBridge('Your session has expired. Please sign in again.', 'error');
+          showToastBridge({ key: "toasts.sessionExpired" }, "error");
           
           setTimeout(() => {
             window.location.href = '/login';

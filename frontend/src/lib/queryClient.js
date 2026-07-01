@@ -1,5 +1,6 @@
 import { QueryClient, MutationCache, QueryCache } from "@tanstack/react-query";
 import { showToastBridge } from "../context/ToastContext";
+import i18n from "../i18n";
 
 /**
  * Extract a human-readable error message from an axios error or generic Error.
@@ -24,7 +25,7 @@ function extractErrorMessage(error) {
     return JSON.stringify(error.message);
   }
 
-  return "An unexpected error occurred.";
+  return i18n.t("toasts.unexpectedError");
 }
 
 export const queryClient = new QueryClient({
@@ -40,7 +41,10 @@ export const queryClient = new QueryClient({
       // (background refetch failures). First-load errors are rendered in-page.
       if (query.state.data !== undefined) {
         showToastBridge(
-          `Background refresh failed: ${extractErrorMessage(error)}`,
+          {
+            key: "toasts.backgroundRefreshFailed",
+            values: { message: extractErrorMessage(error) },
+          },
           "warning",
         );
       }

@@ -5,6 +5,7 @@ import NavBreadcrumb from "./NavBreadcrumb";
 import { logout } from "../../services/api/authService";
 import { useAppContext } from "../../pages/AppContext";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { resolveAvatarUrl } from "../../utils/avatarUrl";
 
 const Navbar = ({ onToggleAI, onToggleSidebar, isSidebarOpen = true, path }) => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const Navbar = ({ onToggleAI, onToggleSidebar, isSidebarOpen = true, path }) => 
   const inputRef = useRef(null);
   const userMenuRef = useRef(null);
   const { user } = useAppContext();
+  const userAvatarUrl = resolveAvatarUrl(user?.avatarUrl);
 
   const userInitials = useMemo(() => {
     const source = user?.name || user?.email || "User";
@@ -121,7 +123,11 @@ const Navbar = ({ onToggleAI, onToggleSidebar, isSidebarOpen = true, path }) => 
             className="avatar"
             aria-label={t("layout.userMenu")}
           >
-            {userInitials}
+            {userAvatarUrl ? (
+              <img src={userAvatarUrl} alt={t("settingsProfilePage.profileAvatar")} className="h-full w-full rounded-full object-cover" />
+            ) : (
+              userInitials
+            )}
           </button>
 
           {showUserMenu ? (

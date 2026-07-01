@@ -296,6 +296,50 @@ describe('FilesService', () => {
       expect(prisma.membership.findFirst).not.toHaveBeenCalled();
     });
 
+    it('should serve signed avatar keys without attachment metadata lookup', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'APP_SECRET') return 'test-secret';
+        return 25;
+      });
+
+      const key = 'avatars/user-1/avatar.png';
+      const expires = String(Math.floor(Date.now() / 1000) + 3600);
+      const signature = crypto
+        .createHmac('sha256', 'test-secret')
+        .update(`${key}:${expires}`)
+        .digest('hex');
+
+      storage.download.mockResolvedValue(Buffer.from('avatar-content'));
+
+      const result = await service.downloadByKey(key, undefined, expires, signature);
+
+      expect(result.buffer.toString()).toBe('avatar-content');
+      expect(result.fileName).toBe('avatar.png');
+      expect(result.mimeType).toBe('image/png');
+      expect(fileRepo.findByStorageKey).not.toHaveBeenCalled();
+      expect(prisma.membership.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when signed storage content is missing', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'APP_SECRET') return 'test-secret';
+        return 25;
+      });
+
+      const key = 'avatars/user-1/missing.png';
+      const expires = String(Math.floor(Date.now() / 1000) + 3600);
+      const signature = crypto
+        .createHmac('sha256', 'test-secret')
+        .update(`${key}:${expires}`)
+        .digest('hex');
+
+      storage.download.mockRejectedValue(new Error('ENOENT'));
+
+      await expect(service.downloadByKey(key, undefined, expires, signature)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
     it('should throw ForbiddenException with invalid signature', async () => {
       config.get.mockImplementation((key: string) => {
         if (key === 'APP_SECRET') return 'test-secret';

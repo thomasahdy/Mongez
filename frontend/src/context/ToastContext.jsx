@@ -1,20 +1,52 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { useLocaleDirection } from "../hooks/useLocaleDirection";
+import i18n from "../i18n";
 
 const ToastContext = createContext(null);
 
 let toastIdCounter = 0;
 
+const TOAST_MESSAGE_KEYS = {
+  "Please sign in to access this page.": "toasts.authRequired",
+  "Your session has expired. Please sign in again.": "toasts.sessionExpired",
+  "An unexpected error occurred.": "toasts.unexpectedError",
+};
+
+function translateToastMessage(message) {
+  if (typeof message === "string") {
+    const key = TOAST_MESSAGE_KEYS[message] || (i18n.exists(message) ? message : null);
+    return key ? i18n.t(key) : message;
+  }
+
+  if (Array.isArray(message)) {
+    return message.map(translateToastMessage).join(", ");
+  }
+
+  if (message && typeof message === "object") {
+    if (message.key) {
+      return i18n.t(message.key, message.values);
+    }
+
+    if (message.message) {
+      return translateToastMessage(message.message);
+    }
+
+    return JSON.stringify(message);
+  }
+
+  return String(message);
+}
+
 // ── Bridge for non-React code (axios interceptors, queryClient) ──
 // These are set by ToastProvider on mount so imperative code can fire toasts.
 let _bridgeShowToast = null;
 
-export function showToastBridge(message, type = 'error') {
+export function showToastBridge(message, type = "error", duration) {
   if (_bridgeShowToast) {
-    _bridgeShowToast(message, type);
+    _bridgeShowToast(message, type, duration);
   } else {
     // Fallback if provider hasn't mounted yet
-    console.error(`[Toast:${type}]`, message);
+    console.error(`[Toast:${type}]`, translateToastMessage(message));
   }
 }
 
@@ -79,16 +111,7 @@ export function ToastProvider({ children }) {
 
   const showToast = useCallback(
     (message, type = 'success', duration = 5000) => {
-      let safeMessage = message;
-      if (typeof message !== 'string') {
-        if (Array.isArray(message)) {
-          safeMessage = message.join(', ');
-        } else if (message && typeof message === 'object') {
-          safeMessage = message.message || JSON.stringify(message);
-        } else {
-          safeMessage = String(message);
-        }
-      }
+      const safeMessage = translateToastMessage(message);
       const id = `toast-${++toastIdCounter}`;
       setToasts((prev) => [...prev.slice(-4), { id, message: safeMessage, type }]); // Keep max 5
 
@@ -119,7 +142,7 @@ export function ToastProvider({ children }) {
       {toasts.length > 0 && (
         <div
           aria-live="polite"
-          aria-label="Notifications"
+          aria-label={i18n.t("toasts.notifications")}
           className={`fixed bottom-6 z-[9999] flex w-full max-w-sm flex-col gap-3 pointer-events-none ${isRTL ? "left-6" : "right-6"}`}
           dir={isRTL ? "rtl" : "ltr"}
         >
@@ -137,14 +160,14 @@ export function ToastProvider({ children }) {
                 `}
               >
                 <span className={color.icon}>{ICONS[t.type] || ICONS.info}</span>
-                <p className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200 leading-snug">
+                <p className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200 leading-snug" dir="auto">
                   {t.message}
                 </p>
                 <button
                   type="button"
                   onClick={() => removeToast(t.id)}
                   className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
-                  aria-label="Dismiss notification"
+                  aria-label={i18n.t("toasts.dismiss")}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

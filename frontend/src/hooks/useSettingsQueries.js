@@ -7,9 +7,30 @@ import membersService from "../services/api/membersService";
 import userService from "../services/api/userService";
 import { leaveSpace } from "../services/api/spacesService";
 import { setAuthSession } from "../store/auth/authSlice";
+import { setTheme } from "../store/theme/themeSlice";
+import i18n from "../i18n";
 
 const SETTINGS_PROFILE_QUERY_KEY = ["settings", "profile"];
 const AUTH_SESSION_QUERY_KEY = ["auth", "session"];
+
+function resolveThemeMode(theme) {
+  if (theme !== "system") {
+    return theme;
+  }
+
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function invalidateUserSurfaceQueries(queryClient) {
+  queryClient.invalidateQueries({ queryKey: SETTINGS_PROFILE_QUERY_KEY });
+  queryClient.invalidateQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+  queryClient.invalidateQueries({ queryKey: ["settings", "members"] });
+  queryClient.invalidateQueries({ queryKey: ["members"] });
+  queryClient.invalidateQueries({ queryKey: ["board"] });
+  queryClient.invalidateQueries({ queryKey: ["boards"] });
+  queryClient.invalidateQueries({ queryKey: ["tasks"] });
+  queryClient.invalidateQueries({ queryKey: ["task"] });
+}
 
 export function useSettingsProfileQuery() {
   return useQuery({
@@ -35,14 +56,17 @@ export function useUpdateProfileMutation() {
   return useMutation({
     mutationFn: (payload) => userService.updateProfile(payload),
     onSuccess: (updatedUser) => {
+      queryClient.setQueryData(SETTINGS_PROFILE_QUERY_KEY, (current) => ({
+        ...(current || {}),
+        profile: updatedUser,
+      }));
       dispatch(
         setAuthSession({
           user: updatedUser,
           isAuthenticated: true,
         }),
       );
-      queryClient.invalidateQueries({ queryKey: SETTINGS_PROFILE_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+      invalidateUserSurfaceQueries(queryClient);
     },
   });
 }
@@ -56,17 +80,28 @@ export function useUpdatePreferencesMutation() {
     mutationFn: (payload) => userService.updateUserPreferences(payload),
     onSuccess: (updatedPreferences, variables) => {
       const currentUser = store.getState()?.users?.user || null;
+      queryClient.setQueryData(SETTINGS_PROFILE_QUERY_KEY, (current) => ({
+        ...(current || {}),
+        preferences: updatedPreferences,
+      }));
 
       if (currentUser && (updatedPreferences?.language || variables?.language)) {
+        const nextLanguage = updatedPreferences?.language || variables.language;
         dispatch(
           setAuthSession({
             user: {
               ...currentUser,
-              language: updatedPreferences?.language || variables.language,
+              language: nextLanguage,
             },
             isAuthenticated: true,
           }),
         );
+        i18n.changeLanguage(nextLanguage);
+      }
+
+      if (updatedPreferences?.theme || variables?.theme) {
+        const nextTheme = updatedPreferences?.theme || variables.theme;
+        dispatch(setTheme(resolveThemeMode(nextTheme)));
       }
 
       queryClient.invalidateQueries({ queryKey: SETTINGS_PROFILE_QUERY_KEY });
@@ -207,14 +242,17 @@ export function useUploadAvatarMutation() {
   return useMutation({
     mutationFn: (file) => userService.uploadAvatar(file),
     onSuccess: (updatedUser) => {
+      queryClient.setQueryData(SETTINGS_PROFILE_QUERY_KEY, (current) => ({
+        ...(current || {}),
+        profile: updatedUser,
+      }));
       dispatch(
         setAuthSession({
           user: updatedUser,
           isAuthenticated: true,
         }),
       );
-      queryClient.invalidateQueries({ queryKey: SETTINGS_PROFILE_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+      invalidateUserSurfaceQueries(queryClient);
     },
   });
 }

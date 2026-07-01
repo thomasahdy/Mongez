@@ -13,14 +13,18 @@ function getRuntimeEnv(config: ConfigService): string {
 }
 
 export function getStorageSigningSecret(config: ConfigService): string {
-  const secret = config.get<string>('APP_SECRET')?.trim();
+  const secret =
+    config.get<string>('APP_SECRET')?.trim() ||
+    config.get<string>('auth.jwt.accessTokenSecret')?.trim() ||
+    config.get<string>('JWT_ACCESS_TOKEN_SECRET')?.trim() ||
+    process.env.JWT_ACCESS_TOKEN_SECRET?.trim();
 
   if (secret) {
     return secret;
   }
 
   if (getRuntimeEnv(config) === 'production') {
-    throw new Error('APP_SECRET is required in production for signed storage URLs');
+    throw new Error('APP_SECRET or JWT_ACCESS_TOKEN_SECRET is required in production for signed storage URLs');
   }
 
   return DEV_STORAGE_SIGNING_SECRET;

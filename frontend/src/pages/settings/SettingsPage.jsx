@@ -14,6 +14,7 @@ import {
   useUploadAvatarMutation,
 } from "../../hooks/useSettingsQueries";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { getErrorMessage } from "../../utils/errorMessage";
 
 const INITIAL_FORM = {
   firstName: "",
@@ -117,7 +118,7 @@ export default function SettingsPage({ setPath }) {
         await updateProfileMutation.mutateAsync({ avatarUrl: "" });
         setSuccessMessage(t("settingsProfilePage.removeAvatarSuccess"));
       } catch (error) {
-        setPageError(error.message || t("settingsProfilePage.removeAvatarFailed"));
+        setPageError(getErrorMessage(error, t("settingsProfilePage.removeAvatarFailed")));
       }
       return;
     }
@@ -129,7 +130,7 @@ export default function SettingsPage({ setPath }) {
       await uploadAvatarMutation.mutateAsync(fileOrEvent);
       setSuccessMessage(t("settingsProfilePage.uploadAvatarSuccess"));
     } catch (error) {
-      setPageError(error.message || t("settingsProfilePage.uploadAvatarFailed"));
+      setPageError(getErrorMessage(error, t("settingsProfilePage.uploadAvatarFailed")));
     }
   };
 
@@ -190,7 +191,7 @@ export default function SettingsPage({ setPath }) {
       await settingsQuery.refetch();
       setSuccessMessage(t("settingsProfilePage.saveSuccess"));
     } catch (error) {
-      setPageError(error.message || t("settingsProfilePage.saveFailed"));
+      setPageError(getErrorMessage(error, t("settingsProfilePage.saveFailed")));
     }
   };
 

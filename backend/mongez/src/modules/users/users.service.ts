@@ -50,7 +50,11 @@ export class UsersService {
   }
 
   async updateProfile(id: string, dto: UpdateProfileDto) {
-    const user = await this.userRepo.updateProfile(id, dto);
+    const payload: Omit<UpdateProfileDto, 'avatarUrl'> & { avatarUrl?: string | null } = {
+      ...dto,
+      ...(dto.avatarUrl === '' ? { avatarUrl: null } : {}),
+    };
+    const user = await this.userRepo.updateProfile(id, payload);
     await this.cache.invalidateEntity(this.CACHE_PREFIX, id);
     return this.withPublicAvatarUrl(user);
   }
@@ -107,6 +111,9 @@ export class UsersService {
    * Upload avatar to storage and update user profile.
    */
   async uploadAvatar(userId: string, file: { buffer: Buffer; mimeType: string; originalName: string }) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('No avatar file content provided');
+    }
     // Validate image MIME type
     if (!file.mimeType.startsWith('image/')) {
       throw new BadRequestException('Avatar must be an image');
@@ -116,7 +123,7 @@ export class UsersService {
       throw new BadRequestException('Avatar image must be under 5MB');
     }
 
-    const ext = file.originalName.split('.').pop() || 'png';
+    const ext = this.getSafeAvatarExtension(file.originalName, file.mimeType);
     const key = `avatars/${userId}/${randomUUID()}.${ext}`;
 
     const result = await this.storage.upload(key, file.buffer, file.mimeType);
@@ -205,5 +212,19 @@ export class UsersService {
 
   private isStoredAvatarKey(value: string): boolean {
     return value.startsWith('avatars/');
+  }
+
+  private getSafeAvatarExtension(originalName: string, mimeType: string): string {
+    const extension = originalName.split('.').pop()?.toLowerCase();
+    if (extension && /^[a-z0-9]+$/.test(extension)) {
+      return extension;
+    }
+
+    if (mimeType === 'image/jpeg') return 'jpg';
+    if (mimeType === 'image/png') return 'png';
+    if (mimeType === 'image/gif') return 'gif';
+    if (mimeType === 'image/webp') return 'webp';
+    if (mimeType === 'image/svg+xml') return 'svg';
+    return 'png';
   }
 }

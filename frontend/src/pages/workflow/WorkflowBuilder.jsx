@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import workflowService from "../../services/api/workflowService";
 import { useAppContext } from "../AppContext";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { resolveAvatarUrl } from "../../utils/avatarUrl";
 
 export default function WorkflowBuilder() {
   const { t } = useTranslation();
@@ -228,7 +229,7 @@ export default function WorkflowBuilder() {
                           {(spaceMembers || []).map((member) => {
                             const userId = member.user?.id || member.id;
                             const userName = member.user?.name || member.name || t("members.labels.memberFallback");
-                            const userAvatar = member.user?.avatarUrl || member.avatarUrl;
+                            const userAvatar = resolveAvatarUrl(member.user?.avatarUrl || member.avatarUrl);
                             const isSelected = step.approverIds.includes(userId);
 
                             return (
