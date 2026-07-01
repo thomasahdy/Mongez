@@ -156,4 +156,22 @@ export class AIDataProviderService {
       note: 'All AI queries MUST include a WHERE clause scoped to the user\'s spaceId',
     };
   }
+
+  async updateAIRequest(traceId: string, data: any) {
+    const updates: any = {};
+    if (data.intent) updates.intent = data.intent;
+    if (data.rewrittenQuery) updates.rewrittenQuery = data.rewrittenQuery;
+    if (data.finalResponse) updates.finalResponse = data.finalResponse;
+    if (data.modelUsed) updates.modelUsed = data.modelUsed;
+    if (data.tokensIn !== undefined) updates.tokensIn = data.tokensIn;
+    if (data.tokensOut !== undefined) updates.tokensOut = data.tokensOut;
+    if (data.latencyMs !== undefined) updates.latencyMs = data.latencyMs;
+    if (data.status) updates.status = data.status;
+    if (data.errorMessage) updates.errorMessage = data.errorMessage;
+
+    return this.prisma.aiRequest.update({
+      where: { traceId },
+      data: updates,
+    });
+  }
 }

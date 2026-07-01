@@ -69,6 +69,7 @@ enum NotificationType {
   FILE_UPLOADED
   AI_INSIGHT
   SYSTEM
+  AI_ESCALATION
 }
 
 enum ApprovalStatus {
@@ -472,6 +473,7 @@ model Board {
   @@index([departmentId])
   @@index([isArchived])
   @@index([createdAt])
+  @@index([deletedAt])
   @@map("boards")
 }
 
@@ -490,6 +492,7 @@ model BoardColumn {
   tasks     Task[]
 
   @@index([boardId])
+  @@index([deletedAt])
   @@map("board_columns")
 }
 
@@ -568,6 +571,7 @@ model Task {
   @@index([priority])
   @@index([dueDate])
   @@index([isArchived])
+  @@index([deletedAt])
   @@index([searchVector], type: Gin)
   @@index([identifier])
   @@index([createdById])

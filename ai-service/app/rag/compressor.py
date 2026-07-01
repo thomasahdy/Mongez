@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 
 # Heuristic: 1 token ~= 4 characters in English
 CHAR_TO_TOKEN_RATIO = 4.0
-MAX_CONTEXT_TOKENS = 12000
+MAX_CONTEXT_TOKENS = 4000
 MAX_CHAR_BUDGET = int(MAX_CONTEXT_TOKENS * CHAR_TO_TOKEN_RATIO)
 
 async def compress_context(context_text: str, query: str = "") -> str:

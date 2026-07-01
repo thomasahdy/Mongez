@@ -4,6 +4,7 @@ import { Logger } from '@nestjs/common';
 import { QUEUE_NAMES, JOB_NAMES } from '../../../infrastructure/queue/queue.constants';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { RealtimeService } from '../../realtime/realtime.service';
+import { StorageService } from '../../../infrastructure/storage/storage.service';
 
 /**
  * Processor for the REPORTS queue.
@@ -16,6 +17,7 @@ export class ReportsPlaceholderProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    private readonly storageService: StorageService,
   ) {
     super();
   }
@@ -47,16 +49,18 @@ export class ReportsPlaceholderProcessor extends WorkerHost {
         });
         const csvString = csvRows.join('\n');
 
-        // Simulate saving to a file storage (e.g., S3) and returning URL
-        const mockUrl = `https://export.mongez.app/reports/${job.id}.csv`;
+        // Save file to active storage provider (Cloudflare R2/Local)
+        const key = `reports/${job.id}.csv`;
+        await this.storageService.upload(key, Buffer.from(csvString), 'text/csv');
+        const downloadUrl = await this.storageService.getSignedUrl(key, 86400 * 7); // 7 days expiration
 
         // Notify user via WebSocket
         this.realtime.emitToUser(userId, 'export:ready', {
-          url: mockUrl,
+          url: downloadUrl,
           message: 'Your CSV export is ready to download.',
         });
 
-        return { status: 'success', url: mockUrl };
+        return { status: 'success', url: downloadUrl };
       }
     }
 

@@ -5,6 +5,7 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import { AuditService } from '../../audit/audit.service';
 import { CreateTaskDto } from '../../tasks/dto/create-task.dto';
 import { TaskStatus, Priority } from '@prisma/client';
+import { WorkflowService } from '../../workflow/workflow.service';
 
 export interface ExecutionResult {
   success: boolean;
@@ -21,6 +22,7 @@ export class AIExecutorService {
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
     private readonly auditService: AuditService,
+    private readonly workflowService: WorkflowService,
   ) {}
 
   async execute(actionId: string, reviewerId: string): Promise<ExecutionResult> {
@@ -173,7 +175,7 @@ export class AIExecutorService {
 
             // Fallback: If columnId is missing, resolve the first column of the board
             if (!taskDto.columnId && taskDto.boardId) {
-              const column = await tx.column.findFirst({
+              const column = await tx.boardColumn.findFirst({
                 where: { boardId: taskDto.boardId, deletedAt: null },
                 orderBy: { position: 'asc' },
               });
@@ -184,6 +186,51 @@ export class AIExecutorService {
 
             // Call standard createTask via TasksService
             result = await this.tasksService.createTask(taskDto, reviewerId, spaceId, spacePrefix);
+            break;
+          }
+
+          case 'STARTAPPROVAL':
+          case 'START_APPROVAL': {
+            const { entityType, entityId, approvers, spaceId } = payload;
+            if (!entityType || !entityId || !approvers?.length || !spaceId) {
+              throw new Error('Missing entityType, entityId, approvers, or spaceId in payload');
+            }
+
+            // Check if workflow definition already exists
+            let definition = await tx.workflowDefinition.findFirst({
+              where: { spaceId, triggerType: 'AI_PROPOSED', name: 'AI Proposed Approval' },
+            });
+
+            if (!definition) {
+              definition = await tx.workflowDefinition.create({
+                data: {
+                  spaceId,
+                  name: 'AI Proposed Approval',
+                  triggerType: 'AI_PROPOSED',
+                  isActive: true,
+                  createdBy: reviewerId,
+                },
+              });
+              await tx.workflowStep.create({
+                data: {
+                  definitionId: definition.id,
+                  order: 0,
+                  name: 'AI Proposed Reviewers',
+                  approverType: 'USER',
+                  approverIds: approvers,
+                  isParallel: true,
+                  requiresAll: true,
+                },
+              });
+            }
+
+            // Start the workflow instance
+            result = await this.workflowService.startWorkflow(reviewerId, {
+              definitionId: definition.id,
+              spaceId,
+              entityType,
+              entityId,
+            });
             break;
           }
 
