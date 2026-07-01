@@ -125,6 +125,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
             this.realtimeService.emitToSpaceDirect(targetId, event, payload);
           } else if (type === 'board') {
             this.realtimeService.emitToBoardDirect(targetId, event, payload);
+          } else if (type === 'task') {
+            this.realtimeService.emitToTaskDirect(targetId, event, payload);
           }
         } catch (err: any) {
           this.logger.error(`Failed to process Redis realtime event: ${err.message}`);
@@ -473,6 +475,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
         const profile = await this.getUserProfile(userId);
         if (profile) {
           this.server.to(`task:${payload.taskId}`).emit('task:typing-status', {
+            taskId: payload.taskId,
             userId,
             name: profile.name,
             isTyping: payload.isTyping,

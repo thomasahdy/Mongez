@@ -5,6 +5,7 @@ import { TasksService } from '../../tasks/tasks.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { AuditService } from '../../audit/audit.service';
 import { TaskStatus } from '@prisma/client';
+import { WorkflowService } from '../../workflow/workflow.service';
 
 describe('AIExecutorService', () => {
   let service: AIExecutorService;
@@ -12,6 +13,7 @@ describe('AIExecutorService', () => {
   let tasksService: TasksService;
   let notificationsService: NotificationsService;
   let auditService: AuditService;
+  let workflowService: WorkflowService;
 
   const mockPrisma = {
     $transaction: jest.fn((cb) => cb(mockPrisma)),
@@ -47,6 +49,10 @@ describe('AIExecutorService', () => {
     log: jest.fn(),
   };
 
+  const mockWorkflowService = {
+    startWorkflow: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -55,6 +61,7 @@ describe('AIExecutorService', () => {
         { provide: TasksService, useValue: mockTasksService },
         { provide: NotificationsService, useValue: mockNotificationsService },
         { provide: AuditService, useValue: mockAuditService },
+        { provide: WorkflowService, useValue: mockWorkflowService },
       ],
     }).compile();
 

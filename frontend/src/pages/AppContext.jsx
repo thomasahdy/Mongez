@@ -4,8 +4,11 @@ import boardsService from "../services/api/boardsService";
 import membersService from "../services/api/membersService";
 import spacesService from "../services/api/spacesService";
 import { useSocket } from "../context/SocketContext";
+import {
+  readActiveSpaceId,
+  writeActiveSpaceId,
+} from "../utils/appStorageKeys";
 
-const ACTIVE_SPACE_STORAGE_KEY = "mongez.activeSpaceId";
 const ACTIVE_BOARD_STORAGE_KEY = "mongez.activeBoardId";
 
 const AppContext = createContext(null);
@@ -41,7 +44,7 @@ export function AppProvider({ children }) {
   const [spaceMembers, setSpaceMembers] = useState([]);
   const [departmentsBySpace, setDepartmentsBySpace] = useState({});
   const [boardsByDepartment, setBoardsByDepartment] = useState({});
-  const [activeSpaceId, setActiveSpaceId] = useState(() => readStorage(ACTIVE_SPACE_STORAGE_KEY) || "");
+  const [activeSpaceId, setActiveSpaceId] = useState(() => readActiveSpaceId());
   const [activeBoardId, setActiveBoardId] = useState(() => readStorage(ACTIVE_BOARD_STORAGE_KEY) || "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -56,7 +59,7 @@ export function AppProvider({ children }) {
       return [];
     }
 
-    const storedSpaceId = readStorage(ACTIVE_SPACE_STORAGE_KEY);
+    const storedSpaceId = readActiveSpaceId();
     const nextSpaceId =
       list.find((space) => space.id === activeSpaceId)?.id ||
       list.find((space) => space.id === storedSpaceId)?.id ||
@@ -149,7 +152,7 @@ export function AppProvider({ children }) {
   }, [refreshApp]);
 
   useEffect(() => {
-    writeStorage(ACTIVE_SPACE_STORAGE_KEY, activeSpaceId);
+    writeActiveSpaceId(activeSpaceId);
   }, [activeSpaceId]);
 
   useEffect(() => {

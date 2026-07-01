@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import tasksService from "../services/api/tasksService";
 import aiService from "../services/api/aiService";
 import { toArrayPayload } from "../services/api/responseUtils";
+import { invalidateTaskCaches } from "../utils/queryInvalidation";
 
 export function useTaskDetailsQuery(taskId) {
   return useQuery({
@@ -40,12 +41,7 @@ export function useTaskUpdateMutation(taskId) {
   return useMutation({
     mutationFn: (updates) => tasksService.updateTask(taskId, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["board", "table"] });
-      queryClient.invalidateQueries({ queryKey: ["board", "tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["board", "timeline"] });
-      queryClient.invalidateQueries({ queryKey: ["task", "details", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["calendar", "events"] });
+      invalidateTaskCaches(queryClient, { taskId });
     },
   });
 }
@@ -78,12 +74,7 @@ export function useTaskDeleteMutation(taskId) {
   return useMutation({
     mutationFn: () => tasksService.deleteTask(taskId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["board", "table"] });
-      queryClient.invalidateQueries({ queryKey: ["board", "tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["board", "timeline"] });
-      queryClient.invalidateQueries({ queryKey: ["task", "details", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["calendar", "events"] });
+      invalidateTaskCaches(queryClient, { taskId });
     },
   });
 }

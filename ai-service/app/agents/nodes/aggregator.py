@@ -376,11 +376,17 @@ async def aggregator_node(state: MongezAgentState) -> dict:
         # Map actions key correctly to actions metadata, only if explicitly requested by action keywords
         actions = []
         query_lower = query.lower()
-        explicit_action_keywords = ["create", "plan", "build", "generate", "organize", "automate", "إنشاء", "انشاء", "خطط", "ابن", "توليد", "تنظيم", "أتمتة", "اتمتة"]
+        explicit_action_keywords = [
+            "create", "plan", "build", "generate", "organize", "automate",
+            "assign", "reassign", "update", "reminder", "notify", "escalate",
+            "إنشاء", "انشاء", "خطط", "ابن", "توليد", "تنظيم", "أتمتة", "اتمتة",
+            "تعملي", "سوي", "اضف", "أضف", "ضيف", "سجل", "حدث", "تحديث", "عين", "اسند", "أسند",
+            "تذكير", "تاسك جديدة", "مهمة جديدة"
+        ]
         if any(keyword in query_lower for keyword in explicit_action_keywords):
             for act in parsed.get("suggested_actions", []):
                 actions.append({
-                    "commandType": act.get("command_type"),
+                    "commandType": act.get("command_type") or act.get("commandType"),
                     "payload": act.get("payload", {}),
                     "reason": act.get("reason", "")
                 })

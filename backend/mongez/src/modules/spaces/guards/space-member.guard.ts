@@ -44,7 +44,9 @@ export class SpaceMemberGuard implements CanActivate {
       req.boardSpaceId = spaceId;
     }
 
-    if (!spaceId) return true; // no space context — skip guard
+    if (!spaceId) {
+      throw new ForbiddenException('Space context (spaceId) is required for this request');
+    }
 
     const cacheKey = `membership:${userId}:${spaceId}`;
     const membership = await this.cache.getOrSet<{ role: { name: string } } | null>(

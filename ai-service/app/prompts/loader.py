@@ -40,7 +40,7 @@ class PromptLoader:
         self.prompts_dir = prompts_dir or Path(__file__).parent
         self._cache: dict[str, str] = {}
 
-    def load(self, name: str, version: str = "v1.0", **kwargs: str) -> str:
+    def load(self, name: str, /, version: str = "v1.0", **kwargs: str) -> str:
         """Load a prompt template, fill in variables, and return the result.
 
         Unknown {variable} placeholders are left as-is (no error raised).

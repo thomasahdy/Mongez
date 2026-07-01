@@ -2,41 +2,97 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StorageProvider } from '../storage-provider.interface';
 import { StorageUploadResult } from '../storage.service';
-import { buildPublicStorageUrl } from '../storage-url.util';
-import { createSignedStoragePath } from '../storage-signature.util';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
 export class S3StorageProvider implements StorageProvider {
   private readonly logger = new Logger(S3StorageProvider.name);
-  private readonly bucket?: string;
+  private readonly client: S3Client;
+  private readonly bucket: string;
 
   constructor(private readonly config: ConfigService) {
-    this.bucket = this.config.get<string>('STORAGE_S3_BUCKET');
+    const accountId = this.config.get<string>('R2_ACCOUNT_ID');
+    const accessKeyId = this.config.get<string>('R2_ACCESS_KEY_ID');
+    const secretAccessKey = this.config.get<string>('R2_SECRET_ACCESS_KEY');
+    this.bucket = this.config.get<string>('R2_BUCKET') || 'mongez-files';
+
+    // R2 endpoint format: https://<accountId>.r2.cloudflarestorage.com
+    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+
+    this.client = new S3Client({
+      endpoint,
+      region: 'auto',
+      credentials: {
+        accessKeyId: accessKeyId || '',
+        secretAccessKey: secretAccessKey || '',
+      },
+    });
+    this.logger.log(`S3StorageProvider (R2 compatible) initialized. Endpoint: ${endpoint}, Bucket: ${this.bucket}`);
   }
 
   async upload(key: string, buffer: Buffer, mimeType: string): Promise<StorageUploadResult> {
-    this.logger.debug(`[S3 stub] upload ${key} (${mimeType}, ${buffer.length} bytes) to bucket: ${this.bucket}`);
+    this.logger.debug(`Uploading ${key} to R2 (${buffer.length} bytes, type ${mimeType})`);
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: mimeType,
+      }),
+    );
     return { key, size: buffer.length, mimeType };
   }
 
   async download(key: string): Promise<Buffer> {
-    this.logger.debug(`[S3 stub] download ${key} from bucket: ${this.bucket}`);
-    return Buffer.alloc(0);
+    this.logger.debug(`Downloading ${key} from R2`);
+    const response = await this.client.send(
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      }),
+    );
+    if (!response.Body) {
+      throw new Error(`Failed to download ${key}: Empty body returned`);
+    }
+    const bytes = await response.Body.transformToByteArray();
+    return Buffer.from(bytes);
   }
 
   async delete(key: string): Promise<void> {
-    this.logger.debug(`[S3 stub] delete ${key} from bucket: ${this.bucket}`);
-  }
-
-  async getSignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
-    return buildPublicStorageUrl(
-      this.config,
-      createSignedStoragePath(this.config, key, expiresInSeconds),
+    this.logger.debug(`Deleting ${key} from R2`);
+    await this.client.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      }),
     );
   }
 
+  async getSignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
+    this.logger.debug(`Generating signed URL for ${key}`);
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+    return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+  }
+
   async exists(key: string): Promise<boolean> {
-    this.logger.debug(`[S3 stub] check exists ${key} in bucket: ${this.bucket}`);
-    return true;
+    this.logger.debug(`Checking if ${key} exists in R2`);
+    try {
+      await this.client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+      );
+      return true;
+    } catch (err: any) {
+      if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+        return false;
+      }
+      throw err;
+    }
   }
 }

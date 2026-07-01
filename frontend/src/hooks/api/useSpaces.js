@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import spacesService from '../../services/api/spacesService';
+import { readActiveSpaceId, removeActiveSpaceId, writeActiveSpaceId } from '../../utils/appStorageKeys';
 
 /**
  * Custom Query Hook: useSpaces
@@ -37,7 +38,7 @@ export function useSetActiveSpace() {
   return useMutation({
     mutationFn: (spaceId) => spacesService.setActiveSpace(spaceId),
     onSuccess: (_, spaceId) => {
-      localStorage.setItem('activeSpaceId', spaceId);
+      writeActiveSpaceId(spaceId);
       // Invalidate queries to trigger re-fetch under the new space context
       queryClient.invalidateQueries({ queryKey: ['spaces'] });
       queryClient.invalidateQueries({ queryKey: ['departments'] });
@@ -108,9 +109,9 @@ export function useDeleteSpace() {
       queryClient.invalidateQueries({ queryKey: ['spaces'] });
 
       // If active space was deleted, clear it or pick another one
-      const activeId = localStorage.getItem('activeSpaceId');
+      const activeId = readActiveSpaceId();
       if (activeId === spaceId) {
-        localStorage.removeItem('activeSpaceId');
+        removeActiveSpaceId();
       }
     },
   });

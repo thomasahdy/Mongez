@@ -6,6 +6,7 @@ import BoardChips from "./BoardChips";
 import CreateBoardModal from "./CreateBoardModal";
 import { useCreateBoard } from "../../hooks/api/useBoards";
 import { useToast } from "../../context/ToastContext";
+import { getErrorMessage } from "../../utils/errorMessage";
 
 const DepartmentRow = ({ dept }) => {
   const { t } = useTranslation();
@@ -19,7 +20,7 @@ const DepartmentRow = ({ dept }) => {
       toast.success(t("spacesPage.boardCreated"));
       setShowCreateBoardModal(false);
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || t("spacesPage.createBoardFailed"));
+      toast.error(getErrorMessage(error, t("spacesPage.createBoardFailed")));
     }
   };
 

@@ -2,11 +2,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 import { inviteMemberSchema } from "../../schemas/validationSchemas";
-import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import FormModalShell, { ModalActionRow } from "../../components/ui/FormModalShell";
 
 export default function InviteMemberModal({ onSubmit, onClose }) {
   const { t } = useTranslation();
-  const { dir, isRTL } = useLocaleDirection();
   const {
     register,
     handleSubmit,
@@ -30,30 +29,15 @@ export default function InviteMemberModal({ onSubmit, onClose }) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="invite-title"
-      dir={dir}
+    <FormModalShell
+      title={
+        <span className="flex items-center gap-2">
+          <i className="fa-solid fa-user-plus text-sm text-sky-500" /> {t("members.sections.inviteTeammate")}
+        </span>
+      }
+      titleId="invite-title"
+      onClose={onClose}
     >
-      <div className={`w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 ${isRTL ? "text-right" : "text-left"}`}>
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-400 to-indigo-500" />
-
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 pt-6 pb-4 dark:border-slate-900">
-          <h2 id="invite-title" className="flex items-center gap-2 text-[17px] font-bold tracking-tight text-slate-800 dark:text-slate-100">
-            <i className="fa-solid fa-user-plus text-sm text-sky-500" /> {t("members.sections.inviteTeammate")}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-200"
-            aria-label={t("common.close")}
-          >
-            <i className="fa-solid fa-xmark text-[16px]" />
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5 p-6">
           <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             {t("members.sections.inviteDescription")}
@@ -99,7 +83,7 @@ export default function InviteMemberModal({ onSubmit, onClose }) {
             )}
           </div>
 
-          <div className={`flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-900 ${isRTL ? "flex-row-reverse" : ""}`}>
+          <ModalActionRow>
             <button
               type="button"
               onClick={onClose}
@@ -124,9 +108,8 @@ export default function InviteMemberModal({ onSubmit, onClose }) {
                 t("members.labels.sendInvite")
               )}
             </button>
-          </div>
+          </ModalActionRow>
         </form>
-      </div>
-    </div>
+    </FormModalShell>
   );
 }

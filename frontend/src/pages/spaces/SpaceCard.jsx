@@ -7,6 +7,7 @@ import CreateDepartmentCard from "./CreateDepartmentCard";
 import { useToast } from "../../context/ToastContext";
 import CreateDepartmentModal from "./CreateDepartmentModal";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { getErrorMessage } from "../../utils/errorMessage";
 
 const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
   const { t } = useTranslation();
@@ -39,7 +40,7 @@ const SpaceCard = ({ space, onEdit, onDelete, onInvite }) => {
       await createDepartment.mutateAsync({ spaceId: space.id, data });
       setShowCreateDepModal(false);
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || t("spacesPage.createDepartmentFailed"));
+      toast.error(getErrorMessage(error, t("spacesPage.createDepartmentFailed")));
     }
   };
 

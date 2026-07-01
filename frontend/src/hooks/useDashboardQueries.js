@@ -4,26 +4,8 @@ import calendarService from "../services/api/calendarService";
 import analyticsService from "../services/api/analyticsService";
 import boardsService from "../services/api/boardsService";
 import tasksService from "../services/api/tasksService";
-
-function normalizeCalendarItems(payload) {
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-
-  if (Array.isArray(payload?.data)) {
-    return payload.data;
-  }
-
-  if (Array.isArray(payload?.events)) {
-    return payload.events;
-  }
-
-  if (Array.isArray(payload?.items)) {
-    return payload.items;
-  }
-
-  return [];
-}
+import { toArrayPayload } from "../services/api/responseUtils";
+import { invalidateTaskCaches } from "../utils/queryInvalidation";
 
 export function useBillingQuery(spaceId) {
   return useQuery({
@@ -99,12 +81,7 @@ export function useCreateBoardTaskMutation() {
   return useMutation({
     mutationFn: ({ board, taskData }) => tasksService.createBoardTask(board, taskData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["board", "table"] });
-      queryClient.invalidateQueries({ queryKey: ["board", "tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["board", "timeline"] });
-      queryClient.invalidateQueries({ queryKey: ["task", "details"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar", "events"] });
+      invalidateTaskCaches(queryClient);
     },
   });
 }
@@ -127,7 +104,7 @@ export function useTimelineQuery({ boardId, spaceId, startDate, endDate }) {
 
       return {
         tasks: Array.isArray(taskPayload) ? taskPayload : [],
-        calendarEvents: normalizeCalendarItems(calendarPayload),
+        calendarEvents: toArrayPayload(calendarPayload, ["data", "events", "items"]),
       };
     },
     enabled: Boolean(boardId),

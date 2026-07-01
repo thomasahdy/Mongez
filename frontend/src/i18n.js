@@ -35,6 +35,9 @@ i18n.use(initReactI18next).init({
   },
   lng: preferredLanguage,
   fallbackLng: "en",
+  supportedLngs: ["en", "ar"],
+  nonExplicitSupportedLngs: true,
+  load: "languageOnly",
   interpolation: {
     escapeValue: false,
   },

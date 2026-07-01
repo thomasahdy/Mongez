@@ -30,6 +30,20 @@ def detect_arabic(text: str) -> bool:
     return False
 
 
+def has_arabic_query(system_prompt: str, user_message: str) -> bool:
+    """Check if the user's query/input contains Arabic, excluding database content."""
+    if detect_arabic(user_message):
+        return True
+    if not system_prompt:
+        return False
+    for line in system_prompt.splitlines():
+        line_lower = line.lower()
+        if "user query:" in line_lower or "user input:" in line_lower or "question:" in line_lower:
+            if detect_arabic(line):
+                return True
+    return False
+
+
 class LLMClient:
     """Unified LLM client supporting multiple providers (Groq, NVIDIA, OpenAI).
 
@@ -160,7 +174,7 @@ class LLMClient:
             }
         """
         # 1. Arabic Detection & Routing Suffix
-        if tier != "fast" and (detect_arabic(user_message) or detect_arabic(system_prompt)):
+        if tier != "fast" and has_arabic_query(system_prompt, user_message):
             arabic_instruction = (
                 "\n\nIMPORTANT: The user message is in Arabic. You must respond in clear, grammatically correct Arabic. "
                 "Ensure all markdown tables, lists, and structure are readable in Right-to-Left (RTL) mode."
@@ -353,7 +367,7 @@ class LLMClient:
         Used for SSE streaming in Phase 5.
         """
         # Apply Arabic detection if needed
-        if detect_arabic(user_message) or detect_arabic(system_prompt):
+        if has_arabic_query(system_prompt, user_message):
             arabic_instruction = (
                 "\n\nIMPORTANT: The user message is in Arabic. You must respond in clear, grammatically correct Arabic. "
                 "Ensure all markdown tables, lists, and structure are readable in Right-to-Left (RTL) mode."

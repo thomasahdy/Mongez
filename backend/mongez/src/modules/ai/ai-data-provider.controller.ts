@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Patch } from '@nestjs/common';
 import { ServiceApiKeyGuard } from './guards/service-api-key.guard';
 import { AIDataProviderService } from './ai-data-provider.service';
 import { AIActionRepository } from './repositories/ai-action.repository';
@@ -150,6 +150,17 @@ export class AIDataProviderController {
   @Get('graph/decisions/:spaceId')
   async getDecisions(@Param('spaceId') spaceId: string) {
     return this.graphService.getDecisions(spaceId);
+  }
+
+  /**
+   * PATCH /internal/ai/requests/:traceId
+   */
+  @Patch('requests/:traceId')
+  async updateRequest(
+    @Param('traceId') traceId: string,
+    @Body() body: any,
+  ) {
+    return this.dataProvider.updateAIRequest(traceId, body);
   }
 }
 

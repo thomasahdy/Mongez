@@ -49,7 +49,7 @@ class MockLLMClient:
         elif "quality control reflector" in system_prompt_lower:
             content = '{"need_more_data": false, "reflection": "Mocked reflection", "confidence_estimate": 1.0}'
         # Lead Aggregator mock
-        elif "lead aggregator" in system_prompt_lower:
+        elif "lead aggregator" in system_prompt_lower or "mongez project risk analyst" in system_prompt_lower or "workspace copilot" in system_prompt_lower:
             # Extract user query from system prompt to avoid matching the instructions template
             query_line = ""
             for line in system_prompt_lower.splitlines():
@@ -117,6 +117,9 @@ async def mock_get_comments_by_space(self, space_id):
 async def mock_get_audit_log(self, space_id):
     return []
 
+async def mock_get_task(self, task_id):
+    return {"id": task_id, "title": "Mock Task", "status": "TODO"}
+
 async def mock_get_schema(self):
     return {}
 
@@ -129,6 +132,7 @@ async def mock_update_ai_request(self, trace_id, updates):
 async def mock_close(self):
     return None
 
+NestJSClient.get_task = mock_get_task
 NestJSClient.get_tasks = mock_get_tasks
 NestJSClient.get_comments = mock_get_comments
 NestJSClient.get_comments_by_space = mock_get_comments_by_space
