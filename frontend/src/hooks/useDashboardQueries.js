@@ -19,6 +19,8 @@ export function useDashboardAnalyticsQuery(spaceId) {
   return useQuery({
     queryKey: ["dashboard", "analytics", spaceId],
     queryFn: async () => {
+      const now = new Date();
+      const upcomingWindow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const [
         stats,
         activity,
@@ -29,6 +31,7 @@ export function useDashboardAnalyticsQuery(spaceId) {
         slaMetrics,
         workflowAnalytics,
         approverPerformance,
+        upcomingDeadlines,
       ] = await Promise.all([
         analyticsService.getDashboardStats(spaceId).catch(() => ({})),
         analyticsService.getDashboardActivity(spaceId).catch(() => []),
@@ -39,6 +42,22 @@ export function useDashboardAnalyticsQuery(spaceId) {
         analyticsService.getSlaMetrics(spaceId).catch(() => ({})),
         analyticsService.getWorkflowAnalytics(spaceId).catch(() => ({})),
         analyticsService.getApproverPerformance(spaceId).catch(() => []),
+        tasksService.searchTasks("", spaceId, { limit: 200 }).then((tasks) =>
+          tasks
+            .filter((task) => {
+              if (!task?.dueDate) return false;
+              const dueDate = new Date(task.dueDate);
+              return !Number.isNaN(dueDate.getTime()) && dueDate >= now && dueDate <= upcomingWindow && task.status !== "DONE" && task.status !== "CANCELLED";
+            })
+            .sort((left, right) => new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime())
+            .slice(0, 5)
+            .map((task) => ({
+              id: task.id,
+              date: task.dueDate,
+              title: task.title,
+              status: task.status,
+            })),
+        ).catch(() => []),
       ]);
 
       return {
@@ -51,6 +70,7 @@ export function useDashboardAnalyticsQuery(spaceId) {
         slaMetrics,
         workflowAnalytics,
         approverPerformance,
+        upcomingDeadlines,
       };
     },
     enabled: Boolean(spaceId),

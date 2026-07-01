@@ -9,9 +9,9 @@ function FooterSection() {
   const footerColumns = t("landing.footer.columns", { returnObjects: true });
 
   return (
-    <footer id="footer" className="bg-[#0f172a] px-6 py-20 text-white lg:px-10">
+    <footer id="footer" className="bg-[#0f172a] px-6 py-20 text-white lg:px-10" dir={isRTL ? "rtl" : "ltr"}>
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-12 border-b border-white/8 pb-14 lg:grid-cols-[1.5fr_1fr_1fr_1fr]" dir={isRTL ? "rtl" : "ltr"}>
+        <div className="grid gap-12 border-b border-white/8 pb-14 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div>
             <div className={`flex items-center ${isRTL ? "flex-row-reverse justify-end" : ""}`}>
               <BrandLogo

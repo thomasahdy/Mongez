@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
+import { flushSync } from "react-dom";
 import Button from "../ui/Button";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { runLanguageTransition } from "../../utils/languageTransition";
 
 const ToggleLanguage = ({ setLanguage, language }) => {
   const { isRTL } = useLocaleDirection();
@@ -9,20 +11,25 @@ const ToggleLanguage = ({ setLanguage, language }) => {
 
   const toggleLanguage = () => {
     const nextLanguage = currentLanguage === "en" ? "ar" : "en";
+    const root = document.documentElement;
 
-    if (setLanguage) {
-      setLanguage(nextLanguage);
-      return;
-    }
+    const applyLanguageChange = () => {
+      root.dir = nextLanguage === "ar" ? "rtl" : "ltr";
+      root.lang = nextLanguage;
+      window.localStorage.setItem("mongez.language", nextLanguage);
 
-    document.documentElement.dir = nextLanguage === "ar" ? "rtl" : "ltr";
-    document.documentElement.lang = nextLanguage;
-    window.localStorage.setItem("mongez.language", nextLanguage);
-    void i18n.changeLanguage(nextLanguage);
+      if (setLanguage) {
+        flushSync(() => setLanguage(nextLanguage));
+      }
+
+      void i18n.changeLanguage(nextLanguage);
+    };
+
+    runLanguageTransition(nextLanguage, applyLanguageChange);
   };
 
   return (
-    <Button onClick={toggleLanguage} size="sm" className={`border-none ${isRTL ? "flex-row-reverse" : ""}`}>
+    <Button onClick={toggleLanguage} size="sm" className={`border-none hover:bg-sky-50 ${isRTL ? "flex-row-reverse" : ""}`}>
       <span
         className={`transition ${
           currentLanguage === "en" ? "text-blue-600 font-semibold" : "text-gray-500"

@@ -977,6 +977,18 @@ html[dir="rtl"] .dashboard-page-actions {
   min-height: 6px;
   border-radius: 10px 10px 0 0;
   background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+  transform-origin: bottom;
+  animation: barGrow 620ms var(--motion-ease-spring) both;
+  animation-delay: calc(var(--bar-index, 0) * 45ms);
+}
+
+@keyframes barGrow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
 }
 
 .bar-label {
@@ -1003,6 +1015,18 @@ html[dir="rtl"] .dashboard-page-actions {
   place-items: center;
   border-radius: 50%;
   background: conic-gradient(var(--primary) 0deg, var(--primary) var(--donut-a), var(--success) var(--donut-a), var(--success) var(--donut-b), var(--warning) var(--donut-b), var(--warning) var(--donut-c), var(--danger) var(--donut-c), var(--danger) 360deg);
+  animation: donutIn 640ms var(--motion-ease-spring) both;
+}
+
+@keyframes donutIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85) rotate(-70deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .donut-inner {
@@ -1190,7 +1214,7 @@ html[dir="rtl"] .dashboard-page-actions {
 @keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
@@ -1275,13 +1299,11 @@ html[dir="rtl"] .dashboard-page-actions {
 @keyframes pageReveal {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.995);
-    filter: blur(2px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
+    transform: translateY(0);
   }
 }
 
@@ -1299,10 +1321,7 @@ html[dir="rtl"] .dashboard-page-actions {
 @keyframes scaleSettle {
   0% {
     opacity: 0;
-    transform: scale(0.965) translateY(10px);
-  }
-  70% {
-    transform: scale(1.008) translateY(-1px);
+    transform: scale(0.97) translateY(8px);
   }
   100% {
     opacity: 1;
@@ -1312,15 +1331,53 @@ html[dir="rtl"] .dashboard-page-actions {
 
 @keyframes glowSweep {
   0% {
-    transform: translateX(-120%);
     opacity: 0;
   }
-  35% {
-    opacity: 0.75;
+  50% {
+    opacity: 0.55;
   }
   100% {
-    transform: translateX(120%);
     opacity: 0;
+  }
+}
+
+@keyframes languageViewOld {
+  from {
+    opacity: 1;
+    filter: saturate(1);
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0.18;
+    filter: saturate(0.94);
+    transform: translate3d(var(--language-exit-x, 0), 0, 0);
+  }
+}
+
+@keyframes languageViewNew {
+  from {
+    opacity: 0;
+    filter: saturate(0.96);
+    transform: translate3d(var(--language-enter-x, 0), 4px, 0);
+  }
+  to {
+    opacity: 1;
+    filter: saturate(1);
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes languageVeil {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--language-veil-start, -28%), 0, 0);
+  }
+  34% {
+    opacity: 0.72;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--language-veil-end, 28%), 0, 0);
   }
 }
 
@@ -1331,13 +1388,576 @@ html[dir="rtl"] .dashboard-page-actions {
   --motion-ring: 0 0 0 4px rgba(0, 168, 232, 0.14);
 }
 
+html.language-switching {
+  --language-enter-x: 6px;
+  --language-exit-x: -4px;
+  --language-veil-start: -30%;
+  --language-veil-end: 30%;
+  view-transition-name: root;
+  overflow-x: hidden;
+}
+
+html.language-switching.language-switch-ltr {
+  --language-enter-x: -6px;
+  --language-exit-x: 4px;
+  --language-veil-start: 30%;
+  --language-veil-end: -30%;
+}
+
+html.language-switching::view-transition-old(root) {
+  animation: languageViewOld 240ms var(--motion-ease-out) both;
+}
+
+html.language-switching::view-transition-new(root) {
+  animation: languageViewNew 440ms var(--motion-ease-out) 60ms both;
+}
+
+html.language-switching::view-transition-group(root) {
+  animation-duration: 520ms;
+  animation-timing-function: var(--motion-ease-out);
+  overflow: hidden;
+}
+
+html.language-switching::view-transition-image-pair(root) {
+  isolation: isolate;
+}
+
+html.language-switching::before {
+  content: "";
+  position: fixed;
+  inset: -12%;
+  z-index: 2147483647;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.18) 36%,
+      rgba(125, 211, 252, 0.18) 50%,
+      rgba(129, 140, 248, 0.14) 62%,
+      transparent 100%
+    );
+  filter: blur(18px);
+  opacity: 0;
+  animation: languageVeil 560ms var(--motion-ease-out) both;
+}
+
+html.language-switching :where(
+  .route-transition-shell,
+  .route-skeleton,
+  .auth-page,
+  .settings-layout,
+  .workspace-scroll-area > *,
+  .min-h-screen,
+  .bg-white.text-slate-900,
+  .auth-card,
+  .settings-content-area > *,
+  .settings-sidebar,
+  .notif-section,
+  .audit-table-wrap,
+  .audit-filters,
+  .audit-header,
+  .channel-card,
+  .dashboard-content > *,
+  .ai-card-accent,
+  .ai-session-card,
+  .ai-metric-bar,
+  .workspace-navbar,
+  .workspace-sidebar,
+  .page-motion-ai,
+  .page-motion-calendar,
+  .calendar-skeleton,
+  .animate-fadeIn,
+  .animate-slideLeft,
+  .animate-slideRight,
+  .animate-slideIn,
+  .animate-slideDown,
+  .animate-slideUp,
+  .animate-popIn,
+  .animate-cardFadeIn,
+  .animate-stepIn,
+  .animate-tabLine,
+  [class*="shadow-2xl"],
+  [class*="shadow-xl"]
+) {
+  animation-duration: 1ms !important;
+  animation-delay: 0ms !important;
+}
+
+html.language-switching :where(
+  .landing-page,
+  .landing-page *,
+  .dashboard-content *,
+  .settings-layout *,
+  .page-motion-ai *,
+  .page-motion-calendar *
+) {
+  transition-duration: 1ms !important;
+  transition-delay: 0ms !important;
+}
+
+/* ============================================================
+   Landing Page Premium Motion
+   Scoped polish for the first user-facing page.
+   ============================================================ */
+
+@keyframes landingNavIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landingRise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes landingPreviewIn {
+  from {
+    opacity: 0;
+    transform: perspective(1100px) translateY(28px) rotateX(4deg) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1100px) translateY(0) rotateX(0) scale(1);
+  }
+}
+
+@keyframes landingSheen {
+  from {
+    transform: translateX(-140%) skewX(-12deg);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.72;
+  }
+  to {
+    transform: translateX(140%) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes landingFloatY {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes landingBarRise {
+  from {
+    transform: scaleY(0.18);
+    opacity: 0.45;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.landing-page {
+  --landing-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --landing-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --landing-card-shadow: 0 28px 70px rgba(15, 23, 42, 0.10), 0 8px 24px rgba(15, 23, 42, 0.05);
+  overflow-x: hidden;
+}
+
+.landing-section {
+  position: relative;
+  isolation: isolate;
+  scroll-margin-top: 92px;
+}
+
+.landing-section:not(.landing-hero) {
+  overflow: hidden;
+}
+
+.landing-section:not(.landing-hero) > * {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-section:not(.landing-hero)::before,
+.landing-section:not(.landing-hero)::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.landing-section:not(.landing-hero)::before {
+  inset-inline: clamp(1.5rem, 8vw, 8rem);
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.58), rgba(99, 102, 241, 0.34), transparent);
+  opacity: 0.36;
+  transform-origin: center;
+}
+
+.landing-section:not(.landing-hero)::after {
+  inset-inline: 6%;
+  top: 0;
+  height: min(24vw, 220px);
+  background:
+    radial-gradient(ellipse at top, rgba(14, 165, 233, 0.15), transparent 68%),
+    radial-gradient(ellipse at top right, rgba(99, 102, 241, 0.10), transparent 62%);
+  opacity: 0.2;
+  transform: translateY(-44%);
+}
+
+.landing-page-scroll-observed .landing-section-ready:not(.landing-hero) {
+  opacity: 0;
+  filter: blur(10px) saturate(0.92);
+  transform: translate3d(0, 56px, 0) scale(0.986);
+  transition:
+    opacity 760ms var(--landing-ease),
+    transform 900ms var(--landing-spring),
+    filter 820ms var(--landing-ease);
+  transition-delay: calc(var(--landing-scroll-index, 0) * 18ms);
+  will-change: opacity, transform, filter;
+}
+
+.landing-page-scroll-observed .landing-section-ready:not(.landing-hero).landing-section-visible {
+  opacity: 1;
+  filter: blur(0) saturate(1);
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.landing-page-scroll-observed .landing-section-ready:not(.landing-hero)::before {
+  opacity: 0;
+  transform: scaleX(0.18);
+  transition:
+    opacity 720ms var(--landing-ease),
+    transform 860ms var(--landing-spring);
+}
+
+.landing-page-scroll-observed .landing-section-ready:not(.landing-hero)::after {
+  opacity: 0;
+  transform: translateY(-64%) scaleX(0.62);
+  transition:
+    opacity 10000ms var(--landing-ease),
+    transform 960ms var(--landing-spring);
+}
+
+.landing-page-scroll-observed .landing-section-ready:not(.landing-hero).landing-section-visible::before {
+  opacity: 0.42;
+  transform: scaleX(1);
+}
+
+.landing-page-scroll-observed .landing-section-ready:not(.landing-hero).landing-section-visible::after {
+  opacity: 0.28;
+  transform: translateY(-36%) scaleX(1);
+}
+
+.landing-results::after,
+.landing-ai::after,
+.landing-final-cta::after {
+  background:
+    radial-gradient(ellipse at top, rgba(125, 211, 252, 0.18), transparent 68%),
+    radial-gradient(ellipse at top right, rgba(167, 139, 250, 0.16), transparent 62%);
+  mix-blend-mode: screen;
+}
+
+.landing-page[dir="rtl"] :where(
+  h1,
+  h2,
+  h3,
+  p,
+  a,
+  button,
+  input,
+  textarea,
+  .landing-badge,
+  .landing-board-column,
+  .landing-ai-alert,
+  .landing-floating-issue,
+  .landing-feature-mockup,
+  .landing-mini-row,
+  .landing-ai-message,
+  .landing-metric-card,
+  .landing-testimonial-card
+) {
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+
+.landing-page[dir="rtl"] :where([class*="tracking-"], .landing-badge) {
+  letter-spacing: 0 !important;
+}
+
+.landing-page[dir="rtl"] .landing-badge {
+  flex-direction: row-reverse;
+  text-transform: none;
+}
+
+.landing-page[dir="rtl"] :where(input, textarea)::placeholder {
+  direction: rtl;
+  text-align: right;
+}
+
+.landing-page[dir="rtl"] .landing-ltr-token {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+
+.landing-page[dir="rtl"] :where(.landing-problem, .landing-features) {
+  text-align: right;
+}
+
+.landing-page[dir="rtl"] :where(
+  .landing-problem-card,
+  .landing-floating-issue,
+  .landing-feature-row,
+  .landing-feature-mockup,
+  .landing-mini-row
+) {
+  text-align: right;
+}
+
+.landing-page[dir="rtl"] .landing-features :where(.landing-mini-row.flex, .landing-feature-mockup .flex) {
+  flex-direction: row-reverse;
+}
+
+.landing-page[dir="rtl"] .landing-features :where(.max-w-xl) {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+.landing-nav {
+  animation: landingNavIn 560ms var(--landing-ease) both;
+  transition:
+    background-color 260ms var(--landing-ease),
+    border-color 260ms var(--landing-ease),
+    box-shadow 260ms var(--landing-ease);
+}
+
+.landing-nav::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.45), transparent);
+  transform: scaleX(0.34);
+  transform-origin: center;
+  opacity: 0.65;
+}
+
+.landing-nav:hover {
+  border-color: rgba(14, 165, 233, 0.22);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
+}
+
+.landing-page :where(.landing-badge, .landing-hero-title, .landing-hero-copy, .landing-hero-actions) {
+  animation: landingRise 720ms var(--landing-ease) both;
+}
+
+.landing-hero .landing-badge {
+  animation-delay: 90ms;
+}
+
+.landing-hero-title {
+  animation-delay: 170ms;
+}
+
+.landing-hero-copy {
+  animation-delay: 260ms;
+}
+
+.landing-hero-actions {
+  animation-delay: 340ms;
+}
+
+.landing-hero-wash {
+  animation: landingRise 1100ms var(--landing-ease) both;
+}
+
+.landing-page :where(a, button) {
+  will-change: transform;
+}
+
+.landing-page :where(a, button):not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+.landing-hero-preview,
+.landing-feature-mockup,
+.landing-ai-panel,
+.landing-metric-card,
+.landing-card {
+  position: relative;
+  isolation: isolate;
+  transition:
+    transform 360ms var(--landing-ease),
+    box-shadow 420ms var(--landing-ease),
+    border-color 320ms var(--landing-ease),
+    background-color 320ms var(--landing-ease);
+}
+
+.landing-hero-preview {
+  animation: landingPreviewIn 920ms var(--landing-spring) 440ms both;
+}
+
+.landing-hero-preview::before,
+.landing-feature-mockup::before,
+.landing-ai-panel::before,
+.landing-card::before,
+.landing-metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 18%, rgba(255, 255, 255, 0.34) 45%, transparent 68%);
+  opacity: 0;
+  transform: translateX(-140%) skewX(-12deg);
+}
+
+.landing-hero-preview:hover,
+.landing-feature-mockup:hover,
+.landing-ai-panel:hover,
+.landing-card:hover,
+.landing-metric-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--landing-card-shadow);
+}
+
+.landing-hero-preview:hover::before,
+.landing-feature-mockup:hover::before,
+.landing-ai-panel:hover::before,
+.landing-card:hover::before,
+.landing-metric-card:hover::before {
+  animation: landingSheen 900ms var(--landing-ease);
+}
+
+.landing-board-column,
+.landing-task-card,
+.landing-ai-alert,
+.landing-mini-row,
+.landing-ai-message,
+.landing-ai-panel button {
+  animation: landingRise 620ms var(--landing-ease) both;
+}
+
+.landing-board-column:nth-child(1) { animation-delay: 560ms; }
+.landing-board-column:nth-child(2) { animation-delay: 620ms; }
+.landing-board-column:nth-child(3) { animation-delay: 680ms; }
+.landing-board-column:nth-child(4) { animation-delay: 740ms; }
+
+.landing-task-card:nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.landing-task-card:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.landing-ai-alert:nth-child(1) { animation-delay: 660ms; }
+.landing-ai-alert:nth-child(2) { animation-delay: 730ms; }
+.landing-ai-alert:nth-child(3) { animation-delay: 800ms; }
+
+.landing-floating-issue {
+  animation: landingFloatY 6.8s ease-in-out infinite;
+  animation-delay: calc(var(--landing-index, 0) * -620ms);
+  transition:
+    transform 320ms var(--landing-ease),
+    box-shadow 320ms var(--landing-ease);
+}
+
+.landing-floating-issue:hover {
+  box-shadow: 0 26px 60px rgba(15, 23, 42, 0.13);
+}
+
+.landing-feature-row,
+.landing-metric-card,
+.landing-testimonial-card,
+.landing-ai-panel {
+  animation: landingRise 700ms var(--landing-ease) both;
+  animation-delay: calc(var(--landing-index, 0) * 70ms);
+}
+
+.landing-feature-mockup {
+  overflow: hidden;
+}
+
+.landing-feature-mockup::after {
+  content: "";
+  position: absolute;
+  inset-inline: 18%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.55), transparent);
+  opacity: 0.8;
+}
+
+.landing-mini-row {
+  animation-delay: calc(var(--landing-index, 0) * 55ms);
+}
+
+.landing-report-bar {
+  transform-origin: bottom;
+  animation: landingBarRise 760ms var(--landing-spring) both;
+  animation-delay: calc(var(--landing-index, 0) * 80ms);
+}
+
+.landing-ai-panel {
+  overflow: hidden;
+}
+
+.landing-ai-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), transparent 38%, rgba(139, 92, 246, 0.14));
+  opacity: 0.85;
+}
+
+.landing-ai-message,
+.landing-ai-panel button {
+  animation-delay: calc(var(--landing-index, 0) * 70ms);
+}
+
+.landing-metric-card p:first-child {
+  text-shadow: 0 12px 34px rgba(14, 165, 233, 0.18);
+}
+
+@supports (animation-timeline: view()) {
+  .landing-section :where(.landing-badge, h2, .landing-card, .landing-feature-row, .landing-feature-mockup, .landing-ai-panel, .landing-metric-card) {
+    animation-name: landingRise;
+    animation-duration: 680ms;
+    animation-timing-function: var(--landing-ease);
+    animation-fill-mode: both;
+    animation-timeline: view();
+    animation-range: entry 8% cover 26%;
+  }
+
+  .landing-feature-row {
+    animation-range: entry 5% cover 28%;
+  }
+}
+
 .auth-page,
 .settings-layout,
-.dashboard-content,
 .workspace-scroll-area > *,
 .min-h-screen,
 .bg-white.text-slate-900 {
-  animation: pageReveal 560ms var(--motion-ease-out) both;
+  animation: pageReveal 480ms var(--motion-ease-out) both;
 }
 
 .auth-card,
@@ -1459,15 +2079,14 @@ html[dir="rtl"] .dashboard-page-actions {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.38) 45%, transparent 70%);
-  transform: translateX(-120%);
+  background: radial-gradient(120% 140% at 50% 0%, rgba(255, 255, 255, 0.28), transparent 70%);
   opacity: 0;
 }
 
 .settings-nav-item:hover::after,
 .workspace-sidebar a:hover::after,
 .auth-primary-button:hover::after {
-  animation: glowSweep 720ms var(--motion-ease-out);
+  animation: glowSweep 900ms var(--motion-ease-out);
 }
 
 tbody tr,
@@ -1625,11 +2244,11 @@ html[dir="rtl"] .settings-layout .settings-sidebar {
 
 @keyframes blink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  50% { opacity: 0.35; }
 }
 
 .animate-blink {
-  animation: blink 1s step-end infinite;
+  animation: blink 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 /* ============================================================
@@ -1694,7 +2313,7 @@ html[dir="rtl"] .settings-layout .settings-sidebar {
 }
 
 @keyframes thinkingDot {
-  0%,80%,100% { transform: scale(0); opacity: 0.4; }
+  0%,80%,100% { transform: scale(0.45); opacity: 0.35; }
   40%          { transform: scale(1); opacity: 1;   }
 }
 
@@ -2656,6 +3275,5 @@ html[dir="rtl"] .pro-badge {
 
   .audit-header {
     flex-direction: column;
-    align-items: stretch;
   }
 }

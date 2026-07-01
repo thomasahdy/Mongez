@@ -51,9 +51,9 @@ function ProblemSection() {
     : ['left-12 top-4', 'right-0 top-16', 'right-16 top-1/2', 'left-0 top-[58%]', 'right-4 bottom-8'];
 
   return (
-    <section id="problem" className="px-6 py-24 lg:px-10">
+    <section id="problem" className="landing-section landing-problem px-6 py-24 lg:px-10" dir={isRTL ? "rtl" : "ltr"}>
       <div className="mx-auto max-w-6xl">
-        <div className="mx-auto max-w-3xl text-center">
+        <div className={`mx-auto max-w-3xl ${isRTL ? "text-right" : "text-center"}`}>
           <SectionBadge icon="sparkles">{t("landing.problem.badge")}</SectionBadge>
           <h2 className="mt-6 text-4xl font-black tracking-[-0.04em] text-slate-900 sm:text-5xl">
             {t("landing.problem.title")}
@@ -65,17 +65,18 @@ function ProblemSection() {
 
         <div className="mt-16 grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4">
-            {problemCards.map((item) => (
+            {problemCards.map((item, index) => (
               <article
                 key={item.title}
-                className={`flex gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-[0_20px_45px_rgba(15,23,42,0.06)] ${
+                style={{ "--landing-index": index }}
+                className={`landing-card landing-problem-card flex gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-[0_20px_45px_rgba(15,23,42,0.06)] ${
                   isRTL ? "flex-row-reverse text-right" : ""
                 }`}
               >
                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-rose-50 text-rose-400">
                   <Icon name={item.icon} />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="text-lg font-bold text-slate-800">{item.title}</h3>
                   <p className="mt-1 text-slate-500">{item.text}</p>
                 </div>
@@ -89,9 +90,10 @@ function ProblemSection() {
               return (
                 <div
                   key={issue.label}
-                  className={`absolute ${positions[index]} rounded-2xl border border-white bg-white px-5 py-4 shadow-[0_20px_45px_rgba(15,23,42,0.08)]`}
+                  style={{ "--landing-index": index }}
+                  className={`landing-floating-issue absolute ${positions[index]} rounded-2xl border border-white bg-white px-5 py-4 shadow-[0_20px_45px_rgba(15,23,42,0.08)]`}
                 >
-                  <div className={`flex items-center gap-2 text-sm font-semibold ${issue.tone} ${isRTL ? "flex-row-reverse" : ""}`}>
+                  <div className={`flex items-center gap-2 text-sm font-semibold ${issue.tone} ${isRTL ? "flex-row-reverse text-right" : ""}`}>
                     <Icon name={issue.icon} className="h-3.5 w-3.5" />
                     {issue.label}
                   </div>

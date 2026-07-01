@@ -40,7 +40,7 @@ const FEATURE_ROWS = [
     preview: 'departments',
   },
   {
-    title: 'Donor & Ministry Reports',
+    title: 'Performance Reports',
     description:
       'Translate execution data into polished reporting with metrics, timelines, and impact snapshots ready to share.',
     bullets: ['Live charts and rollups', 'Export-ready summaries', 'Evidence-backed updates'],
@@ -50,14 +50,14 @@ const FEATURE_ROWS = [
   },
 ]
 
-function FeatureMockup({ accent, preview, riskLabels, automationTriggers, departments, reportStats, t }) {
+function FeatureMockup({ accent, preview, riskLabels, automationTriggers, departments, reportStats, t, isRTL }) {
   const isRiskPreview = preview === 'risks'
   const isAutomationPreview = preview === 'automation'
   const isDepartmentPreview = preview === 'departments'
   const isReportsPreview = preview === 'reports'
 
   return (
-    <div className="relative mx-auto w-full max-w-[520px] overflow-hidden rounded-[2rem] border border-slate-200/70 bg-white p-4 shadow-[0_30px_80px_rgba(15,23,42,0.14)]">
+    <div className={`landing-feature-mockup relative mx-auto w-full max-w-[520px] overflow-hidden rounded-[2rem] border border-slate-200/70 bg-white p-4 shadow-[0_30px_80px_rgba(15,23,42,0.14)] ${isRTL ? "text-right" : "text-left"}`} dir={isRTL ? "rtl" : "ltr"}>
       <div className="mb-4 flex items-center gap-2 px-2">
         <span className="h-3 w-3 rounded-full bg-rose-300" />
         <span className="h-3 w-3 rounded-full bg-amber-300" />
@@ -77,7 +77,7 @@ function FeatureMockup({ accent, preview, riskLabels, automationTriggers, depart
             <div className="h-3 w-28 rounded-full bg-slate-200" />
             <div className="space-y-2">
               {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3">
+                <div key={item} className="landing-mini-row flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3">
                   <div className={`h-9 w-9 rounded-xl bg-gradient-to-br ${accent} opacity-80`} />
                   <div className="flex-1 space-y-2">
                     <div className="h-2.5 w-24 rounded-full bg-slate-200" />
@@ -99,7 +99,7 @@ function FeatureMockup({ accent, preview, riskLabels, automationTriggers, depart
           <div className={`h-20 rounded-[1.25rem] bg-gradient-to-br ${accent} opacity-85`} />
           <div className="grid gap-2 sm:grid-cols-2">
             {riskLabels.map((risk) => (
-              <div key={risk} className="rounded-2xl border border-rose-100 bg-white px-3 py-3 text-xs text-slate-600 shadow-sm">
+              <div key={risk} className="landing-mini-row rounded-2xl border border-rose-100 bg-white px-3 py-3 text-xs text-slate-600 shadow-sm">
                 <div className="mb-2 h-2 w-12 rounded-full bg-rose-300" />
                 {risk}
               </div>
@@ -114,7 +114,7 @@ function FeatureMockup({ accent, preview, riskLabels, automationTriggers, depart
             <div className="h-3 w-20 rounded-full bg-slate-200" />
             <div className="mt-4 space-y-3">
               {automationTriggers.map((trigger) => (
-                <div key={trigger} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs text-slate-600">
+                <div key={trigger} className="landing-mini-row rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs text-slate-600">
                   {trigger}
                 </div>
               ))}
@@ -136,7 +136,7 @@ function FeatureMockup({ accent, preview, riskLabels, automationTriggers, depart
       {isDepartmentPreview && (
         <div className="grid gap-3 sm:grid-cols-2">
           {departments.map((dept, index) => (
-            <div key={dept} className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+            <div key={dept} className="landing-mini-row rounded-3xl border border-slate-100 bg-slate-50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-700">{dept}</span>
                 <span className={`h-2.5 w-2.5 rounded-full ${index % 2 === 0 ? 'bg-emerald-400' : 'bg-amber-400'}`} />
@@ -161,14 +161,14 @@ function FeatureMockup({ accent, preview, riskLabels, automationTriggers, depart
             {[45, 72, 58, 84, 66].map((height, index) => (
               <div
                 key={height}
-                className={`rounded-t-lg bg-gradient-to-t ${index % 2 ? 'from-blue-600 to-sky-400' : 'from-violet-500 to-indigo-400'}`}
-                style={{ height: `${height}px` }}
+                style={{ "--landing-index": index, height: `${height}px` }}
+                className={`landing-report-bar rounded-t-lg bg-gradient-to-t ${index % 2 ? 'from-blue-600 to-sky-400' : 'from-violet-500 to-indigo-400'}`}
               />
             ))}
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
             {reportStats.map((item) => (
-              <div key={item} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-medium text-slate-600">
+              <div key={item} className="landing-mini-row rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-medium text-slate-600">
                 {item}
               </div>
             ))}
@@ -190,12 +190,13 @@ function FeaturesSection() {
   const reportStats = t("landing.features.reportsPreviewStats", { returnObjects: true });
 
   return (
-    <section id="features" className="bg-[#F1F5F9] px-6 py-24 text-[#0F172A] lg:px-10">
+    <section id="features" className="landing-section landing-features bg-[#F1F5F9] px-6 py-24 text-[#0F172A] lg:px-10" dir={isRTL ? "rtl" : "ltr"}>
       <div className="mx-auto max-w-6xl space-y-24">
-        {featureRows.map((feature) => (
+        {featureRows.map((feature, index) => (
           <div
             key={feature.title}
-            className={`grid items-center gap-12 ${feature.imageLeft ? 'lg:grid-cols-[1fr_0.95fr]' : 'lg:grid-cols-[0.95fr_1fr]'}`}
+            style={{ "--landing-index": index }}
+            className={`landing-feature-row grid items-center gap-12 ${feature.imageLeft ? 'lg:grid-cols-[1fr_0.95fr]' : 'lg:grid-cols-[0.95fr_1fr]'}`}
           >
             <div className={feature.imageLeft ? 'lg:order-1' : ''}>
               <FeatureMockup
@@ -206,12 +207,13 @@ function FeaturesSection() {
                 departments={departments}
                 reportStats={reportStats}
                 t={t}
+                isRTL={isRTL}
               />
             </div>
             <div className={`${feature.imageLeft ? 'lg:order-2' : ''} ${isRTL ? 'text-right' : 'text-left'}`}>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-400">{t("landing.features.eyebrow")}</p>
               <h2 className="mt-4 text-4xl font-black tracking-[-0.04em] text-[#0F172A] sm:text-5xl">{feature.title}</h2>
-              <p className="mt-5 max-w-xl text-lg leading-8 text-[#475569]">{feature.description}</p>
+              <p className={`mt-5 max-w-xl text-lg leading-8 text-[#475569] ${isRTL ? "ml-auto" : ""}`}>{feature.description}</p>
               <div className="mt-8 space-y-4">
                 {feature.bullets.map((bullet) => (
                   <div key={bullet} className={`flex items-center gap-3 text-slate-[#475569] ${isRTL ? "flex-row-reverse" : ""}`}>

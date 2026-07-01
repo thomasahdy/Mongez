@@ -102,7 +102,7 @@ export function getUserFriendlyErrorMessage(error, t) {
     case 401:
       return t("aiAssistant.errors.sessionExpired");
     case 403:
-      return t("aiAssistant.errors.accessDenied");
+      return message || t("aiAssistant.errors.accessDenied");
     case 404:
       return t("aiAssistant.errors.resourceNotFound");
     case 429:

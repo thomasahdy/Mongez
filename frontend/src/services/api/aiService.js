@@ -32,13 +32,21 @@ export const streamAiChat = async ({ onToken, onStatus, signal, ...body }) => {
 
   if (!response.ok || !response.body) {
     const text = await response.text();
-    let errMsg = text || "The streaming request failed.";
+    let serverMessage = text;
+    try {
+      const parsed = JSON.parse(text);
+      serverMessage = parsed?.error?.message || parsed?.message || text;
+    } catch {
+      // Keep plain-text response bodies as-is.
+    }
+
+    let errMsg = serverMessage || "The streaming request failed.";
     if (response.status === 429) {
       errMsg = "AI is temporarily busy. Please wait a moment and try again.";
     } else if (response.status >= 500 || response.status === 404) {
       errMsg = "Workspace data unavailable. I could not access live data right now.";
     } else if (response.status === 403) {
-      errMsg = "Access denied. You don't have permission for this workspace.";
+      errMsg = serverMessage || "Access denied. You don't have permission for this workspace.";
     }
     const error = new Error(errMsg);
     error.status = response.status;

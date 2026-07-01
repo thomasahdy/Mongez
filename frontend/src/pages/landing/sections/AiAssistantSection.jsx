@@ -2,6 +2,7 @@ import { Icon } from '../../../components/ui/Icons'
 import SectionBadge from './SectionBadge'
 import { useTranslation } from "react-i18next";
 import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
+import mongezAIMark from "../../../assets/MongezAILogo.svg";
 
 function AiAssistantSection() {
   const { t } = useTranslation();
@@ -10,7 +11,7 @@ function AiAssistantSection() {
   const messages = t("landing.aiSection.messages", { returnObjects: true });
 
   return (
-    <section id="ai-assistant" className="bg-[linear-gradient(180deg,#1e293b_0%,#0f172a_100%)] px-6 py-24 text-white lg:px-10">
+    <section id="ai-assistant" className="landing-section landing-ai bg-[linear-gradient(180deg,#1e293b_0%,#0f172a_100%)] px-6 py-24 text-white lg:px-10" dir={isRTL ? "rtl" : "ltr"}>
       <div className="mx-auto max-w-5xl text-center">
         <SectionBadge icon="brain" dark>
           {t("landing.aiSection.badge")}
@@ -24,10 +25,11 @@ function AiAssistantSection() {
           {t("landing.aiSection.description")}
         </p>
 
-        <div className="mt-14 rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_30px_80px_rgba(5,8,18,0.4)] backdrop-blur-xl sm:p-6">
-          <div className={`flex items-center gap-4 border-b border-white/10 px-3 pb-4 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}>
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white">
-              <Icon name="robot" />
+        <div className="landing-ai-panel mt-14 rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_30px_80px_rgba(5,8,18,0.4)] backdrop-blur-xl sm:p-6">
+          <div className={`flex items-center gap-0 border-b border-white/10 px-3 pb-4 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}>
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px]">
+              <img src={mongezAIMark} alt={t("landing.nav.wordmarkAlt")} className="w-14 h-14" />
             </div>
             <div>
               <p className="font-bold text-white">{t("landing.aiSection.assistantName")}</p>
@@ -40,13 +42,13 @@ function AiAssistantSection() {
               {messages.map((message, index) => (
                 <div
                   key={message}
-                  className={`rounded-3xl rounded-tl-md px-5 py-4 ${
-                    index === 0
+                  style={{ "--landing-index": index }}
+                  className={`landing-ai-message rounded-3xl rounded-tl-md px-5 py-4 ${index === 0
                       ? "max-w-[85%] bg-sky-500/20 text-slate-100"
                       : index === 1
                         ? "max-w-[90%] bg-white/[0.08] text-slate-200"
                         : "max-w-[70%] bg-violet-500/20 text-slate-100"
-                  }`}
+                    }`}
                 >
                   {message}
                 </div>
@@ -56,13 +58,13 @@ function AiAssistantSection() {
             <div className="rounded-[1.75rem] border border-white/10 bg-[#334155] p-5">
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">{t("landing.aiSection.suggestedActions")}</p>
               <div className="mt-4 space-y-3">
-                {aiPrompts.map((prompt) => (
+                {aiPrompts.map((prompt, index) => (
                   <button
                     key={prompt}
                     type="button"
-                    className={`flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.06] px-4 py-4 text-sm text-slate-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 ${
-                      isRTL ? "flex-row-reverse text-right" : "text-left"
-                    }`}
+                    style={{ "--landing-index": index }}
+                    className={`flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.06] px-4 py-4 text-sm text-slate-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 ${isRTL ? "flex-row-reverse text-right" : "text-left"
+                      }`}
                   >
                     <Icon name="wand" className="mt-0.5 text-sky-300" />
                     <span>{prompt}</span>
@@ -73,13 +75,13 @@ function AiAssistantSection() {
           </div>
 
           <div className={`flex items-center gap-3 border-t border-white/10 px-3 pt-4 ${isRTL ? "flex-row-reverse" : ""}`}>
-              <input
-                type="text"
-                placeholder={t("landing.aiSection.inputPlaceholder")}
-                className={`h-14 flex-1 rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-sm text-white outline-none placeholder:text-slate-500 ${
-                  isRTL ? "text-right" : "text-left"
+            <input
+              type="text"
+              placeholder={t("landing.aiSection.inputPlaceholder")}
+              dir={isRTL ? "rtl" : "ltr"}
+              className={`h-14 flex-1 rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-sm text-white outline-none placeholder:text-slate-500 ${isRTL ? "text-right" : "text-left"
                 }`}
-              />
+            />
             <button
               type="button"
               className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-violet-500 to-blue-500 text-white shadow-lg shadow-violet-500/20 transition hover:-translate-y-0.5"

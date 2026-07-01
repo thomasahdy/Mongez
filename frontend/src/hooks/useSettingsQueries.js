@@ -8,6 +8,7 @@ import userService from "../services/api/userService";
 import { leaveSpace } from "../services/api/spacesService";
 import { setAuthSession } from "../store/auth/authSlice";
 import { setTheme } from "../store/theme/themeSlice";
+import { runLanguageTransition } from "../utils/languageTransition";
 import i18n from "../i18n";
 
 const SETTINGS_PROFILE_QUERY_KEY = ["settings", "profile"];
@@ -96,7 +97,12 @@ export function useUpdatePreferencesMutation() {
             isAuthenticated: true,
           }),
         );
-        i18n.changeLanguage(nextLanguage);
+        runLanguageTransition(nextLanguage, () => {
+          document.documentElement.dir = nextLanguage === "ar" ? "rtl" : "ltr";
+          document.documentElement.lang = nextLanguage;
+          window.localStorage.setItem("mongez.language", nextLanguage);
+          void i18n.changeLanguage(nextLanguage);
+        });
       }
 
       if (updatedPreferences?.theme || variables?.theme) {

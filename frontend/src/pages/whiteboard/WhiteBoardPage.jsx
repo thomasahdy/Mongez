@@ -186,7 +186,7 @@ export default function WhiteBoardPage() {
               <button
                 type="button"
                 onClick={handleClearBoard}
-                className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="rounded-2xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 {t("whiteboard.resetBoard")}
               </button>

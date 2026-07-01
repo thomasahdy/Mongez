@@ -225,6 +225,7 @@ function DashboardPage() {
   const slaMetrics = normalizeStats(dashboardQuery.data?.slaMetrics);
   const workflowAnalytics = normalizeStats(dashboardQuery.data?.workflowAnalytics);
   const approverPerformance = normalizeList(dashboardQuery.data?.approverPerformance);
+  const upcomingDeadlines = normalizeList(dashboardQuery.data?.upcomingDeadlines);
 
   useEffect(() => {
     setPath?.([
@@ -284,8 +285,8 @@ function DashboardPage() {
     const activeMembers = pickNumber(stats, ["activeMembers", "memberCount", "members.total", "members"], null);
     const deliveryRate = pickNumber(
       executiveMetrics,
-      ["onTimeDeliveryRate", "deliveryRate", "slaCompliance"],
-      totalTasks && completedTasks !== null ? (completedTasks / totalTasks) * 100 : null,
+      ["onTimeDeliveryRate", "deliveryRate"],
+      pickNumber(slaMetrics, ["complianceRate", "slaCompliance"], totalTasks && completedTasks !== null ? (completedTasks / totalTasks) * 100 : null),
     );
     const budgetRemaining = pickNumber(
       executiveMetrics,
@@ -322,18 +323,6 @@ function DashboardPage() {
       .map((item, index) => ({ label: itemLabel(item, `Segment ${index + 1}`), value: itemValue(item) }))
       .filter((item) => item.value > 0);
   }, [completion, priority]);
-
-  const upcomingItems = useMemo(() => {
-    return activity
-      .filter((item) => item.dueDate || item.deadline || item.endDate)
-      .map((item, index) => ({
-        id: item.id || index,
-        date: item.dueDate || item.deadline || item.endDate,
-        title: item.title || item.message || item.action || t("dashboard.upcomingItem"),
-        status: item.status || item.priority || t("dashboard.dueLabel"),
-      }))
-      .slice(0, 5);
-  }, [activity, t]);
 
   const insights = useMemo(() => {
     const bottlenecks = pickNumber(workflowAnalytics, ["bottlenecks", "blockedItems", "blocked"], null);
@@ -526,14 +515,14 @@ function DashboardPage() {
               <i className="fa-regular fa-calendar" />
               {t("dashboard.upcomingDeadlines")}
             </h3>
-            {upcomingItems.length ? (
-              upcomingItems.map((item) => (
+            {upcomingDeadlines.length ? (
+              upcomingDeadlines.map((item, index) => (
                 <div className="upcoming-item" key={item.id}>
                   <div className="upcoming-date">{formatDate(item.date, locale)}</div>
                   <div className="upcoming-title">
                     <strong>{item.title}</strong>
                   </div>
-                  <span className="upcoming-badge">{item.status}</span>
+                  <span className="upcoming-badge">{item.status || item.priority || t("dashboard.dueLabel")}</span>
                 </div>
               ))
             ) : (

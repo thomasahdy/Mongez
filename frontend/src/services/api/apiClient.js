@@ -2,7 +2,6 @@
 import axios from "axios";
 import {
   getAccessToken,
-  getRefreshToken,
   setTokens,
   clearTokens,
 } from "./tokenService";
@@ -91,35 +90,22 @@ apiClient.interceptors.response.use(
     ].some((url) => originalRequest?.url?.includes(url));
     
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !shouldSkipRefresh) {
-      const refreshToken = getRefreshToken();
       const path = window.location.pathname;
       const isPublicRoute = ['/login', '/register', '/reset-password', '/verify-email', '/'].includes(path);
-
-      if (!refreshToken) {
-        clearTokens();
-
-        if (!isPublicRoute && !shouldSkipRefresh) {
-          showToastBridge({ key: "toasts.authRequired" }, "error");
-          window.location.href = '/login';
-        }
-        return Promise.reject(error);
-      }
-
       originalRequest._retry = true;
 
       try {
         const response = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
-          { refreshToken },
+          {},
           { withCredentials: true }
         );
 
-        const { accessToken, refreshToken: newRefreshToken } =
+        const { accessToken } =
           response.data?.data ?? response.data;
 
         setTokens({
           accessToken,
-          refreshToken: newRefreshToken,
         });
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;

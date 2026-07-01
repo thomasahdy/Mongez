@@ -4,13 +4,14 @@ import { useSpaces, useSetActiveSpace } from "../../hooks/api/useSpaces";
 import SpaceSwitcherSkeleton from "./SpaceSwitcherSkeleton";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
 import { useAppContext } from "../../pages/AppContext";
+import { readActiveSpaceId, writeActiveSpaceId } from "../../utils/appStorageKeys";
 
 export default function SpaceSwitcher() {
   const { t } = useTranslation();
   const { isRTL } = useLocaleDirection();
   const { data, isLoading } = useSpaces();
   const { mutate: selectSpace } = useSetActiveSpace();
-  const {activeSpace, setActiveSpace} = useAppContext();
+  const { activeSpace, activeSpaceId, setActiveSpace } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -23,13 +24,16 @@ export default function SpaceSwitcher() {
       const apiActiveId = data.activeSpaceId;
       const activeId = savedActiveId || apiActiveId || spacesList[0]?.id;
       const active = spacesList.find((space) => space.id === activeId) || spacesList[0];
-      setActiveSpace(active.id);
+      if (!active) return;
+      if (active.id !== activeSpaceId) {
+        setActiveSpace(active.id);
+      }
 
       if (active && active.id !== savedActiveId) {
         writeActiveSpaceId(active.id);
       }
     }
-  }, [data]);
+  }, [activeSpaceId, data, setActiveSpace]);
 
   useEffect(() => {
     function handleClickOutside(event) {
