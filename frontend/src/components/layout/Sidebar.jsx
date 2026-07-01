@@ -26,7 +26,6 @@ const OVERVIEW_LINKS = [
 const VIEW_LINKS = [
   { href: "/calendar", icon: "fa-regular fa-calendar", label: "Calendar", badge: { label: "2 mtgs", variant: "neutral" } },
   { href: "/workflows", icon: "fa-route", label: "Workflows" },
-  { href: "/timeline", icon: "fa-bars-staggered", label: "Timeline" },
   { href: "/whiteboard", icon: "fa-chalkboard", label: "Whiteboard" },
   { href: "/reports", icon: "fa-chart-line", label: "Reports" },
 ];
