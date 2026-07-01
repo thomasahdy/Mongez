@@ -1,11 +1,17 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { QUEUE_NAMES, JOB_NAMES } from '../../infrastructure/queue/queue.constants';
 
 @Injectable()
 export class ActivityLoggerInterceptor implements NestInterceptor {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ActivityLoggerInterceptor.name);
+
+  constructor(
+    @InjectQueue(QUEUE_NAMES.ACTIVITY_LOG) private readonly activityQueue: Queue,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
@@ -38,19 +44,18 @@ export class ActivityLoggerInterceptor implements NestInterceptor {
         }
 
         if (action && feature) {
-          this.prisma.userActivity.create({
-            data: {
+          this.activityQueue.add(
+            JOB_NAMES.LOG_USER_ACTIVITY,
+            {
               userId: user.id,
               action,
               feature,
               spaceId: spaceId ? String(spaceId) : null,
-              metadata: {
-                url,
-                method,
-              },
+              metadata: { url, method },
             },
-          }).catch((err) => {
-            console.error('Failed to log user activity:', err);
+            { removeOnComplete: 500 }
+          ).catch((err) => {
+            this.logger.error(`Failed to enqueue user activity log: ${err.message}`);
           });
         }
       }),

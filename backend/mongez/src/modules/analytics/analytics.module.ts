@@ -11,6 +11,7 @@ import { QUEUE_NAMES } from '../../infrastructure/queue/queue.constants';
   imports: [
     MessagingModule,
     BullModule.registerQueue({ name: QUEUE_NAMES.ANALYTICS_FUNNEL }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.ACTIVITY_LOG }),
   ],
   providers: [AnalyticsService, AnalyticsRefreshService, AnalyticsFunnelPlaceholderProcessor],
   controllers: [AnalyticsController],

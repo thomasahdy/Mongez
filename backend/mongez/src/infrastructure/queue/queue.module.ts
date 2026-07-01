@@ -31,6 +31,7 @@ import { QUEUE_NAMES } from './queue.constants';
       { name: QUEUE_NAMES.EMAILS },
       { name: QUEUE_NAMES.REPORTS },
       { name: QUEUE_NAMES.ANALYTICS_FUNNEL },
+      { name: QUEUE_NAMES.ACTIVITY_LOG },
     ),
   ],
   providers: [NotificationsQueueEventsListener, AIProcessingQueueEventsListener],

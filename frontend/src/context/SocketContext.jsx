@@ -83,6 +83,7 @@ export const SocketProvider = ({ children }) => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["board"] });
+      queryClient.invalidateQueries({ queryKey: ["SpaceAnalytics"] });
     });
 
     socketInstance.on("task:updated", (data) => {
@@ -91,18 +92,21 @@ export const SocketProvider = ({ children }) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", data.id] });
       queryClient.invalidateQueries({ queryKey: ["task", data.id] });
       queryClient.invalidateQueries({ queryKey: ["board"] });
+      queryClient.invalidateQueries({ queryKey: ["SpaceAnalytics"] });
     });
 
     socketInstance.on("task:moved", (data) => {
       console.log("Realtime Task Moved:", data);
       queryClient.invalidateQueries({ queryKey: ["boards"] });
       queryClient.invalidateQueries({ queryKey: ["board"] });
+      queryClient.invalidateQueries({ queryKey: ["SpaceAnalytics"] });
     });
 
     socketInstance.on("task:archived", (data) => {
       console.log("Realtime Task Archived:", data);
       queryClient.invalidateQueries({ queryKey: ["boards"] });
       queryClient.invalidateQueries({ queryKey: ["board"] });
+      queryClient.invalidateQueries({ queryKey: ["SpaceAnalytics"] });
     });
 
     socketInstance.on("task:seen", (data) => {
@@ -174,6 +178,14 @@ export const SocketProvider = ({ children }) => {
     socketInstance.on("notification:count", (data) => {
       console.log("Realtime Notification Count:", data);
       queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count", data.spaceId || ""] });
+    });
+
+    socketInstance.on("export:ready", (data) => {
+      console.log("Realtime Export Ready:", data);
+      showToastBridge(data.message, "success");
+      if (data.url && typeof window !== "undefined") {
+        window.open(data.url, "_blank");
+      }
     });
 
     socketInstance.on("notification:read", (data) => {

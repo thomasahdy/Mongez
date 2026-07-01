@@ -60,7 +60,7 @@ const AINudge = ({ onDismiss }) => {
         <button
           type="button"
           onClick={closeNudge}
-          className="text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
+          className="text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200 dark:text-slate-500"
           aria-label={t("aiPreview.nudge.dismiss")}
         >
           <i className="fa-solid fa-xmark" />
@@ -78,14 +78,14 @@ const AINudge = ({ onDismiss }) => {
         <button
           type="button"
           onClick={snoozeNudge}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-medium text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700"
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-medium text-slate-500 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700"
         >
           {t("aiPreview.nudge.tomorrow")}
         </button>
         <button
           type="button"
           onClick={closeNudge}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-medium text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700"
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-medium text-slate-500 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700"
         >
           {t("aiPreview.nudge.notNow")}
         </button>

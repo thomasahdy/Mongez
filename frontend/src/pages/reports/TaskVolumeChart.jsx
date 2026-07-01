@@ -11,11 +11,11 @@ import { useCompletion } from "../../hooks/api/useAnalytics";
 
 const BAR_VIEW_TABS = ["week", "month"];
 
-const TaskVolumeChart = ({ spaceId}) => {
+const TaskVolumeChart = ({ spaceId, period }) => {
   const { t } = useTranslation();
-  const [activeView, setActiveView] = useState("week");
+  const [activeView, setActiveView] = useState("week"); // UI toggle
 
-  const { data, isLoading, error } = useCompletion(spaceId, activeView);
+  const { data, isLoading, error } = useCompletion(spaceId, period);
 
   // normalize safely
   const chartData = Array.isArray(data) ? data : [];

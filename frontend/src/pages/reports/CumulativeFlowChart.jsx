@@ -5,13 +5,16 @@ import {
 } from "recharts";
 import ChartCard from '../../components/reports/ChartCard';
 import AreaTooltip from '../../components/reports/AreaToolTip';
-const CumulativeFlowChart = ({ data }) => {
+import { useCumulativeFlow } from "../../hooks/api/useAnalytics";
+
+const CumulativeFlowChart = ({ spaceId, period }) => {
   const { t } = useTranslation();
+  const { data: flowData = [], isLoading } = useCumulativeFlow(spaceId, period);
 
   return (
     <ChartCard title={t("reportsPage.cumulativeFlow")}>
       <ResponsiveContainer width="100%" height={220}>
-        <AreaChart data={data}>
+        <AreaChart data={flowData}>
           <defs>
             <linearGradient id="gradDone" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%"  stopColor="#10b981" stopOpacity={0.3} />

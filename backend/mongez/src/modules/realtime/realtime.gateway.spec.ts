@@ -216,6 +216,7 @@ describe('RealtimeGateway', () => {
 
       expect(cacheService.hset).toHaveBeenCalledWith('presence:task:task-1:states', 'user-1', 'TYPING');
       expect(mockServer.emit).toHaveBeenCalledWith('task:typing-status', {
+        taskId: 'task-1',
         userId: 'user-1',
         name: 'Alice',
         isTyping: true,

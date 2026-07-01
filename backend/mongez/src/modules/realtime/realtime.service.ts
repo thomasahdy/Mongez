@@ -16,11 +16,7 @@ export class RealtimeService {
   }
 
   emitToBoard(boardId: string, event: string, payload: any) {
-    if (this.server) {
-      this.emitToBoardDirect(boardId, event, payload);
-    } else {
-      this.publishToRedis('board', boardId, event, payload);
-    }
+    this.publishToRedis('board', boardId, event, payload);
   }
 
   emitToBoardDirect(boardId: string, event: string, payload: any) {
@@ -28,11 +24,7 @@ export class RealtimeService {
   }
 
   emitToSpace(spaceId: string, event: string, payload: any) {
-    if (this.server) {
-      this.emitToSpaceDirect(spaceId, event, payload);
-    } else {
-      this.publishToRedis('space', spaceId, event, payload);
-    }
+    this.publishToRedis('space', spaceId, event, payload);
   }
 
   emitToSpaceDirect(spaceId: string, event: string, payload: any) {
@@ -40,22 +32,25 @@ export class RealtimeService {
   }
 
   emitToUser(userId: string, event: string, payload: any) {
-    if (this.server) {
-      this.emitToUserDirect(userId, event, payload);
-    } else {
-      this.publishToRedis('user', userId, event, payload);
-    }
+    this.publishToRedis('user', userId, event, payload);
   }
 
   emitToUserDirect(userId: string, event: string, payload: any) {
     this.server?.to(`user:${userId}`).emit(event, payload);
   }
 
-  private publishToRedis(type: 'user' | 'space' | 'board', targetId: string, event: string, payload: any) {
+  emitToTask(taskId: string, event: string, payload: any) {
+    this.publishToRedis('task', taskId, event, payload);
+  }
+
+  emitToTaskDirect(taskId: string, event: string, payload: any) {
+    this.server?.to(`task:${taskId}`).emit(event, payload);
+  }
+
+  private publishToRedis(type: 'user' | 'space' | 'board' | 'task', targetId: string, event: string, payload: any) {
     const msg = JSON.stringify({ type, targetId, event, payload });
     this.redis.publish('realtime:events', msg).catch(err => {
       console.error('Failed to publish realtime event to Redis:', err);
     });
   }
 }
-

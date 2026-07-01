@@ -5,6 +5,7 @@ import { QUEUE_NAMES } from '../../../infrastructure/queue/queue.constants';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { TraceContextService } from '../../../infrastructure/logging/trace-context.service';
+import { StorageService } from '../../../infrastructure/storage/storage.service';
 import { randomUUID } from 'crypto';
 
 @Processor(QUEUE_NAMES.WORKSPACE_EXPORT)
@@ -15,6 +16,7 @@ export class WorkspaceExportProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly traceContext: TraceContextService,
+    private readonly storageService: StorageService,
   ) {
     super();
   }
@@ -79,6 +81,11 @@ export class WorkspaceExportProcessor extends WorkerHost {
 
         this.logger.log(`Workspace export complete for space ${spaceId}. Size: ${dataSizeKb} KB`);
 
+        // Save export JSON to storage
+        const key = `exports/${spaceId}-${randomUUID()}.json`;
+        await this.storageService.upload(key, Buffer.from(serialized), 'application/json');
+        const downloadUrl = await this.storageService.getSignedUrl(key, 86400 * 7); // 7 days expiry
+
         await this.notifications.queueNotification({
           userId,
           spaceId,
@@ -89,7 +96,7 @@ export class WorkspaceExportProcessor extends WorkerHost {
           body: `Your export file is ready. Total size: ${dataSizeKb} KB. Click to download.`,
           entityType: 'space',
           entityId: spaceId,
-          metadata: { sizeKb: dataSizeKb },
+          metadata: { sizeKb: dataSizeKb, downloadUrl },
         });
 
       } catch (err: any) {
