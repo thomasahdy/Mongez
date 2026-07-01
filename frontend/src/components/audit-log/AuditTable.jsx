@@ -13,7 +13,7 @@ const AuditTable = ({
     const { t } = useTranslation();
     const { dir } = useLocaleDirection();
 return (
-    <div className="audit-table-wrap" dir={dir}>
+    <div className="audit-table-wrap " dir={dir}>
         <table className="audit-table">
             <thead>
                 <tr>
