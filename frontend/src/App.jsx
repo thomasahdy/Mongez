@@ -10,7 +10,6 @@ import Home from "./pages/home/Home";
 import { useTranslation } from "react-i18next";
 import AcceptInvitationPage from "./pages/AcceptInvitationPage.jsx/AcceptInvitationPage";
 import { useSelector } from "react-redux";
-import { useEffect } from "react";
 
 const LandingPage = lazy(() => import("./pages/landing/LandingPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));

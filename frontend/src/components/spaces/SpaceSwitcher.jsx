@@ -3,13 +3,14 @@ import { useTranslation } from "react-i18next";
 import { useSpaces, useSetActiveSpace } from "../../hooks/api/useSpaces";
 import SpaceSwitcherSkeleton from "./SpaceSwitcherSkeleton";
 import { useLocaleDirection } from "../../hooks/useLocaleDirection";
+import { useAppContext } from "../../pages/AppContext";
 
 export default function SpaceSwitcher() {
   const { t } = useTranslation();
   const { isRTL } = useLocaleDirection();
   const { data, isLoading } = useSpaces();
   const { mutate: selectSpace } = useSetActiveSpace();
-  const [activeSpace, setActiveSpaceState] = useState(null);
+  const {activeSpace, setActiveSpace} = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -22,7 +23,7 @@ export default function SpaceSwitcher() {
       const apiActiveId = data.activeSpaceId;
       const activeId = savedActiveId || apiActiveId || spacesList[0]?.id;
       const active = spacesList.find((space) => space.id === activeId) || spacesList[0];
-      setActiveSpaceState(active);
+      setActiveSpace(active.id);
 
       if (active && active.id !== savedActiveId) {
         localStorage.setItem("activeSpaceId", active.id);
@@ -49,7 +50,7 @@ export default function SpaceSwitcher() {
 
     selectSpace(space.id, {
       onSuccess: () => {
-        setActiveSpaceState(space);
+        setActiveSpace(space.id);
         setIsOpen(false);
         window.location.reload();
       },

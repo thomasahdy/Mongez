@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../../components/ui/Button";
 import { useSpaces } from "../../hooks/api/useSpaces";
@@ -31,7 +31,7 @@ const ReportsToolbar = ({selectedSpace, setSelectedSpace, activePeriod, setActiv
     departments: space.departments || [],
   }));
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!selectedSpace?.id && normalizedSpaces.length > 0) {
       setSelectedSpace(normalizedSpaces[0]);
     }
