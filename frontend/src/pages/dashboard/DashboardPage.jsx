@@ -564,9 +564,9 @@ function DashboardPage() {
               <i className="fa-regular fa-calendar text-slate-400 dark:text-slate-500" />
               {t("dashboard.upcomingDeadlines")}
             </h2>
-            {upcomingItems.length ? (
+            {upcomingDeadlines.length ? (
               <div className="flex flex-col gap-3">
-                {upcomingItems.map((item) => (
+                {upcomingDeadlines.map((item) => (
                   <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 p-3 text-sm dark:border-slate-700/50 dark:bg-slate-900/20" key={item.id}>
                     <div className="text-xs font-bold text-blue-600 dark:text-blue-400 shrink-0">{formatDate(item.date, locale)}</div>
                     <div className="flex-1 min-w-0 text-slate-700 dark:text-slate-200 truncate">

@@ -6,8 +6,8 @@ import { setTokens, clearTokens, getRefreshToken } from "./tokenService";
  */
 export const login = async (data) => {
   const response = await apiClient.post("/auth/login", data);
-  const { accessToken } = response.data;
-  setTokens({ accessToken });
+  const { accessToken, refreshToken } = response.data;
+  setTokens({ accessToken, refreshToken });
   return response.data;
 };
 
@@ -16,8 +16,8 @@ export const login = async (data) => {
  */
 export const register = async (data) => {
   const response = await apiClient.post("/auth/register", data);
-  const { accessToken } = response.data;
-  setTokens({ accessToken });
+  const { accessToken, refreshToken } = response.data;
+  setTokens({ accessToken, refreshToken });
   return response.data;
 };
 

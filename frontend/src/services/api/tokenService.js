@@ -5,9 +5,17 @@ export const getAccessToken = () => {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
 };
 
-export const setTokens = ({ accessToken }) => {
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+export const getRefreshToken = () => {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+};
+
+export const setTokens = ({ accessToken, refreshToken }) => {
+  if (accessToken) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  }
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  }
 };
 
 export const clearTokens = () => {

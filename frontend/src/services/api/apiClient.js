@@ -101,11 +101,12 @@ apiClient.interceptors.response.use(
           { withCredentials: true }
         );
 
-        const { accessToken } =
+        const { accessToken, refreshToken } =
           response.data?.data ?? response.data;
 
         setTokens({
           accessToken,
+          refreshToken,
         });
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
