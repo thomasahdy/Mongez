@@ -19,8 +19,13 @@ export class IntegrationsService {
   ) {}
 
   private getEncryptionKey(): Buffer {
-    const key = this.config.get<string>('INTEGRATION_ENCRYPTION_KEY') || 'dev-encryption-key-32-chars-long';
-    return crypto.createHash('sha256').update(key).digest();
+    const key = this.config.get<string>('INTEGRATION_ENCRYPTION_KEY');
+    // Never encrypt real integration tokens with the shared dev key in production.
+    // (Startup env validation also enforces this, but guard defensively here too.)
+    if (process.env.NODE_ENV === 'production' && (!key || key === 'dev-encryption-key-32-chars-long')) {
+      throw new Error('INTEGRATION_ENCRYPTION_KEY must be configured with a strong secret in production');
+    }
+    return crypto.createHash('sha256').update(key || 'dev-encryption-key-32-chars-long').digest();
   }
 
   encrypt(text: string): string {

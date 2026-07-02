@@ -17,7 +17,12 @@ export const getDashboardActivity = async (spaceId) => {
   const response = await apiClient.get(`/spaces/${spaceId}/audit-logs`, {
     params: { spaceId, limit: 6 },
   });
-  return response.data?.data?.items || response.data?.logs || [];
+  // Backend returns a raw array of audit logs; keep the paginated shapes as fallbacks.
+  return (
+    response.data?.data?.items ||
+    response.data?.logs ||
+    (Array.isArray(response.data) ? response.data : [])
+  );
 };
 
 export const getDashboardTaskCompletion = async (spaceId, period = "month") => {

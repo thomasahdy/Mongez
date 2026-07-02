@@ -16,7 +16,7 @@ export class OnboardingController {
 
   @Post('setup')
   async setup(@Req() req: any, @Body() dto: OnboardingSetupDto) {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const createSpaceDto: CreateSpaceDto = {
       name: dto.name,
       description: dto.description,

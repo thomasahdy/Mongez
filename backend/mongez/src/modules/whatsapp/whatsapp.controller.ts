@@ -214,11 +214,13 @@ export class WhatsAppController {
     @Param('spaceId') spaceId: string,
     @Body() dto: SetupWhatsappDto,
   ) {
-    const encryptedToken = this.encryption.encrypt(dto.accessToken);
+    const encryptedToken = dto.accessToken
+      ? this.encryption.encrypt(dto.accessToken)
+      : undefined;
     const account = await this.repo.upsertAccount(spaceId, {
       phoneNumberId: dto.phoneNumberId,
-      wabaId: dto.wabaId,
-      accessToken: encryptedToken,
+      ...(dto.wabaId !== undefined ? { wabaId: dto.wabaId } : {}),
+      ...(encryptedToken !== undefined ? { accessToken: encryptedToken } : {}),
       displayName: dto.displayName,
       webhookSecret: dto.webhookSecret,
       isActive: dto.isActive ?? true,

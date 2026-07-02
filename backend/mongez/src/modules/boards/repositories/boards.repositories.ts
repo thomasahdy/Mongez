@@ -7,18 +7,22 @@ export class BoardRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private readonly BOARD_INCLUDE = {
-    columns: { orderBy: { position: 'asc' as const } },
-    _count: { select: { tasks: true } },
+    columns: {
+      where: { deletedAt: null },
+      orderBy: { position: 'asc' as const },
+    },
+    _count: { select: { tasks: { where: { deletedAt: null } } } },
     department: { select: { id: true, name: true, spaceId: true } },
   };
 
   async findById(id: string) {
-    return this.prisma.board.findUnique({ where: { id }, include: this.BOARD_INCLUDE });
+    // Exclude soft-deleted (trashed) boards from normal reads.
+    return this.prisma.board.findFirst({ where: { id, deletedAt: null }, include: this.BOARD_INCLUDE });
   }
 
   async findByDepartment(departmentId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
-    const where = { departmentId, isArchived: false };
+    const where = { departmentId, isArchived: false, deletedAt: null };
     const [data, total] = await Promise.all([
       this.prisma.board.findMany({ where, skip, take: limit, include: this.BOARD_INCLUDE, orderBy: { createdAt: 'asc' } }),
       this.prisma.board.count({ where }),
@@ -79,7 +83,7 @@ export class ColumnRepository {
   }
 
   async delete(id: string) {
-    const taskCount = await this.prisma.task.count({ where: { columnId: id, isArchived: false } });
+    const taskCount = await this.prisma.task.count({ where: { columnId: id, isArchived: false, deletedAt: null } });
     if (taskCount > 0) {
       throw new BadRequestException(
         `Cannot delete column: it contains ${taskCount} active tasks. Move or archive tasks first.`,

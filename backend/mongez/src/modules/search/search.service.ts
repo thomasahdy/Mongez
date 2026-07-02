@@ -63,6 +63,7 @@ export class SearchService {
       WHERE d."spaceId" = ${spaceId}
         AND t."searchVector" @@ plainto_tsquery(${query})
         AND t."isArchived" = false
+        AND t."deletedAt" IS NULL
         ${options.assigneeId ? Prisma.sql`AND EXISTS (SELECT 1 FROM "task_assignments" ta WHERE ta."taskId" = t.id AND ta."userId" = ${options.assigneeId})` : Prisma.empty}
         ${options.status ? Prisma.sql`AND t.status = ${options.status}::\"TaskStatus\"` : Prisma.empty}
         ${options.overdue ? Prisma.sql`AND t."dueDate" < NOW() AND t.status NOT IN ('DONE','CANCELLED')` : Prisma.empty}
@@ -76,6 +77,7 @@ export class SearchService {
         where: {
           board: { department: { spaceId } },
           isArchived: false,
+          deletedAt: null,
           ...(options.status && { status: options.status as any }),
           ...(options.assigneeId && { assignments: { some: { userId: options.assigneeId } } }),
           ...(options.overdue && {
@@ -200,6 +202,7 @@ export class SearchService {
         where: {
           board: { department: { spaceId } },
           isArchived: false,
+          deletedAt: null,
           title: { startsWith: query, mode: 'insensitive' },
         },
         select: { id: true, title: true },
@@ -235,7 +238,7 @@ export class SearchService {
         take: 50,
       }),
       this.prisma.task.findMany({
-        where: { board: { department: { spaceId } } },
+        where: { board: { department: { spaceId } }, deletedAt: null },
         distinct: ['status'],
         select: { status: true },
       }),

@@ -20,6 +20,7 @@ import { WorkflowInitiatedEvent, WorkflowTimeoutEvent, WorkflowResolvedEvent } f
 import { DelegationService } from '../delegation/delegation.service';
 import { SlaService } from '../sla/sla.service';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { SpaceAccessService } from '../../common/services/space-access.service';
 
 type Decision = 'APPROVED' | 'REJECTED' | 'DELEGATED';
 
@@ -73,6 +74,7 @@ export class WorkflowService {
     private readonly delegationService: DelegationService,
     private readonly slaService: SlaService,
     private readonly prisma: PrismaService,
+    private readonly spaceAccess: SpaceAccessService,
   ) {}
 
   // ── Definitions ──────────────────────────────────────────────
@@ -92,9 +94,18 @@ export class WorkflowService {
     return this.repo.createDefinition(spaceId, createdBy, data.name, data.triggerType, data.steps);
   }
 
-  async updateDefinition(id: string, data: Partial<{ name: string; isActive: boolean }>) {
+  async updateDefinition(
+    id: string,
+    data: Partial<{ name: string; isActive: boolean }>,
+    userId?: string,
+  ) {
     const def = await this.repo.findDefinitionById(id);
     if (!def) throw new NotFoundException('Workflow definition not found.');
+    // Tenant isolation: the definition may belong to another space than the
+    // caller's; bind the (permission-gated) update to the definition's space.
+    if (userId) {
+      await this.spaceAccess.assertMember(userId, def.spaceId);
+    }
     return this.repo.updateDefinition(id, data);
   }
 
@@ -352,9 +363,13 @@ export class WorkflowService {
     return paginate(data, total, filters.page, filters.limit);
   }
 
-  async getInstanceHistory(instanceId: string) {
+  async getInstanceHistory(instanceId: string, userId?: string) {
     const instance = await this.repo.findInstanceById(instanceId);
     if (!instance) throw new NotFoundException('Workflow instance not found.');
+    // Tenant isolation: only members of the instance's space may read its history.
+    if (userId) {
+      await this.spaceAccess.assertMember(userId, (instance as any).spaceId);
+    }
     return instance;
   }
 
@@ -586,4 +601,4 @@ export class WorkflowService {
 
     return false;
   }
-}
+}

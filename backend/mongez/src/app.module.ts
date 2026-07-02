@@ -9,6 +9,7 @@ import authConfig from './config/auth.config';
 import aiConfig from './config/ai.config';
 import whatsappConfig from './config/whatsapp.config';
 import telegramConfig from './config/telegram.config';
+import { validateEnv } from './config/env.validation';
 import { AIModule } from './modules/ai/ai.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { HealthModule } from './common/health/health.module';
@@ -61,6 +62,7 @@ import { StorageModule } from './infrastructure/storage/storage.module';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig, databaseConfig, authConfig, aiConfig, whatsappConfig, telegramConfig],
+      validate: validateEnv,
     }),
 
     // Rate limiting

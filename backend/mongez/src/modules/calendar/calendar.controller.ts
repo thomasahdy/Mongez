@@ -13,6 +13,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SpaceMemberGuard } from '../spaces/guards/space-member.guard';
 import { CalendarService } from './services/calendar.service';
 import { GoogleCalendarService } from './services/google-calendar.service';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -29,7 +30,7 @@ export class CalendarController {
 
   @Get('events')
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
   @ApiOperation({ summary: 'Get unified calendar timeline events' })
   async getEvents(
     @Req() req: any,
@@ -48,7 +49,7 @@ export class CalendarController {
 
   @Post('events')
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
   @ApiOperation({ summary: 'Create a custom event' })
   async createEvent(
     @Req() req: any,
@@ -62,7 +63,7 @@ export class CalendarController {
 
   @Patch('events/:id')
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
   @ApiOperation({ summary: 'Update a custom event' })
   async updateEvent(
     @Req() req: any,
@@ -77,7 +78,7 @@ export class CalendarController {
 
   @Delete('events/:id')
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
   @ApiOperation({ summary: 'Delete a custom event' })
   async deleteEvent(
     @Req() req: any,
@@ -95,7 +96,7 @@ export class CalendarController {
 
   @Get('google/status')
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
   @ApiOperation({ summary: 'Check Google Calendar integration status' })
   async getGoogleStatus(
     @Req() req: any,
@@ -106,7 +107,7 @@ export class CalendarController {
 
   @Post('google/connect')
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
   @ApiOperation({ summary: 'Generate Google OAuth connection URL' })
   async connectGoogle(
     @Req() req: any,
@@ -145,7 +146,7 @@ export class CalendarController {
 
   @Post('google/sync')
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SpaceMemberGuard)
   @ApiOperation({ summary: 'Trigger manual Google Calendar sync' })
   async syncGoogle(
     @Req() req: any,

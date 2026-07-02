@@ -60,18 +60,55 @@ export class AuthService {
     // Hash password
     const hashedPassword = await this.passwordService.hash(dto.password);
 
-    // Create and save user entity
+    // Build user entity
     const name = (dto as any).name || '';
     const user = User.create(dto.email, hashedPassword, name);
-    await this.userRepo.save(user);
 
-    // Create a default FREE user subscription
-    await this.prisma.subscription.create({
-      data: {
-        userId: user.id,
-        tier: 'FREE',
-        startsAt: new Date(),
-      },
+    // Atomically create user + subscription in one transaction.
+    // If the subscription insert fails the user row is rolled back,
+    // preventing orphan users with no subscription tier.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.upsert({
+        where: { id: user.id },
+        update: {
+          email: user.email,
+          passwordHash: user.password ?? null,
+          provider: user.provider ?? null,
+          providerId: user.providerId ?? null,
+          name: user.name,
+          avatarUrl: user.avatarUrl ?? null,
+          status: user.status,
+          isVerified: user.isVerified,
+          failedAttempts: user.failedAttempts,
+          lockedUntil: user.lockedUntil ?? null,
+          lastLoginAt: user.lastLoginAt ?? null,
+          updatedAt: new Date(),
+        },
+        create: {
+          id: user.id,
+          email: user.email,
+          passwordHash: user.password ?? null,
+          provider: user.provider ?? null,
+          providerId: user.providerId ?? null,
+          name: user.name,
+          avatarUrl: user.avatarUrl ?? null,
+          status: user.status,
+          isVerified: user.isVerified,
+          failedAttempts: user.failedAttempts,
+          lockedUntil: user.lockedUntil ?? null,
+          lastLoginAt: user.lastLoginAt ?? null,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+      });
+
+      await tx.subscription.create({
+        data: {
+          userId: user.id,
+          tier: 'FREE',
+          startsAt: new Date(),
+        },
+      });
     });
 
     // Generate tokens
@@ -82,7 +119,7 @@ export class AuthService {
     // Create session with limits
     await this.sessionService.createSession(user.id, refreshToken, refreshTokenExpiresAt);
 
-    // Log registration
+    // Log registration (outside transaction — audit loss is acceptable here)
     await this.userLogRepo.create({
       userId: user.id,
       action: AuditAction.USER_REGISTERED,

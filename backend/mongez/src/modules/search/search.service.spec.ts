@@ -106,6 +106,7 @@ describe('SearchService', () => {
         where: {
           board: { department: { spaceId: 'space-1' } },
           isArchived: false,
+          deletedAt: null,
           OR: [
             { title: { contains: 'short', mode: 'insensitive' } },
             { description: { contains: 'short', mode: 'insensitive' } },
@@ -274,6 +275,7 @@ describe('SearchService', () => {
         where: {
           board: { department: { spaceId: 'space-1' } },
           isArchived: false,
+          deletedAt: null,
           title: { startsWith: 'Start', mode: 'insensitive' },
         },
         select: { id: true, title: true },
@@ -315,7 +317,7 @@ describe('SearchService', () => {
       });
 
       expect(prisma.task.findMany).toHaveBeenCalledWith({
-        where: { board: { department: { spaceId: 'space-1' } } },
+        where: { board: { department: { spaceId: 'space-1' } }, deletedAt: null },
         distinct: ['status'],
         select: { status: true },
       });

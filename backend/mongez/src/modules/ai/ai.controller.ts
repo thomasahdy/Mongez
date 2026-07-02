@@ -48,6 +48,17 @@ export class AIController {
     return this.aiService.getDashboard(spaceId, userId);
   }
 
+  /**
+   * GET /ai/context?spaceId=xxx — Lightweight workspace context for the AI assistant sidebar.
+   * Returns recent active tasks + board list so the FE can pre-populate context without
+   * requiring the user to manually select items.
+   */
+  @Get('context')
+  async getContext(@Query('spaceId') spaceId: string, @Req() req: Request) {
+    const userId = (req as any).user?.userId;
+    return this.aiService.getContext(spaceId, userId);
+  }
+
   // ─── Chat ──────────────────────────────────────────────────────────────────
 
   /** POST /ai/chat — Send a message, receive AI response (blocking) */

@@ -11,9 +11,13 @@ describe('Decisions Module', () => {
     prisma = {
       decisionRecord: {
         findMany: jest.fn(),
+        findUnique: jest.fn(),
         delete: jest.fn(),
         create: jest.fn(),
         upsert: jest.fn(),
+      },
+      membership: {
+        findFirst: jest.fn(),
       },
       workflowInstance: {
         findUnique: jest.fn(),
@@ -38,15 +42,49 @@ describe('Decisions Module', () => {
       expect(result).toEqual(mockList);
     });
 
-    it('should delete a decision record by id', async () => {
+    it('should delete a decision record when caller is an OWNER/ADMIN of its space', async () => {
+      (prisma.decisionRecord.findUnique as jest.Mock).mockResolvedValue({ id: 'dec-1', spaceId: 'space-1' } as any);
+      (prisma.membership.findFirst as jest.Mock).mockResolvedValue({ role: { name: 'OWNER' } } as any);
       prisma.decisionRecord.delete.mockResolvedValue({ id: 'dec-1' } as any);
 
-      const result = await service.deleteDecision('dec-1');
+      const result = await service.deleteDecision('dec-1', 'user-1');
 
+      expect(prisma.membership.findFirst).toHaveBeenCalledWith({
+        where: { userId: 'user-1', spaceId: 'space-1' },
+        select: { role: { select: { name: true } } },
+      });
       expect(prisma.decisionRecord.delete).toHaveBeenCalledWith({
         where: { id: 'dec-1' },
       });
       expect(result).toEqual({ id: 'dec-1' });
+    });
+
+    it('should reject deletion by a non-member of the space (tenant isolation)', async () => {
+      (prisma.decisionRecord.findUnique as jest.Mock).mockResolvedValue({ id: 'dec-1', spaceId: 'space-1' } as any);
+      (prisma.membership.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.deleteDecision('dec-1', 'attacker')).rejects.toThrow(
+        'You are not a member of this space',
+      );
+      expect(prisma.decisionRecord.delete).not.toHaveBeenCalled();
+    });
+
+    it('should reject deletion by a non-privileged member (VIEWER)', async () => {
+      (prisma.decisionRecord.findUnique as jest.Mock).mockResolvedValue({ id: 'dec-1', spaceId: 'space-1' } as any);
+      (prisma.membership.findFirst as jest.Mock).mockResolvedValue({ role: { name: 'VIEWER' } } as any);
+
+      await expect(service.deleteDecision('dec-1', 'viewer')).rejects.toThrow(
+        'This action requires space role: OWNER or ADMIN',
+      );
+      expect(prisma.decisionRecord.delete).not.toHaveBeenCalled();
+    });
+
+    it('should return 404 when the decision record does not exist', async () => {
+      (prisma.decisionRecord.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.deleteDecision('missing', 'user-1')).rejects.toThrow(
+        'Decision record not found',
+      );
     });
   });
 

@@ -43,6 +43,14 @@ describe('TasksService', () => {
       move: jest.fn(),
       archive: jest.fn(),
       search: jest.fn(),
+      // createTask() resolves the board's real space via this internal prisma handle.
+      prisma: {
+        board: {
+          findUnique: jest.fn().mockResolvedValue({
+            department: { space: { id: 'space-1', prefix: 'PROJ' } },
+          }),
+        },
+      },
     } as any;
 
     commentRepo = {
@@ -161,6 +169,24 @@ describe('TasksService', () => {
 
       await expect(service.createTask(createDto, 'user-1', 'space-1', 'PROJ')).rejects.toThrow('Queue connection failed');
       expect(eventBus.publish).not.toHaveBeenCalled();
+    });
+
+    it('UT-TASK-SVC-005-c: should reject when board does not belong to the supplied space (IDOR)', async () => {
+      // Board actually lives in space-2, but caller claims space-1.
+      taskRepo.prisma.board.findUnique.mockResolvedValue({
+        department: { space: { id: 'space-2', prefix: 'OTHER' } },
+      });
+
+      await expect(service.createTask(createDto, 'user-1', 'space-1', 'PROJ')).rejects.toThrow(ForbiddenException);
+      expect(taskRepo.create).not.toHaveBeenCalled();
+      expect(eventBus.publish).not.toHaveBeenCalled();
+    });
+
+    it('UT-TASK-SVC-005-d: should throw NotFoundException when board is missing', async () => {
+      taskRepo.prisma.board.findUnique.mockResolvedValue(null);
+
+      await expect(service.createTask(createDto, 'user-1', 'space-1', 'PROJ')).rejects.toThrow(NotFoundException);
+      expect(taskRepo.create).not.toHaveBeenCalled();
     });
   });
 

@@ -3,6 +3,7 @@ import { WorkflowController } from './workflow.controller';
 import { WorkflowService } from './workflow.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { SpaceMemberGuard } from '../spaces/guards/space-member.guard';
 
 describe('WorkflowController', () => {
   let controller: WorkflowController;
@@ -33,6 +34,8 @@ describe('WorkflowController', () => {
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(SpaceMemberGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -67,9 +70,9 @@ describe('WorkflowController', () => {
       const body = { isActive: false };
       service.updateDefinition.mockResolvedValue({ id: 'def-1', isActive: false } as any);
 
-      const result = await controller.updateDefinition('def-1', body);
+      const result = await controller.updateDefinition(mockRequest, 'def-1', body);
 
-      expect(service.updateDefinition).toHaveBeenCalledWith('def-1', body);
+      expect(service.updateDefinition).toHaveBeenCalledWith('def-1', body, 'user-1');
       expect(result.isActive).toBe(false);
     });
   });
@@ -114,9 +117,9 @@ describe('WorkflowController', () => {
     it('UT-WORKFLOW-CTRL-007: should fetch history log of workflow instance', async () => {
       service.getInstanceHistory.mockResolvedValue({ id: 'instance-1' } as any);
 
-      const result = await controller.getInstance('instance-1');
+      const result = await controller.getInstance(mockRequest, 'instance-1');
 
-      expect(service.getInstanceHistory).toHaveBeenCalledWith('instance-1');
+      expect(service.getInstanceHistory).toHaveBeenCalledWith('instance-1', 'user-1');
       expect(result.id).toBe('instance-1');
     });
   });

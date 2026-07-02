@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Delete, Body, Query, Param, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SpaceMemberGuard } from '../spaces/guards/space-member.guard';
 import { SavedViewsService } from './saved-views.service';
 import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
@@ -30,6 +31,7 @@ export class SavedViewsController {
   constructor(private readonly savedViewsService: SavedViewsService) {}
 
   @Post()
+  @UseGuards(SpaceMemberGuard)
   @ApiOperation({ summary: 'Save a custom filtered board view configuration' })
   async create(@Req() req: any, @Body() dto: CreateSavedViewDto) {
     const userId = req.user.id;
@@ -44,6 +46,7 @@ export class SavedViewsController {
   }
 
   @Get()
+  @UseGuards(SpaceMemberGuard)
   @ApiOperation({ summary: 'Get saved board views for a space' })
   async getViews(@Req() req: any, @Query('spaceId') spaceId: string) {
     const userId = req.user.id;

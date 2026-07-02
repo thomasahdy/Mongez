@@ -58,7 +58,8 @@ describe('BoardsService', () => {
       softDeleteColumn: jest.fn(),
     } as any;
 
-    service = new BoardsService(boardRepo, columnRepo, cache, prisma, subscriptions, trashService);
+    const spaceAccess = { assertMember: jest.fn().mockResolvedValue('OWNER') } as any;
+    service = new BoardsService(boardRepo, columnRepo, cache, prisma, subscriptions, trashService, spaceAccess);
   });
 
   // ─── UT-BOARD-SVC-001: getById ──────────────────────────────

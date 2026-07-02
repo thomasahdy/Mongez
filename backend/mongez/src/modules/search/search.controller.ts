@@ -1,12 +1,13 @@
 import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SpaceMemberGuard } from '../spaces/guards/space-member.guard';
 import { SearchService } from './search.service';
 import { SearchOptionsDto } from './dto/search-options.dto';
 
 @ApiTags('Search')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SpaceMemberGuard)
 @Controller()
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}

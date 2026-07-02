@@ -49,7 +49,8 @@ export class ApprovalsService {
 
   async resolve(id: string, reviewerId: string, dto: ResolveApprovalDto) {
     const status = dto.status as ApprovalStatus;
-    const approval = await this.approvalRepo.resolve(id, reviewerId, status, dto.comment);
+    const resolutionComment = dto.comment ?? dto.reason;
+    const approval = await this.approvalRepo.resolve(id, reviewerId, status, resolutionComment);
 
     // Notify requester
     await this.notificationsQueue.add(
@@ -58,7 +59,7 @@ export class ApprovalsService {
         userId: approval.requestedById,
         type: 'APPROVAL_RESOLVED',
         title: `Task ${dto.status === 'APPROVED' ? 'Approved' : 'Rejected'}`,
-        body: dto.comment || `Your approval request has been ${dto.status.toLowerCase()}`,
+        body: resolutionComment || `Your approval request has been ${dto.status.toLowerCase()}`,
         deepLink: `/tasks/${approval.taskId}`,
       },
       {

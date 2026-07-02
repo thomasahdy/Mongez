@@ -41,7 +41,8 @@ export class TaskRepository {
   };
 
   async findById(id: string) {
-    return this.prisma.task.findUnique({ where: { id }, include: this.TASK_INCLUDE });
+    // Soft-deleted (trashed) tasks must not surface through normal reads.
+    return this.prisma.task.findFirst({ where: { id, deletedAt: null }, include: this.TASK_INCLUDE });
   }
 
   async findByBoard(boardId: string, filters: FilterTasksDto) {
@@ -52,6 +53,7 @@ export class TaskRepository {
 
     const where: Prisma.TaskWhereInput & { searchVector?: any } = {
       boardId,
+      deletedAt: null,
       isArchived: includeArchived ? undefined : false,
       ...(status?.length && { status: { in: status } }),
       ...(priority?.length && { priority: { in: priority } }),
@@ -290,6 +292,7 @@ export class TaskRepository {
       const where: Prisma.TaskWhereInput = {
         board: { department: { spaceId } },
         isArchived: false,
+        deletedAt: null,
       };
       const [data, total] = await Promise.all([
         this.prisma.task.findMany({ where, skip: skipNum, take: limitNum, include: this.TASK_INCLUDE }),
@@ -306,6 +309,7 @@ export class TaskRepository {
       JOIN "departments" d ON b."departmentId" = d.id
       WHERE d."spaceId" = ${spaceId}
         AND t."isArchived" = false
+        AND t."deletedAt" IS NULL
         AND t."searchVector" @@ plainto_tsquery(${query})
     `;
 
@@ -317,6 +321,7 @@ export class TaskRepository {
       const where: Prisma.TaskWhereInput = {
         board: { department: { spaceId } },
         isArchived: false,
+        deletedAt: null,
         OR: [
           { title: { contains: query, mode: 'insensitive' } },
           { description: { contains: query, mode: 'insensitive' } },
@@ -343,6 +348,7 @@ export class TaskRepository {
     const tasks = await this.prisma.task.findMany({
       where: {
         isArchived: false,
+        deletedAt: null,
         assignments: {
           some: { userId },
         },
@@ -470,12 +476,16 @@ export class CommentRepository {
           skipDuplicates: true,
         });
 
-        // Resolve task space and title for notification payload
+        // Resolve task space and title for notification payload.
+        // Task has no direct spaceId — resolve via board → department → space.
         const task = await tx.task.findUnique({
           where: { id: taskId },
-          select: { title: true, spaceId: true },
+          select: {
+            title: true,
+            board: { select: { department: { select: { spaceId: true } } } },
+          },
         });
-        const resolvedSpaceId = spaceId || task?.spaceId || '';
+        const resolvedSpaceId = spaceId || task?.board?.department?.spaceId || '';
 
         // Write outbox event for each mentioned user
         const author = comment.author;

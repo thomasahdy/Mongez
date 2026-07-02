@@ -124,7 +124,11 @@ export class DepartmentBoardsController {
 
   @Get(':deptId/boards')
   @ApiOperation({ summary: 'List boards in a department (paginated)' })
-  async getByDepartment(@Param('deptId') deptId: string, @Query() pagination: PaginationDto) {
-    return this.boardsService.getByDepartment(deptId, pagination.page, pagination.limit);
+  async getByDepartment(
+    @Req() req: any,
+    @Param('deptId') deptId: string,
+    @Query() pagination: PaginationDto,
+  ) {
+    return this.boardsService.getByDepartment(deptId, pagination.page, pagination.limit, req.user.userId);
   }
 }

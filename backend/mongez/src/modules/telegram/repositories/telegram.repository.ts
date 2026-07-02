@@ -46,19 +46,19 @@ export class TelegramRepository {
 
   upsertAccount(
     spaceId: string,
-    data: { botToken: string; botUsername: string; isActive?: boolean },
+    data: { botToken?: string; botUsername?: string; isActive?: boolean },
   ) {
     return this.prisma.telegramAccount.upsert({
       where: { spaceId },
       update: {
-        botToken: data.botToken,
-        botUsername: data.botUsername,
+        ...(data.botToken !== undefined ? { botToken: data.botToken } : {}),
+        ...(data.botUsername !== undefined ? { botUsername: data.botUsername } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       },
       create: {
         spaceId,
-        botToken: data.botToken,
-        botUsername: data.botUsername,
+        botToken: data.botToken ?? '',
+        botUsername: data.botUsername ?? '',
         isActive: data.isActive ?? true,
       },
     });

@@ -4,6 +4,7 @@ import { BoardRepository, ColumnRepository } from './repositories/boards.reposit
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { TrashService } from '../trash/trash.service';
+import { SpaceAccessService } from '../../common/services/space-access.service';
 import {
   CreateBoardDto,
   UpdateBoardDto,
@@ -25,6 +26,7 @@ export class BoardsService {
     private readonly prisma: PrismaService,
     private readonly subscriptions: SubscriptionsService,
     private readonly trashService: TrashService,
+    private readonly spaceAccess: SpaceAccessService,
   ) {}
 
   // ─── Boards ────────────────────────────────────────────────
@@ -41,7 +43,18 @@ export class BoardsService {
     );
   }
 
-  async getByDepartment(departmentId: string, page: number, limit: number) {
+  async getByDepartment(departmentId: string, page: number, limit: number, userId?: string) {
+    // Tenant isolation: resolve the department's space and verify membership.
+    if (userId) {
+      const dept = await this.prisma.department.findUnique({
+        where: { id: departmentId },
+        select: { spaceId: true },
+      });
+      if (!dept) {
+        throw new NotFoundException('Department not found');
+      }
+      await this.spaceAccess.assertMember(userId, dept.spaceId);
+    }
     const { data, total } = await this.boardRepo.findByDepartment(departmentId, page, limit);
     return paginate(data, total, page, limit);
   }

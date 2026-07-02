@@ -12,6 +12,7 @@ describe('Boards Repositories', () => {
     prisma = {
       board: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         findMany: jest.fn(),
         count: jest.fn(),
         update: jest.fn(),
@@ -42,13 +43,13 @@ describe('Boards Repositories', () => {
   });
 
   describe('BoardRepository', () => {
-    it('UT-BOARD-REPO-001: should query unique board with columns', async () => {
-      prisma.board.findUnique.mockResolvedValue({ id: 'board-1', columns: [] } as any);
+    it('UT-BOARD-REPO-001: should query board with columns excluding soft-deleted', async () => {
+      prisma.board.findFirst.mockResolvedValue({ id: 'board-1', columns: [] } as any);
 
       const result = await boardRepo.findById('board-1');
 
-      expect(prisma.board.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'board-1' } }),
+      expect(prisma.board.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'board-1', deletedAt: null } }),
       );
       expect(result?.id).toBe('board-1');
     });
@@ -105,7 +106,7 @@ describe('Boards Repositories', () => {
 
       await columnRepo.delete('col-1');
 
-      expect(prisma.task.count).toHaveBeenCalledWith({ where: { columnId: 'col-1', isArchived: false } });
+      expect(prisma.task.count).toHaveBeenCalledWith({ where: { columnId: 'col-1', isArchived: false, deletedAt: null } });
       expect(prisma.boardColumn.delete).toHaveBeenCalledWith({ where: { id: 'col-1' } });
     });
 

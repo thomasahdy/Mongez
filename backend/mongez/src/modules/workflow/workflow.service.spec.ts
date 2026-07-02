@@ -123,6 +123,7 @@ describe('WorkflowService', () => {
       delegationService,
       slaService,
       prisma as PrismaService,
+      { assertMember: jest.fn().mockResolvedValue('OWNER') } as any,
     );
   });
 

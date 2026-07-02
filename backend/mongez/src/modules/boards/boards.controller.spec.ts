@@ -125,9 +125,9 @@ describe('BoardsController & DepartmentBoardsController', () => {
       const pagination = { page: 1, limit: 10 };
       service.getByDepartment.mockResolvedValue({ data: [mockBoard], total: 1 } as any);
 
-      const result = await deptController.getByDepartment('dept-1', pagination);
+      const result = await deptController.getByDepartment({ user: { userId: 'user-1' } } as any, 'dept-1', pagination);
 
-      expect(service.getByDepartment).toHaveBeenCalledWith('dept-1', 1, 10);
+      expect(service.getByDepartment).toHaveBeenCalledWith('dept-1', 1, 10, 'user-1');
       expect(result.data).toHaveLength(1);
     });
   });

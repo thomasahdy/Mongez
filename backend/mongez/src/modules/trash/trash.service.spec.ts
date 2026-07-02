@@ -5,6 +5,8 @@ import { NotFoundException } from '@nestjs/common';
 describe('TrashService', () => {
   let service: TrashService;
   let prisma: any;
+  let storage: any;
+  let spaceAccess: any;
 
   beforeEach(() => {
     prisma = {
@@ -32,11 +34,17 @@ describe('TrashService', () => {
         update: jest.fn(),
         delete: jest.fn(),
       },
+      fileVersion: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       $transaction: jest.fn().mockImplementation(async (cb) => cb(prisma)),
       $queryRaw: jest.fn().mockResolvedValue([]),
     };
 
-    service = new TrashService(prisma as PrismaService);
+    storage = { delete: jest.fn().mockResolvedValue(undefined) };
+    spaceAccess = { assertMember: jest.fn().mockResolvedValue('OWNER') };
+
+    service = new TrashService(prisma as PrismaService, storage, spaceAccess);
   });
 
   // ─── listTrash() ─────────────────────────────────────────────
@@ -173,10 +181,11 @@ describe('TrashService', () => {
 
   describe('restore()', () => {
     it('UT-TRASH-REST-001: should restore board, columns, and tasks', async () => {
-      prisma.board.findUnique.mockResolvedValue({ id: 'board-1', restoreToken: 'token-b' });
+      prisma.board.findUnique.mockResolvedValue({ id: 'board-1', restoreToken: 'token-b', department: { spaceId: 'space-1' } });
 
-      const result = await service.restore('board-1');
+      const result = await service.restore('board-1', 'user-1');
 
+      expect(spaceAccess.assertMember).toHaveBeenCalledWith('user-1', 'space-1');
       expect(result).toEqual({ type: 'board', id: 'board-1' });
       expect(prisma.board.update).toHaveBeenCalledWith({
         where: { id: 'board-1' },
@@ -194,9 +203,9 @@ describe('TrashService', () => {
 
     it('UT-TRASH-REST-002: should restore column and its tasks', async () => {
       prisma.board.findUnique.mockResolvedValue(null);
-      prisma.boardColumn.findUnique.mockResolvedValue({ id: 'col-1', restoreToken: 'token-c' });
+      prisma.boardColumn.findUnique.mockResolvedValue({ id: 'col-1', restoreToken: 'token-c', board: { department: { spaceId: 'space-1' } } });
 
-      const result = await service.restore('col-1');
+      const result = await service.restore('col-1', 'user-1');
 
       expect(result).toEqual({ type: 'column', id: 'col-1' });
       expect(prisma.boardColumn.update).toHaveBeenCalledWith({
@@ -212,9 +221,9 @@ describe('TrashService', () => {
     it('UT-TRASH-REST-003: should restore tasks matching restoreToken', async () => {
       prisma.board.findUnique.mockResolvedValue(null);
       prisma.boardColumn.findUnique.mockResolvedValue(null);
-      prisma.task.findUnique.mockResolvedValue({ id: 'task-1', restoreToken: 'token-t' });
+      prisma.task.findUnique.mockResolvedValue({ id: 'task-1', restoreToken: 'token-t', board: { department: { spaceId: 'space-1' } } });
 
-      const result = await service.restore('task-1');
+      const result = await service.restore('task-1', 'user-1');
 
       expect(result).toEqual({ type: 'task', id: 'task-1' });
       expect(prisma.task.updateMany).toHaveBeenCalledWith({
@@ -227,9 +236,9 @@ describe('TrashService', () => {
       prisma.board.findUnique.mockResolvedValue(null);
       prisma.boardColumn.findUnique.mockResolvedValue(null);
       prisma.task.findUnique.mockResolvedValue(null);
-      prisma.workflowInstance.findUnique.mockResolvedValue({ id: 'wf-1', restoreToken: 'token-w' });
+      prisma.workflowInstance.findUnique.mockResolvedValue({ id: 'wf-1', restoreToken: 'token-w', spaceId: 'space-1' });
 
-      const result = await service.restore('wf-1');
+      const result = await service.restore('wf-1', 'user-1');
 
       expect(result).toEqual({ type: 'workflow', id: 'wf-1' });
       expect(prisma.workflowInstance.update).toHaveBeenCalledWith({
@@ -244,7 +253,15 @@ describe('TrashService', () => {
       prisma.task.findUnique.mockResolvedValue(null);
       prisma.workflowInstance.findUnique.mockResolvedValue(null);
 
-      await expect(service.restore('unknown-id')).rejects.toThrow(NotFoundException);
+      await expect(service.restore('unknown-id', 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('UT-TRASH-REST-006: should deny restore for a non-member of the item space', async () => {
+      prisma.board.findUnique.mockResolvedValue({ id: 'board-1', restoreToken: 'token-b', department: { spaceId: 'space-1' } });
+      spaceAccess.assertMember.mockRejectedValue(new Error('You are not a member of this space'));
+
+      await expect(service.restore('board-1', 'attacker')).rejects.toThrow('You are not a member of this space');
+      expect(prisma.board.update).not.toHaveBeenCalled();
     });
   });
 
@@ -252,19 +269,20 @@ describe('TrashService', () => {
 
   describe('purge()', () => {
     it('UT-TRASH-PURGE-001: should purge board', async () => {
-      prisma.board.findUnique.mockResolvedValue({ id: 'board-1' });
+      prisma.board.findUnique.mockResolvedValue({ id: 'board-1', department: { spaceId: 'space-1' } });
 
-      const result = await service.purge('board-1');
+      const result = await service.purge('board-1', 'user-1');
 
+      expect(spaceAccess.assertMember).toHaveBeenCalledWith('user-1', 'space-1', ['OWNER', 'ADMIN']);
       expect(result).toEqual({ type: 'board', id: 'board-1' });
       expect(prisma.board.delete).toHaveBeenCalledWith({ where: { id: 'board-1' } });
     });
 
     it('UT-TRASH-PURGE-002: should purge column', async () => {
       prisma.board.findUnique.mockResolvedValue(null);
-      prisma.boardColumn.findUnique.mockResolvedValue({ id: 'col-1' });
+      prisma.boardColumn.findUnique.mockResolvedValue({ id: 'col-1', board: { department: { spaceId: 'space-1' } } });
 
-      const result = await service.purge('col-1');
+      const result = await service.purge('col-1', 'user-1');
 
       expect(result).toEqual({ type: 'column', id: 'col-1' });
       expect(prisma.boardColumn.delete).toHaveBeenCalledWith({ where: { id: 'col-1' } });
@@ -273,9 +291,9 @@ describe('TrashService', () => {
     it('UT-TRASH-PURGE-003: should purge task', async () => {
       prisma.board.findUnique.mockResolvedValue(null);
       prisma.boardColumn.findUnique.mockResolvedValue(null);
-      prisma.task.findUnique.mockResolvedValue({ id: 'task-1' });
+      prisma.task.findUnique.mockResolvedValue({ id: 'task-1', board: { department: { spaceId: 'space-1' } } });
 
-      const result = await service.purge('task-1');
+      const result = await service.purge('task-1', 'user-1');
 
       expect(result).toEqual({ type: 'task', id: 'task-1' });
       expect(prisma.task.delete).toHaveBeenCalledWith({ where: { id: 'task-1' } });
@@ -285,9 +303,9 @@ describe('TrashService', () => {
       prisma.board.findUnique.mockResolvedValue(null);
       prisma.boardColumn.findUnique.mockResolvedValue(null);
       prisma.task.findUnique.mockResolvedValue(null);
-      prisma.workflowInstance.findUnique.mockResolvedValue({ id: 'wf-1' });
+      prisma.workflowInstance.findUnique.mockResolvedValue({ id: 'wf-1', spaceId: 'space-1' });
 
-      const result = await service.purge('wf-1');
+      const result = await service.purge('wf-1', 'user-1');
 
       expect(result).toEqual({ type: 'workflow', id: 'wf-1' });
       expect(prisma.workflowInstance.delete).toHaveBeenCalledWith({ where: { id: 'wf-1' } });
@@ -299,7 +317,15 @@ describe('TrashService', () => {
       prisma.task.findUnique.mockResolvedValue(null);
       prisma.workflowInstance.findUnique.mockResolvedValue(null);
 
-      await expect(service.purge('unknown-id')).rejects.toThrow(NotFoundException);
+      await expect(service.purge('unknown-id', 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('UT-TRASH-PURGE-006: should deny purge for a non-privileged member', async () => {
+      prisma.board.findUnique.mockResolvedValue({ id: 'board-1', department: { spaceId: 'space-1' } });
+      spaceAccess.assertMember.mockRejectedValue(new Error('This action requires space role: OWNER or ADMIN'));
+
+      await expect(service.purge('board-1', 'viewer')).rejects.toThrow('OWNER or ADMIN');
+      expect(prisma.board.delete).not.toHaveBeenCalled();
     });
   });
 });

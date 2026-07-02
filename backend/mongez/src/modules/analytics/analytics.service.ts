@@ -147,23 +147,58 @@ export class AnalyticsService {
   }
 
   /**
-   * Executive summary metrics.
+   * Executive summary metrics — flattens the KPI fields the dashboard reads
+   * (delivery rate, SLA compliance, avg approval time, pending approvals) on top
+   * of the general overview payload.
    */
   async getExecutiveMetrics(spaceId: string) {
-    const overview = await this.getOverview(spaceId);
-    return overview; // Simplest implementation using overview
+    const [overview, approvals] = await Promise.all([
+      this.getOverview(spaceId),
+      this.getApprovalMetrics(spaceId, this.monthPeriod()),
+    ]);
+
+    return {
+      ...overview,
+      onTimeDeliveryRate: overview.healthScore.completionRate,
+      deliveryRate: overview.healthScore.completionRate,
+      slaCompliance: approvals.complianceRate,
+      avgApprovalTime: overview.healthScore.approvalSla,
+      averageApprovalTime: overview.healthScore.approvalSla,
+      pendingApprovals: overview.pendingApprovals,
+    };
   }
 
   /**
-   * Workflow analytics metrics.
+   * Workflow analytics metrics. Returns a KPI object (not a bare array) so the
+   * dashboard can read `bottlenecks` and per-status counts directly.
    */
   async getWorkflowAnalytics(spaceId: string, period: AnalyticsPeriod) {
-    const data = await this.prisma.workflowInstance.groupBy({
+    const byStatus = await this.prisma.workflowInstance.groupBy({
       by: ['status'],
       where: { spaceId, createdAt: { gte: period.from, lte: period.to } },
       _count: { _all: true },
     });
-    return data;
+
+    const counts: Record<string, number> = {};
+    for (const row of byStatus) {
+      counts[row.status] = row._count._all;
+    }
+
+    const pending = counts['PENDING'] ?? 0;
+    const inProgress = counts['IN_PROGRESS'] ?? 0;
+    const timedOut = counts['TIMED_OUT'] ?? 0;
+    const total = byStatus.reduce((sum, r) => sum + r._count._all, 0);
+
+    return {
+      byStatus,
+      counts,
+      pending,
+      inProgress,
+      timedOut,
+      total,
+      // In-flight / stuck approvals that need attention.
+      bottlenecks: pending + inProgress + timedOut,
+    };
   }
 
   /**
@@ -212,23 +247,77 @@ export class AnalyticsService {
       actions: a._count._all,
     }));
 
+    // Always return a populated `members` array — the dashboard team panel reads
+    // `data.members` regardless of role, so returning undefined left it empty.
+    const approvalCountByUser = new Map(approvals.map((a) => [a.actorId, a._count._all]));
+    const overdueByUser = new Map(
+      (overdue ?? []).map((o: any) => [o.assigneeId, o]),
+    );
+    const memberIds = new Set<string>();
+    approvalCountByUser.forEach((_v, k) => memberIds.add(k));
+    overdueByUser.forEach((_v, k) => memberIds.add(k as string));
+
+    const members = Array.from(memberIds).map((id) => {
+      const user = userMap.get(id);
+      const od: any = overdueByUser.get(id);
+      return {
+        id,
+        userId: id,
+        name: user?.name ?? od?.assignee_name ?? 'Unknown',
+        avatarUrl: user?.avatarUrl ?? null,
+        overdueCount: Number(od?.overdue_count ?? 0),
+        actions: approvalCountByUser.get(id) ?? 0,
+      };
+    });
+
     return {
       overdueByAssignee: overdue,
       approvalActivity: activity,
-      members: role ? activity : undefined, // Compatibility with frontend role filtering mapping
+      members,
     };
   }
 
   /**
-   * Approval SLA from materialized view (monthly buckets).
+   * Approval SLA KPIs. Returns an object with a headline `complianceRate`
+   * (resolved within the SLA window) plus the raw matview buckets, so the
+   * dashboard can render SLA widgets without extra client-side aggregation.
    */
-  async getApprovalMetrics(spaceId: string, period: AnalyticsPeriod) {
-    return this.prisma.$queryRaw<any[]>`
+  async getApprovalMetrics(spaceId: string, period: AnalyticsPeriod, slaThresholdHours = 72) {
+    const stats = await this.prisma.$queryRaw<any[]>`
+      SELECT
+        COUNT(*)::int AS total_resolved,
+        COUNT(*) FILTER (
+          WHERE EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 3600 <= ${slaThresholdHours}
+        )::int AS on_time,
+        COALESCE(AVG(EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 3600), 0)::float AS avg_hours
+      FROM workflow_instances
+      WHERE "spaceId" = ${spaceId}
+        AND "resolvedAt" IS NOT NULL
+        AND "createdAt" BETWEEN ${period.from} AND ${period.to}
+    `;
+
+    const row = stats[0] ?? {};
+    const totalResolved = Number(row.total_resolved ?? 0);
+    const onTime = Number(row.on_time ?? 0);
+    const complianceRate = totalResolved === 0 ? 100 : Math.round((onTime / totalResolved) * 100);
+
+    // Matview buckets are best-effort — never fail the KPI if the view is missing/stale.
+    const buckets = await this.prisma.$queryRaw<any[]>`
       SELECT * FROM mv_approval_sla
       WHERE "spaceId" = ${spaceId}
         AND month BETWEEN ${period.from} AND ${period.to}
       ORDER BY month DESC
-    `;
+    `.catch(() => []);
+
+    return {
+      complianceRate,
+      slaCompliance: complianceRate,
+      avgResolutionHours: Number(Number(row.avg_hours ?? 0).toFixed(2)),
+      totalResolved,
+      onTime,
+      breached: Math.max(0, totalResolved - onTime),
+      buckets,
+    };
   }
 
   /**

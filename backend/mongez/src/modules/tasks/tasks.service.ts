@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { TaskRepository, CommentRepository, TimeLogRepository } from './repositories/tasks.repositories';
@@ -67,18 +67,24 @@ export class TasksService {
   }
 
   async createTask(dto: CreateTaskDto, userId: string, spaceId?: string, spacePrefix?: string) {
-    // If spaceId/spacePrefix not in body, derive from the board's space
-    if (!spaceId || !spacePrefix) {
-      const board = await this.taskRepo['prisma'].board.findUnique({
-        where: { id: dto.boardId },
-        include: { department: { include: { space: { select: { id: true, prefix: true } } } } },
-      });
-      if (!board?.department?.space) {
-        throw new Error(`Board ${dto.boardId} not found or has no associated space`);
-      }
-      spaceId = spaceId ?? board.department.space.id;
-      spacePrefix = spacePrefix ?? board.department.space.prefix;
+    // Always resolve the board's real space and enforce "board ∈ space".
+    // The controller's SpaceMemberGuard only proves the caller is a member of
+    // the spaceId they SENT; without this check a member of space A could create
+    // a task on space B's board by passing spaceId=A + boardId=<board in B>.
+    const board = await this.taskRepo['prisma'].board.findUnique({
+      where: { id: dto.boardId },
+      include: { department: { include: { space: { select: { id: true, prefix: true } } } } },
+    });
+    if (!board?.department?.space) {
+      throw new NotFoundException(`Board ${dto.boardId} not found or has no associated space`);
     }
+    const boardSpace = board.department.space;
+    if (spaceId && spaceId !== boardSpace.id) {
+      throw new ForbiddenException('Board does not belong to the specified space');
+    }
+    // Trust the board's real space/prefix for the identifier, not client-supplied values.
+    spaceId = boardSpace.id;
+    spacePrefix = boardSpace.prefix;
 
     const task = await this.taskRepo.create(dto, spaceId, spacePrefix, this.identifierService, userId);
 

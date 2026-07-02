@@ -3,6 +3,7 @@ import { IdentifierService } from './services/identifier.service';
 import { EncryptionService } from './services/encryption.service';
 import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { TraceContextService } from '../infrastructure/logging/trace-context.service';
+import { SpaceAccessService } from '../common/services/space-access.service';
 
 /**
  * SharedModule — exports utilities used across all feature modules.
@@ -10,8 +11,20 @@ import { TraceContextService } from '../infrastructure/logging/trace-context.ser
  */
 @Global()
 @Module({
-  providers: [IdentifierService, EncryptionService, TenantContextService, TraceContextService],
-  exports: [IdentifierService, EncryptionService, TenantContextService, TraceContextService],
+  providers: [
+    IdentifierService,
+    EncryptionService,
+    TenantContextService,
+    TraceContextService,
+    SpaceAccessService,
+  ],
+  exports: [
+    IdentifierService,
+    EncryptionService,
+    TenantContextService,
+    TraceContextService,
+    SpaceAccessService,
+  ],
 })
 export class SharedModule {}
 

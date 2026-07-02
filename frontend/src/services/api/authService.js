@@ -1,5 +1,5 @@
 import apiClient from "./apiClient";
-import { setTokens, clearTokens } from "./tokenService";
+import { setTokens, clearTokens, getRefreshToken } from "./tokenService";
 
 /**
  * Log in user and store tokens
@@ -26,7 +26,10 @@ export const register = async (data) => {
  */
 export const logout = async () => {
   try {
-    await apiClient.post("/auth/logout");
+    // Tokens are stored in localStorage (not cookies), so the refresh token must
+    // be sent in the body or the backend rejects logout with 400.
+    const refreshToken = getRefreshToken();
+    await apiClient.post("/auth/logout", refreshToken ? { refreshToken } : {});
   } finally {
     clearTokens();
   }

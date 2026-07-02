@@ -23,8 +23,8 @@ export class WhatsAppRepository {
     spaceId: string,
     data: {
       phoneNumberId: string;
-      wabaId: string;
-      accessToken: string;
+      wabaId?: string;
+      accessToken?: string;
       displayName: string;
       webhookSecret?: string | null;
       isActive?: boolean;
@@ -34,8 +34,8 @@ export class WhatsAppRepository {
       where: { spaceId },
       update: {
         phoneNumberId: data.phoneNumberId,
-        wabaId: data.wabaId,
-        accessToken: data.accessToken,
+        ...(data.wabaId !== undefined ? { wabaId: data.wabaId } : {}),
+        ...(data.accessToken !== undefined ? { accessToken: data.accessToken } : {}),
         displayName: data.displayName,
         ...(data.webhookSecret !== undefined
           ? { webhookSecret: data.webhookSecret }
@@ -45,8 +45,8 @@ export class WhatsAppRepository {
       create: {
         spaceId,
         phoneNumberId: data.phoneNumberId,
-        wabaId: data.wabaId,
-        accessToken: data.accessToken,
+        wabaId: data.wabaId ?? '',
+        accessToken: data.accessToken ?? '',
         displayName: data.displayName,
         webhookSecret: data.webhookSecret,
         isActive: data.isActive ?? true,

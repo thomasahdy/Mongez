@@ -2,13 +2,48 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { randomUUID } from 'crypto';
 import { StorageService } from '../../infrastructure/storage/storage.service';
+import { SpaceAccessService } from '../../common/services/space-access.service';
 
 @Injectable()
 export class TrashService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly spaceAccess: SpaceAccessService,
   ) {}
+
+  /**
+   * Resolve the owning spaceId of any trashable item (board / column / task /
+   * workflow instance) by its id, so tenant isolation can be enforced before
+   * restoring or purging. Returns null if the item does not exist.
+   */
+  private async resolveItemSpaceId(id: string): Promise<string | null> {
+    const board = await this.prisma.board.findUnique({
+      where: { id },
+      select: { department: { select: { spaceId: true } } },
+    });
+    if (board) return board.department?.spaceId ?? null;
+
+    const col = await this.prisma.boardColumn.findUnique({
+      where: { id },
+      select: { board: { select: { department: { select: { spaceId: true } } } } },
+    });
+    if (col) return col.board?.department?.spaceId ?? null;
+
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+      select: { board: { select: { department: { select: { spaceId: true } } } } },
+    });
+    if (task) return task.board?.department?.spaceId ?? null;
+
+    const workflow = await this.prisma.workflowInstance.findUnique({
+      where: { id },
+      select: { spaceId: true },
+    });
+    if (workflow) return workflow.spaceId;
+
+    return null;
+  }
 
   /**
    * List all soft-deleted items in a given Space.
@@ -169,7 +204,14 @@ export class TrashService {
   /**
    * Restore any soft-deleted item and its cascade descendants.
    */
-  async restore(id: string) {
+  async restore(id: string, userId: string) {
+    // Tenant isolation: caller must be a member of the item's space.
+    const spaceId = await this.resolveItemSpaceId(id);
+    if (!spaceId) {
+      throw new NotFoundException('Item not found in trash or cannot be restored');
+    }
+    await this.spaceAccess.assertMember(userId, spaceId);
+
     // 1. Try Board
     const board = await this.prisma.board.findUnique({
       where: { id },
@@ -247,7 +289,14 @@ export class TrashService {
   /**
    * Hard delete / purge an item permanently.
    */
-  async purge(id: string) {
+  async purge(id: string, userId: string) {
+    // Tenant isolation: permanent deletion requires OWNER/ADMIN of the item's space.
+    const spaceId = await this.resolveItemSpaceId(id);
+    if (!spaceId) {
+      throw new NotFoundException('Item not found in trash');
+    }
+    await this.spaceAccess.assertMember(userId, spaceId, ['OWNER', 'ADMIN']);
+
     // 1. Try Board
     const board = await this.prisma.board.findUnique({
       where: { id },

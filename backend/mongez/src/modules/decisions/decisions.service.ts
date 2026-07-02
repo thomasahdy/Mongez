@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { WorkflowResolvedEvent } from '../workflow/events/workflow-events';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
@@ -14,7 +14,28 @@ export class DecisionsService {
     });
   }
 
-  async deleteDecision(id: string) {
+  async deleteDecision(id: string, userId: string) {
+    const record = await this.prisma.decisionRecord.findUnique({
+      where: { id },
+      select: { id: true, spaceId: true },
+    });
+    if (!record) {
+      throw new NotFoundException('Decision record not found');
+    }
+
+    // Tenant isolation: caller must be a member of the record's space.
+    const membership = await this.prisma.membership.findFirst({
+      where: { userId, spaceId: record.spaceId },
+      select: { role: { select: { name: true } } },
+    });
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this space');
+    }
+    // Only OWNER/ADMIN may purge the decision ledger.
+    if (!['OWNER', 'ADMIN'].includes(membership.role.name)) {
+      throw new ForbiddenException('This action requires space role: OWNER or ADMIN');
+    }
+
     return this.prisma.decisionRecord.delete({
       where: { id },
     });

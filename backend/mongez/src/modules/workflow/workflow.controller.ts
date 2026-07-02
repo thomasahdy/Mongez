@@ -16,6 +16,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { SpaceMemberGuard } from '../spaces/guards/space-member.guard';
 import { WorkflowService } from './workflow.service';
 import { CreateWorkflowDefinitionDto } from './dto/create-workflow-definition.dto';
 import { StartWorkflowDto } from './dto/start-workflow.dto';
@@ -32,13 +33,14 @@ export class WorkflowController {
   // ── Definitions ──────────────────────────────────────────────
 
   @Get('workflow/definitions')
+  @UseGuards(SpaceMemberGuard)
   @ApiOperation({ summary: 'List available workflow definitions for a space' })
   async listDefinitions(@Query('spaceId') spaceId: string) {
     return this.workflowService.listDefinitions(spaceId);
   }
 
   @Post('workflow/definitions')
-  @UseGuards(PermissionsGuard)
+  @UseGuards(SpaceMemberGuard, PermissionsGuard)
   @RequirePermissions(['manage', 'workflow'])
   @ApiOperation({ summary: 'Create a new workflow definition (admin only)' })
   async createDefinition(@Req() req: any, @Body() dto: CreateWorkflowDefinitionDto) {
@@ -50,21 +52,24 @@ export class WorkflowController {
   @RequirePermissions(['manage', 'workflow'])
   @ApiOperation({ summary: 'Update a workflow definition (admin only)' })
   async updateDefinition(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: Partial<{ name: string; isActive: boolean }>,
   ) {
-    return this.workflowService.updateDefinition(id, body);
+    return this.workflowService.updateDefinition(id, body, req.user.userId);
   }
 
   // ── Instances ────────────────────────────────────────────────
 
   @Post('workflow/start')
+  @UseGuards(SpaceMemberGuard)
   @ApiOperation({ summary: 'Start a new workflow instance' })
   async startWorkflow(@Req() req: any, @Body() dto: StartWorkflowDto) {
     return this.workflowService.startWorkflow(req.user.userId, dto);
   }
 
   @Get('workflow/pending')
+  @UseGuards(SpaceMemberGuard)
   @ApiOperation({ summary: 'My pending review queue' })
   async getPending(
     @Req() req: any,
@@ -75,6 +80,7 @@ export class WorkflowController {
   }
 
   @Get('workflow/my-requests')
+  @UseGuards(SpaceMemberGuard)
   @ApiOperation({ summary: 'Workflows I initiated' })
   async getMyRequests(
     @Req() req: any,
@@ -86,8 +92,8 @@ export class WorkflowController {
 
   @Get('workflow/instances/:id')
   @ApiOperation({ summary: 'Get full instance with history' })
-  async getInstance(@Param('id') id: string) {
-    return this.workflowService.getInstanceHistory(id);
+  async getInstance(@Req() req: any, @Param('id') id: string) {
+    return this.workflowService.getInstanceHistory(id, req.user.userId);
   }
 
   @Post('workflow/instances/:id/approve')

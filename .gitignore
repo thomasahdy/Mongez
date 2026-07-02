@@ -151,3 +151,7 @@ ENV/
 UsersThomasCodeMongez*
 last__files
 /.agents
+/mongez-production-readiness-audit.md
+/mongez-progress.md
+/mongez-remediation-plan.md
+problemaandfix.txt

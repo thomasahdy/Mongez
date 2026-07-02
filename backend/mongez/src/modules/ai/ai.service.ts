@@ -58,6 +58,40 @@ export class AIService {
     return this.aiGateway.generateReport(userId, dto);
   }
 
+  /**
+   * GET /ai/context — lightweight workspace context for the AI assistant sidebar.
+   * Returns recent active tasks + board list scoped to the space and verified membership.
+   */
+  async getContext(spaceId: string, userId: string): Promise<{
+    tasks: { id: string; title: string; status: string; priority: string; dueDate: Date | null }[];
+    boards: { id: string; name: string }[];
+  }> {
+    await this.checkSpaceMembership(userId, spaceId);
+
+    const [tasks, boards] = await Promise.all([
+      this.prisma.task.findMany({
+        where: {
+          board: { department: { spaceId } },
+          isArchived: false,
+          deletedAt: null,
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 10,
+        select: { id: true, title: true, status: true, priority: true, dueDate: true },
+      }),
+      this.prisma.board.findMany({
+        where: {
+          department: { spaceId },
+          isArchived: false,
+          deletedAt: null,
+        },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    return { tasks, boards };
+  }
+
   async getDashboard(spaceId: string, userId: string) {
     await this.checkSpaceMembership(userId, spaceId);
 

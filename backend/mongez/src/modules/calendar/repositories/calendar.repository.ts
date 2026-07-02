@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { CreateEventDto } from '../dto/create-event.dto';
 import { UpdateEventDto } from '../dto/update-event.dto';
@@ -62,6 +62,16 @@ export class CalendarRepository {
     const { participants, startDate, endDate, ...rest } = dto;
 
     return this.prisma.$transaction(async (tx) => {
+      // Tenant isolation: ensure the event belongs to this space before mutating.
+      // (update by id alone would let a member of one space edit another space's event.)
+      const existing = await tx.calendarEvent.findFirst({
+        where: { id, spaceId, isDeleted: false },
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new NotFoundException('Calendar event not found');
+      }
+
       const updateData: any = { ...rest };
       if (startDate) updateData.startDate = new Date(startDate);
       if (endDate) updateData.endDate = new Date(endDate);

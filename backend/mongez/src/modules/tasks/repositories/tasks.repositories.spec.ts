@@ -18,6 +18,7 @@ describe('Tasks Repositories', () => {
     prisma = {
       task: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         findMany: jest.fn(),
         count: jest.fn(),
         update: jest.fn(),
@@ -54,13 +55,13 @@ describe('Tasks Repositories', () => {
   });
 
   describe('TaskRepository', () => {
-    it('UT-TASK-REPO-001: should query unique task details', async () => {
-      prisma.task.findUnique.mockResolvedValue({ id: 'task-1' } as any);
+    it('UT-TASK-REPO-001: should query task details excluding soft-deleted', async () => {
+      prisma.task.findFirst.mockResolvedValue({ id: 'task-1' } as any);
 
       const result = await taskRepo.findById('task-1');
 
-      expect(prisma.task.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'task-1' } }),
+      expect(prisma.task.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'task-1', deletedAt: null } }),
       );
       expect(result?.id).toBe('task-1');
     });

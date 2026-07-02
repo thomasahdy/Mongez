@@ -1,19 +1,11 @@
 import apiClient from "./apiClient";
 
-const timeLabels = {
-    "20:00": "8:00 PM",
-    "21:00": "9:00 PM",
-    "22:00": "10:00 PM",
-    "23:00": "11:00 PM",
-    "07:00": "7:00 AM",
-    "08:00": "8:00 AM",
-    "09:00": "9:00 AM",
-};
-
+// Keep 24h HH:mm values so the <select> option values match and the PATCH
+// round-trips correctly. The UI renders human-friendly labels via option text.
 const normalizeQuietHours = (quietHours = {}) => ({
     ...quietHours,
-    startTime: timeLabels[quietHours.startTime] ?? quietHours.startTime ?? "11:00 PM",
-    endTime: timeLabels[quietHours.endTime] ?? quietHours.endTime ?? "7:00 AM",
+    startTime: quietHours.startTime ?? "23:00",
+    endTime: quietHours.endTime ?? "07:00",
 });
 
 export const getNotificationSettings = async () => {

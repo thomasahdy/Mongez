@@ -236,10 +236,12 @@ export class TelegramController {
     @Param('spaceId') spaceId: string,
     @Body() dto: SetupTelegramDto,
   ) {
-    const encrypted = this.encryption.encrypt(dto.botToken);
+    const encryptedToken = dto.botToken
+      ? this.encryption.encrypt(dto.botToken)
+      : undefined;
     const account = await this.repo.upsertAccount(spaceId, {
-      botToken: encrypted,
-      botUsername: dto.botUsername,
+      ...(encryptedToken !== undefined ? { botToken: encryptedToken } : {}),
+      ...(dto.botUsername !== undefined ? { botUsername: dto.botUsername } : {}),
       isActive: dto.isActive ?? true,
     });
     return {

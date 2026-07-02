@@ -9,6 +9,7 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { CqrsModule } from '@nestjs/cqrs';
 import { DelegationModule } from '../delegation/delegation.module';
 import { SlaModule } from '../sla/sla.module';
+import { SpaceMemberGuard } from '../spaces/guards/space-member.guard';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { SlaModule } from '../sla/sla.module';
     SlaModule,
   ],
   controllers: [WorkflowController],
-  providers: [WorkflowService, WorkflowRepository, WorkflowSchedulerService],
+  providers: [WorkflowService, WorkflowRepository, WorkflowSchedulerService, SpaceMemberGuard],
   exports: [WorkflowService],
 })
 export class WorkflowModule { }

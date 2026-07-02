@@ -1,11 +1,12 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SpaceMemberGuard } from '../spaces/guards/space-member.guard';
 import { SlaService } from './sla.service';
 
 @ApiTags('SLA')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SpaceMemberGuard)
 @Controller('sla')
 export class SlaController {
   constructor(private readonly slaService: SlaService) {}

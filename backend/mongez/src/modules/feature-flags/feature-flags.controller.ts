@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { FeatureFlagsService } from './feature-flags.service';
 import { CreateFeatureFlagDto, UpdateFeatureFlagDto } from './dto/feature-flag.dto';
 
@@ -23,23 +24,27 @@ export class FeatureFlagsController {
   constructor(private readonly flagsService: FeatureFlagsService) {}
 
   @Post()
+  @UseGuards(PlatformAdminGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateFeatureFlagDto) {
     return this.flagsService.create(dto);
   }
 
   @Patch(':key')
+  @UseGuards(PlatformAdminGuard)
   async update(@Param('key') key: string, @Body() dto: UpdateFeatureFlagDto) {
     return this.flagsService.update(key, dto);
   }
 
   @Delete(':key')
+  @UseGuards(PlatformAdminGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('key') key: string) {
     await this.flagsService.delete(key);
   }
 
   @Get()
+  @UseGuards(PlatformAdminGuard)
   async findAll() {
     return this.flagsService.findAll();
   }
@@ -56,6 +61,7 @@ export class FeatureFlagsController {
   }
 
   @Get(':key')
+  @UseGuards(PlatformAdminGuard)
   async findOne(@Param('key') key: string) {
     return this.flagsService.findOne(key);
   }
