@@ -10,9 +10,11 @@ dependencies = [
 
     # LLM / Agent framework
     "langchain>=0.3.0",
+    "langchain-text-splitters>=0.3.0",
     "langgraph>=0.2.0",
     "langchain-groq>=0.2.0",
     "langsmith>=0.1.0",
+    "openai>=1.0.0",
 
     # Vector DB
     "qdrant-client>=1.12.0",

@@ -1,6 +1,7 @@
 import { NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useLocaleDirection } from "../../../hooks/useLocaleDirection";
+import ThemeSwitch from "../../../components/common/ThemeSwitch";
 
 const SETTINGS_NAV = {
   personal: [
@@ -15,6 +16,7 @@ const SETTINGS_NAV = {
     { id: "reports", href: "/reports", icon: "fa-solid fa-chart-line", label: "Reports" },
     { id: "audit", href: "/settings/audit-log", icon: "fa-solid fa-clock-rotate-left", label: "Audit Log" },
   ],
+  
 };
 
 const SettingsSidebar = ({ activeId = "profile" }) => {
@@ -44,12 +46,15 @@ const SettingsSidebar = ({ activeId = "profile" }) => {
             <SettingsSidebarItem key={item.id} item={item} active={activeId === item.id} />
           ))}
         </div>
+        <div className="settings-nav border-t border-slate-200 pt-4 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-200">
+          <ThemeSwitch />
+        </div>
       </div>
     </nav>
   );
 };
 
-export default SettingsSidebar
+export default SettingsSidebar;
 
 function SettingsSidebarItem({ item, active }) {
   const { t } = useTranslation();

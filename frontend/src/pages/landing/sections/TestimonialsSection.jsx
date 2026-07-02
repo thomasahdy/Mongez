@@ -37,7 +37,7 @@ function TestimonialsSection() {
   const testimonials = TESTIMONIALS.map((item, index) => ({ ...item, ...itemsCopy[index] }));
 
   return (
-    <section id="testimonials" className="px-6 py-24 lg:px-10">
+    <section id="testimonials" className="landing-section landing-testimonials px-6 py-24 lg:px-10" dir={isRTL ? "rtl" : "ltr"}>
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto max-w-4xl text-center">
           <SectionBadge icon="sparkles">{t("landing.testimonials.badge")}</SectionBadge>
@@ -50,10 +50,11 @@ function TestimonialsSection() {
         </div>
 
         <div className="mt-16 grid gap-6 xl:grid-cols-3">
-          {testimonials.map((item) => (
+          {testimonials.map((item, index) => (
             <article
               key={item.name}
-              className={`rounded-[2rem] border border-slate-200 bg-white p-7 shadow-[0_20px_45px_rgba(15,23,42,0.06)] ${isRTL ? "text-right" : "text-left"}`}
+              style={{ "--landing-index": index }}
+              className={`landing-card landing-testimonial-card rounded-[2rem] border border-slate-200 bg-white p-7 shadow-[0_20px_45px_rgba(15,23,42,0.06)] ${isRTL ? "text-right" : "text-left"}`}
             >
               <div className="flex gap-1 text-amber-400">
                 {Array.from({ length: 5 }).map((_, index) => (

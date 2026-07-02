@@ -11,7 +11,7 @@ export default function SpaceSwitcher() {
   const { isRTL } = useLocaleDirection();
   const { data, isLoading } = useSpaces();
   const { mutate: selectSpace } = useSetActiveSpace();
-  const {activeSpace, setActiveSpace} = useAppContext();
+  const { activeSpace, activeSpaceId, setActiveSpace } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -24,8 +24,8 @@ export default function SpaceSwitcher() {
       const apiActiveId = data.activeSpaceId;
       const activeId = savedActiveId || apiActiveId || spacesList[0]?.id;
       const active = spacesList.find((space) => space.id === activeId) || spacesList[0];
-      
-      if (active && active.id !== activeSpace?.id) {
+      if (!active) return;
+      if (active.id !== activeSpaceId) {
         setActiveSpace(active.id);
       }
 
@@ -33,7 +33,7 @@ export default function SpaceSwitcher() {
         writeActiveSpaceId(active.id);
       }
     }
-  }, [data, setActiveSpace, activeSpace?.id]);
+  }, [activeSpaceId, data, setActiveSpace]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -85,9 +85,8 @@ export default function SpaceSwitcher() {
         </span>
 
         <svg
-          className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 dark:text-slate-500 ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 dark:text-slate-500 ${isOpen ? "rotate-180" : ""
+            }`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -106,13 +105,11 @@ export default function SpaceSwitcher() {
                 key={space.id}
                 type="button"
                 onClick={() => handleSpaceSelect(space)}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors cursor-pointer ${
-                  isRTL ? "flex-row-reverse text-right" : "text-left"
-                } ${
-                  space.id === activeSpace?.id
+                className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors cursor-pointer ${isRTL ? "flex-row-reverse text-right" : "text-left"
+                  } ${space.id === activeSpace?.id
                     ? "bg-indigo-50/50 font-semibold text-indigo-600 dark:bg-indigo-950/20 dark:text-indigo-400"
                     : "text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900"
-                }`}
+                  }`}
               >
                 {space.logo ? (
                   <img src={space.logo} alt="" className="h-5.5 w-5.5 shrink-0 rounded-md object-cover" />

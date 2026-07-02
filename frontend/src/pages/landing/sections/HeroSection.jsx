@@ -11,20 +11,20 @@ function HeroSection() {
   const assistantAlerts = t("landing.hero.assistantAlerts", { returnObjects: true });
 
   return (
-    <section id="hero" className="relative overflow-hidden px-6 pb-24 pt-16 lg:px-10 lg:pt-24" aria-label={t("landing.hero.sectionAria")}>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.16),transparent_35%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.1),transparent_30%)]" />
+    <section id="hero" className="landing-section landing-hero relative overflow-hidden px-6 pb-24 pt-16 lg:px-10 lg:pt-24" aria-label={t("landing.hero.sectionAria")} dir={isRTL ? "rtl" : "ltr"}>
+      <div className="landing-hero-wash absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.16),transparent_35%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.1),transparent_30%)]" />
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/80 to-transparent" />
-      <div className="relative mx-auto max-w-6xl text-center">
+      <div className="landing-hero-content relative mx-auto max-w-6xl text-center">
         <SectionBadge icon="sparkles">{t("landing.hero.badge")}</SectionBadge>
-        <h1 className="mx-auto mt-8 max-w-3xl text-5xl font-black tracking-[-0.05em] text-slate-900 sm:text-6xl lg:text-7xl">
+        <h1 className="landing-hero-title mx-auto mt-8 max-w-3xl text-5xl font-black tracking-[-0.05em] text-slate-900 sm:text-6xl lg:text-7xl">
           {t("landing.hero.titleStart")} <span className="text-sky-700">{t("landing.hero.titleHighlightOne")}</span>
           <br />
           {t("landing.hero.titleMiddle")} <span className="text-sky-500">{t("landing.hero.titleHighlightTwo")}</span>
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-500">
+        <p className="landing-hero-copy mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-500">
           {t("landing.hero.description")}
         </p>
-        <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <div className="landing-hero-actions mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <NavLink
             to="/register"
             className={`inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-7 py-4 text-base font-semibold text-white shadow-[0_20px_45px_rgba(14,165,233,0.35)] transition hover:-translate-y-0.5 ${
@@ -45,14 +45,14 @@ function HeroSection() {
           </a>
         </div>
 
-        <div className="relative mx-auto mt-14 max-w-5xl rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-[0_35px_90px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:p-6" aria-label={t("landing.hero.previewAria")}>
+        <div className="landing-hero-preview relative mx-auto mt-14 max-w-5xl rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-[0_35px_90px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:p-6" aria-label={t("landing.hero.previewAria")}>
           <div className={`flex items-center justify-between border-b border-slate-100 px-4 pb-4 ${isRTL ? "flex-row-reverse" : ""}`}>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-rose-300" />
               <span className="h-3 w-3 rounded-full bg-amber-300" />
               <span className="h-3 w-3 rounded-full bg-emerald-300" />
             </div>
-            <span className="text-xs font-medium text-slate-400">{t("landing.hero.previewUrl")}</span>
+            <span className="landing-ltr-token text-xs font-medium text-slate-400" dir="ltr">{t("landing.hero.previewUrl")}</span>
             <span className="h-3 w-3 rounded-full bg-slate-100" />
           </div>
           <div className="grid gap-4 p-4 lg:grid-cols-[0.9fr_2.7fr_1fr]">
@@ -67,14 +67,14 @@ function HeroSection() {
 
             <div className="grid gap-3 md:grid-cols-4">
               {columns.map((column, index) => (
-                <div key={column} className={`rounded-3xl bg-slate-50 p-3 ${isRTL ? "text-right" : "text-left"}`}>
+                <div key={column} className={`landing-board-column rounded-3xl bg-slate-50 p-3 ${isRTL ? "text-right" : "text-left"}`}>
                   <div className="mb-4 flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700">{column}</span>
                     <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-400">{index + 3}</span>
                   </div>
                   <div className="space-y-3">
                     {[1, 2, 3].map((item) => (
-                      <div key={item} className="rounded-2xl bg-white p-3 shadow-sm">
+                      <div key={item} className="landing-task-card rounded-2xl bg-white p-3 shadow-sm">
                         <div
                           className={`mb-3 h-1.5 w-10 rounded-full ${
                             index === 0 ? 'bg-sky-400' : index === 1 ? 'bg-amber-400' : index === 2 ? 'bg-blue-500' : 'bg-emerald-400'
@@ -98,7 +98,7 @@ function HeroSection() {
                 {assistantAlerts.map((item, index) => (
                   <div
                     key={item}
-                    className={`rounded-2xl px-3 py-3 text-sm ${
+                    className={`landing-ai-alert rounded-2xl px-3 py-3 text-sm ${
                       index === 0 ? 'bg-rose-50 text-rose-500' : index === 1 ? 'bg-amber-50 text-amber-500' : 'bg-sky-50 text-sky-500'
                     }`}
                   >

@@ -30,6 +30,8 @@ import {
   STORAGE_KEYS,
   truncateText,
 } from "./aiAssistantUtils";
+import mongezAIMark from "../../assets/MongezAILogo.svg";
+
 
 function AiAssistantPage() {
   const { t, i18n } = useTranslation();
@@ -613,12 +615,10 @@ function AiAssistantPage() {
         <header className="bg-white dark:bg-slate-900 px-6 py-4 shrink-0" style={{borderBottom:'1px solid rgba(226,232,240,0.7)',boxShadow:'0 1px 0 rgba(226,232,240,0.5), 0 2px 8px rgba(15,23,42,0.03)'}}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             {/* Logo + title */}
-            <div className="flex items-center gap-3.5 shrink-0">
+            <div className="flex items-center gap-0 shrink-0">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] text-white shadow-[0_6px_18px_rgba(99,102,241,0.28)] animate-gradShift"
-                style={{background:'linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#06b6d4 100%)',backgroundSize:'200% 200%'}}
-              >
-                <i className="fa-solid fa-sparkles text-[14px]" />
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px]">
+             <img src={mongezAIMark} alt={t("landing.nav.wordmarkAlt")} className="w-14 h-14"  />
               </div>
               <div>
                 <div className="flex items-center gap-2">

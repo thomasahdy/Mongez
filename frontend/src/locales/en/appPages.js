@@ -128,7 +128,7 @@ const appPagesEn = {
           ],
         },
         {
-          title: "Donor & Ministry Reports",
+          title: "Performance Reports",
           description:
             "Translate execution data into polished reporting with metrics, timelines, and impact snapshots ready to share.",
           bullets: [
@@ -1681,7 +1681,7 @@ const appPagesEn = {
       description: "Start your 14-day free trial. No credit card required.",
       orEmail: "or sign up with email",
       firstName: "First name",
-      firstNamePlaceholder: "Thomas",
+      firstNamePlaceholder: "Alsherif",
       lastName: "Last name",
       lastNamePlaceholder: "Ahmed",
       workEmail: "Work email",
